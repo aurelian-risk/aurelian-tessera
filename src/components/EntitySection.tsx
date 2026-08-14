@@ -1,0 +1,400 @@
+// SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
+import { Fragment, useMemo, useState, type ReactNode } from "react";
+import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy } from "../domain/types";
+import { columnFields, getType, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, titleField } from "../domain/taxonomy";
+import { facetsOf, countFacets, filterItems, groupItems, activeCount, TOOLBAR_MIN_ROWS, type Selection } from "../domain/tablefilter";
+import { useStore } from "../domain/store";
+import { ChangeHistoryModal, IntegrityBadge } from "./ChangeHistoryModal";
+import { entryOf } from "../domain/audit";
+import { EntityModal } from "./EntityModal";
+import { Icon, ScaleBadge, ScaleBars } from "./ui";
+
+const clip = (s: string, n = 90) => (s.length > n ? s.slice(0, n) + "…" : s);
+
+// The name/description column is sized as a fixed FRACTION of the table (≈ window)
+// width so it grows with the viewport, rather than a fixed pixel width. NAME_MIN is
+// only a px floor feeding the table's horizontal-scroll min-width on narrow screens.
+const NAME_PCT = 44;
+const NAME_MIN = 320;
+const VALUE_COL = 150;
+
+/** Facet values shown before the rest fold behind a "+n". */
+const FACET_PREVIEW = 6;
+
+function FieldValueView({ field, value, tax, study, onOpen, onToggle }:
+  { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study; onOpen?: (id: string) => void;
+    onToggle?: (field: FieldDef, next: string) => void }) {
+  const nameOf = (id: string) => {
+    const r = study.entities.find((e) => e.id === id);
+    const t = r && getType(tax, r.type);
+    return r && t ? recordTitle(t, r) : "—";
+  };
+  const chip = (id: string) => onOpen
+    ? <button className="chip link" key={id} title="Open" onClick={(e) => { e.stopPropagation(); onOpen(id); }}>{nameOf(id)}</button>
+    : <span className="chip" key={id}>{nameOf(id)}</span>;
+  switch (field.type) {
+    case "enum": {
+      // A two-state field that is flipped often is a switch, not a label to open a form for.
+      if (field.toggle && field.options?.length === 2 && onToggle) {
+        const on = String(value ?? "") === field.options[1];
+        return (
+          <button className={"cell-toggle" + (on ? " on" : "")} title={`${optionLabel(field, field.options[on ? 0 : 1])} instead`}
+            onClick={(e) => { e.stopPropagation(); onToggle(field, field.options![on ? 0 : 1]); }}>
+            {optionLabel(field, field.options[on ? 1 : 0])}
+          </button>
+        );
+      }
+      return value ? <span className="badge" title={String(value)}>{optionLabel(field, String(value))}</span> : <span className="hint">—</span>;
+    }
+    case "scale": {
+      const v = typeof value === "number" ? value : 1;
+      return <ScaleBadge value={v} max={scaleMax(field)} label={scaleLabel(field, v)} positive={field.polarity === "positive"} />;
+    }
+    case "boolean":
+      return <span className="badge">{value ? "yes" : "no"}</span>;
+    case "ref":
+      return typeof value === "string" && value ? chip(value) : <span className="hint">—</span>;
+    case "multiref": {
+      const ids = Array.isArray(value) ? (value as string[]) : [];
+      if (!ids.length) return <span className="hint">—</span>;
+      // Compact in the table: first two, then a count - the full list is in the row detail.
+      return (
+        <div className="multi">
+          {ids.slice(0, 2).map(chip)}
+          {ids.length > 2 && <span className="chip more" title={ids.map(nameOf).join(", ")}>+{ids.length - 2}</span>}
+        </div>
+      );
+    }
+    default:
+      return <span>{clip(String(value ?? ""), 60) || <span className="hint">—</span>}</span>;
+  }
+}
+
+/** A record present but not in play: shown, and visibly set back. Declared in the
+ *  taxonomy (dimWhen) rather than decided here — which states are dormant is a property
+ *  of the method, not of the table. */
+function dimPredicate(tax: Taxonomy, typeKey: string): (r: EntityRecord) => boolean {
+  const rules = (tax.dimWhen ?? []).filter((d) => d.type === typeKey);
+  if (!rules.length) return () => false;
+  return (r) => rules.some((d) => d.values.includes(String(r.values[d.field] ?? "")));
+}
+
+export function EntitySection({ type, study, tax, color, draggableRows, renderDetailExtra, headerExtra, hideAdd }:
+  { type: EntityTypeDef; study: Study; tax: Taxonomy; color: string;
+    draggableRows?: boolean; renderDetailExtra?: (r: EntityRecord) => ReactNode; headerExtra?: ReactNode; hideAdd?: boolean }) {
+  const deleteEntity = useStore((s) => s.deleteEntity);
+  const updateEntity = useStore((s) => s.updateEntity);
+  const dimmed = useMemo(() => dimPredicate(tax, type.key), [tax, type.key]);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [modal, setModal] = useState<{ typeKey: string; record: EntityRecord | null } | null>(null);
+
+  const [query, setQuery] = useState("");
+  const [sel, setSel] = useState<Selection>({});
+  const [groupKey, setGroupKey] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [openFacets, setOpenFacets] = useState<Set<string>>(new Set());
+
+  const items = study.entities.filter((e) => e.type === type.key);
+  const cols = columnFields(type);
+  const title = titleField(type);
+
+  // How a value READS in the table - a scale as its label, not its number. Filtering and
+  // searching go by this, so a chip always says what the row says.
+  const display = (f: FieldDef, v: FieldValue): string => {
+    if (v == null || v === "") return "";
+    switch (f.type) {
+      case "scale": return typeof v === "number" ? scaleLabel(f, v) : "";
+      case "boolean": return v ? "yes" : "no";
+      case "ref": case "multiref": return "";
+      default: return String(v);
+    }
+  };
+
+  // Which fields and values are offered is fixed by the whole table, so the chips do not
+  // move while you use them; the numbers on them follow the current filters.
+  const facetSet = useMemo(() => facetsOf(type, items, display), [type, items]);
+  const facets = useMemo(() => countFacets(facetSet, items, type, query, sel, display), [facetSet, items, type, query, sel]);
+  const shown = useMemo(() => filterItems(items, type, query, sel, display), [items, type, query, sel]);
+  const groupField = groupKey ? type.fields.find((f) => f.key === groupKey) ?? null : null;
+  const groups = useMemo(() => groupItems(shown, groupField, display), [shown, groupField]);
+  // Only worth showing once a table is long enough to be hard to read, and only when the
+  // data actually repeats somewhere - otherwise there is nothing to filter by.
+  const showTools = items.length >= TOOLBAR_MIN_ROWS && (facets.length > 0 || items.length >= TOOLBAR_MIN_ROWS);
+  const filtered = query.trim() !== "" || activeCount(sel) > 0;
+
+  const toggleFacet = (key: string, value: string) => setSel((s) => {
+    const cur = s[key] ?? [];
+    const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+    const out = { ...s, [key]: next };
+    if (!next.length) delete out[key];
+    return out;
+  });
+  const clearAll = () => { setQuery(""); setSel({}); };
+  const toggleGroup = (k: string) => setCollapsed((c) => { const n = new Set(c); n.has(k) ? n.delete(k) : n.add(k); return n; });
+
+  const refTargets = (typeKey: string) => study.entities.filter((e) => e.type === typeKey);
+  const missingReq = type.fields.find((f) => f.type === "ref" && f.required && refTargets(f.refType ?? "").length === 0);
+  const targetLabel = missingReq ? getType(tax, missingReq.refType ?? "")?.label ?? "entity" : "";
+  const addBlocked = missingReq ? `Create a ${targetLabel} first — required by "${missingReq.label}".` : null;
+
+  // Open a linked entity from ANOTHER workshop (or type) in the modal popup.
+  const openEntity = (id: string) => { const r = study.entities.find((e) => e.id === id); if (r) setModal({ typeKey: r.type, record: r }); };
+
+  return (
+    <div className="panel ws-accent" style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
+      <div className="panel-head">
+        <h3>{type.labelPlural}</h3>
+        <span className="badge" title={filtered ? `${shown.length} shown of ${items.length}` : undefined}>{filtered ? `${shown.length} / ${items.length}` : items.length}</span>
+        <span className="spacer" />
+        {headerExtra}
+        {!hideAdd && (
+          <button className="btn sm primary" disabled={!!addBlocked} title={addBlocked ?? undefined}
+            onClick={() => setModal({ typeKey: type.key, record: null })}>
+            <Icon.plus /> {type.label}
+          </button>
+        )}
+      </div>
+
+      {addBlocked && <div style={{ padding: "12px 16px 0" }}><div className="guide warn">{addBlocked}</div></div>}
+
+      {showTools && (
+        <div className="tbl-tools">
+          <div className="tbl-tools-top">
+            <label className="tbl-search">
+              <Icon.search />
+              <input type="search" value={query} placeholder={`Search ${type.labelPlural.toLowerCase()}…`}
+                onChange={(e) => setQuery(e.target.value)} aria-label={`Search ${type.labelPlural}`} />
+            </label>
+            {facets.length > 0 && (
+              <label className="tbl-group">
+                <span className="hint">Group by</span>
+                <select className="btn sm" value={groupKey} onChange={(e) => { setGroupKey(e.target.value); setCollapsed(new Set()); }}>
+                  <option value="">nothing</option>
+                  {facets.map((f) => <option key={f.field.key} value={f.field.key}>{f.field.label}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
+
+          {facets.map((f) => {
+            // A long tail of one-row values is its own haystack. The commonest few are
+            // shown; the rest stay one click away, and a selected value is always shown
+            // so a filter can never be active behind a fold.
+            const open = openFacets.has(f.field.key);
+            const chosen = sel[f.field.key] ?? [];
+            const shownValues = open ? f.values
+              : f.values.filter((v, i) => i < FACET_PREVIEW || chosen.includes(v.value));
+            const hidden = f.values.length - shownValues.length;
+            return (
+              <div className="facet" key={f.field.key}>
+                <span className="facet-label">{f.field.label}</span>
+                {shownValues.map((v) => {
+                  const on = chosen.includes(v.value);
+                  return (
+                    <button key={v.value} type="button" className={"chip facet-chip" + (on ? " on" : "")}
+                      aria-pressed={on} onClick={() => toggleFacet(f.field.key, v.value)}>
+                      {v.value} <span className="facet-n">{v.count}</span>
+                    </button>
+                  );
+                })}
+                {(hidden > 0 || open) && (
+                  <button type="button" className="chip more facet-more"
+                    onClick={() => setOpenFacets((o) => { const n = new Set(o); n.has(f.field.key) ? n.delete(f.field.key) : n.add(f.field.key); return n; })}>
+                    {open ? "less" : `+${hidden}`}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
+          <div className="tbl-tools-foot">
+            <span className="hint">{filtered ? `${shown.length} of ${items.length}` : `${items.length} ${items.length === 1 ? "entry" : "entries"}`}</span>
+            {filtered && <button className="btn ghost sm" onClick={clearAll}>Clear filters</button>}
+          </div>
+        </div>
+      )}
+
+      <div className="panel-body">
+        {items.length === 0 ? (
+          <div className="empty" style={{ padding: "28px 16px" }}>No {type.labelPlural.toLowerCase()} yet.</div>
+        ) : shown.length === 0 ? (
+          <div className="empty" style={{ padding: "28px 16px" }}>
+            Nothing matches. <button className="btn ghost sm" onClick={clearAll}>Clear filters</button>
+          </div>
+        ) : (
+          <table className="tbl" style={{ minWidth: NAME_MIN + cols.length * VALUE_COL + 56 }}>
+            <colgroup>
+              <col style={{ width: `${NAME_PCT}%` }} />
+              {cols.map((c) => <col key={c.key} style={{ width: VALUE_COL }} />)}
+              <col />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>{type.fields.find((f) => f.key === title)?.label ?? "Name"}</th>
+                {cols.map((c) => <th key={c.key}>{c.label}</th>)}
+                <th />
+              </tr>
+            </thead>
+            {groups.map((g) => (
+            <tbody key={g.key || "_"} className={groupField ? "grouped" : undefined}>
+              {groupField && (
+                <tr className="group-row" onClick={() => toggleGroup(g.key)}>
+                  <th colSpan={cols.length + 2}>
+                    <span className={"caret" + (collapsed.has(g.key) ? "" : " open")}><Icon.chevron /></span>
+                    {g.key || <span className="hint">no {groupField.label.toLowerCase()}</span>}
+                    <span className="badge">{g.items.length}</span>
+                  </th>
+                </tr>
+              )}
+              {(groupField && collapsed.has(g.key) ? [] : g.items).map((r) => {
+                const isOpen = expanded === r.id;
+                return (
+                  <Fragment key={r.id}>
+                    <tr className={"row-clickable" + (isOpen ? " expanded" : "") + (draggableRows ? " row-drag" : "")
+                      + (dimmed(r) ? " row-dim" : "")}
+                      draggable={draggableRows || undefined}
+                      onDragStart={draggableRows ? (e) => { e.dataTransfer.setData("text/plain", r.id); e.dataTransfer.effectAllowed = "move"; } : undefined}
+                      onClick={() => setExpanded(isOpen ? null : r.id)}>
+                      <td>
+                        <div className="name">
+                          <span className={"caret" + (isOpen ? " open" : "")}><Icon.chevron /></span>
+                          {recordTitle(type, r)}
+                        </div>
+                        {typeof r.values.description === "string" && r.values.description && (
+                          <div className="desc">{clip(r.values.description)}</div>
+                        )}
+                      </td>
+                      {cols.map((c) => <td key={c.key}><FieldValueView field={c} value={r.values[c.key] ?? null} tax={tax} study={study}
+                        onOpen={openEntity} onToggle={(f, next) => updateEntity(r.id, { ...r.values, [f.key]: next },
+                          `${f.label}: ${optionLabel(f, next)}`)} /></td>)}
+                      <td />
+                    </tr>
+                    {isOpen && (
+                      <tr className="detail-row">
+                        <td colSpan={cols.length + 2}>
+                          <EntityDetail type={type} record={r} tax={tax} study={study} color={color}
+                            onEdit={() => setModal({ typeKey: type.key, record: r })}
+                            onDelete={() => deleteEntity(r.id)} onOpenEntity={openEntity}
+                            extra={renderDetailExtra ? renderDetailExtra(r) : null} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+            ))}
+          </table>
+        )}
+      </div>
+
+      {modal && <EntityModal type={getType(tax, modal.typeKey)!} tax={tax} study={study} record={modal.record} onClose={() => setModal(null)} />}
+    </div>
+  );
+}
+
+// Inline expandable detail. Linked entities (refs + referenced-by) are
+// clickable → open in the popup (used to reach items from other workshops).
+function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpenEntity, extra }: {
+  type: EntityTypeDef; record: EntityRecord; tax: Taxonomy; study: Study; color: string;
+  onEdit: () => void; onDelete: () => void; onOpenEntity: (id: string) => void; extra?: ReactNode;
+}) {
+  const [histOpen, setHistOpen] = useState(false);
+  const title = titleField(type);
+  const scalarFields = type.fields.filter((f) => f.key !== title && f.type !== "textarea" && f.type !== "ref" && f.type !== "multiref");
+  const scaleFields = scalarFields.filter((f) => f.type === "scale");
+  const otherScalars = scalarFields.filter((f) => f.type !== "scale");
+  const relFields = refFields(type);
+  const descFields = type.fields.filter((f) => f.type === "textarea");
+
+  const linkChip = (id: string) => {
+    const r = study.entities.find((e) => e.id === id);
+    const t = r && getType(tax, r.type);
+    return (
+      <button className="chip link" key={id} onClick={() => onOpenEntity(id)} title="Open">
+        {r && t ? recordTitle(t, r) : "—"}
+      </button>
+    );
+  };
+
+  const incoming: { rel: string; from: string }[] = [];
+  for (const e of study.entities) {
+    const et = getType(tax, e.type);
+    if (!et || e.id === record.id) continue;
+    for (const f of refFields(et)) {
+      const v = e.values[f.key];
+      const ids = f.type === "multiref" ? (Array.isArray(v) ? (v as string[]) : []) : v ? [v as string] : [];
+      if (ids.includes(record.id)) incoming.push({ rel: f.relation ?? f.label, from: e.id });
+    }
+  }
+
+  return (
+    <div className="detail">
+      <div className="detail-actions">
+        <span className="d-sub" style={{ margin: 0, flex: 1 }}>Details</span>
+        <button className="btn sm" style={{ background: `color-mix(in oklch, ${color} 20%, transparent)`, borderColor: `color-mix(in oklch, ${color} 45%, transparent)`, color: "var(--fg)" }} onClick={onEdit}><Icon.edit /> Edit</button>
+        <button className="btn sm danger" onClick={onDelete}><Icon.trash /> Delete</button>
+      </div>
+      {record.source && <div className="ent-source" style={{ marginBottom: 8 }} title="Extracted from this source"><Icon.doc /> {record.source}</div>}
+      {descFields.map((f) => {
+        const v = record.values[f.key];
+        return typeof v === "string" && v.trim() ? <p className="d-desc" key={f.key}>{v}</p> : null;
+      })}
+      {extra && <div className="detail-extra">{extra}</div>}
+      {scaleFields.length > 0 && (
+        <div className="d-scales">
+          {scaleFields.map((f) => {
+            const v = typeof record.values[f.key] === "number" ? (record.values[f.key] as number) : 1;
+            return (
+              <div className="d-scale-row" key={f.key}>
+                <span className="d-k">{f.label}</span>
+                <ScaleBars value={v} max={scaleMax(f)} label={scaleLabel(f, v)} positive={f.polarity === "positive"} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className="detail-grid">
+        {otherScalars.map((f) => (
+          <div className="d-item" key={f.key}>
+            <span className="d-k">{f.label}</span>
+            <div className="d-v"><FieldValueView field={f} value={record.values[f.key] ?? null} tax={tax} study={study} /></div>
+          </div>
+        ))}
+        {relFields.map((f) => {
+          const v = record.values[f.key];
+          const ids = f.type === "multiref" ? (Array.isArray(v) ? (v as string[]) : []) : v ? [v as string] : [];
+          return (
+            <div className="d-item" key={f.key}>
+              <span className="d-k">{f.label}</span>
+              <div className="d-v multi">{ids.length ? ids.map(linkChip) : <span className="hint">—</span>}</div>
+            </div>
+          );
+        })}
+      </div>
+      {incoming.length > 0 && (
+        <div className="detail-rels">
+          <span className="d-sub">Referenced by</span>
+          <div className="multi">
+            {incoming.map((r, i) => (
+              <span className="link-rel" key={i}>{linkChip(r.from)} <span className="gi-rel-lbl">{r.rel} →</span></span>
+            ))}
+          </div>
+        </div>
+      )}
+      {(() => {
+        const hist = entryOf(study.log, record.id);
+        return hist.length > 0 && (
+          <button className="hist-btn" onClick={() => setHistOpen(true)}>
+            <span className="d-sub" style={{ margin: 0 }}>Change history</span>
+            <span className="hist-count">{hist.length}</span>
+            <IntegrityBadge study={study} entityId={record.id} />
+            <span className="hist-view">View →</span>
+          </button>
+        );
+      })()}
+      {histOpen && <ChangeHistoryModal tax={tax} study={study} record={record} onClose={() => setHistOpen(false)} />}
+      <div className="detail-meta mono">updated {new Date(record.updatedAt).toLocaleString()}</div>
+    </div>
+  );
+}

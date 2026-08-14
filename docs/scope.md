@@ -1,0 +1,178 @@
+# Scope: Grundschutz++ on the Aurelian engine
+
+As at 2026-08-14. Everything below marked as measured was taken from the BSI's own
+published files; where a secondary source disagreed with a measurement, the measurement
+decided. How far the product follows the method, and what is left, is in
+`docs/method-conformance.md`.
+
+## 1. What Grundschutz++ is
+
+The BSI published the guide "Methodik Grundschutz++" in **April 2026**. Adoption has been
+running since **1 January 2026**, with a transition of several years, to about **2029**,
+during which classic IT-Grundschutz and Grundschutz++ are both admissible.
+
+What changes against the compendium:
+
+| Classic | Grundschutz++ |
+|---|---|
+| Bausteine, document-centred | **practices** (thematic security fields) × **target-object categories** |
+| ~6,500 requirements spread over many Bausteine | consolidated; **1000**, measured |
+| PDF compendium | machine-readable **JSON in OSCAL**, published on GitHub |
+| prose requirements | sentence template `{practice} [für {category}] {MUSS/SOLLTE/KANN} <event> {action word}` |
+| implicit prioritisation | **effort levels 0–5** (`effort_level`), level 0 = to be implemented in any case |
+| implicit cycle | explicit **PDCA** in five process steps |
+
+Identifiers follow the pattern `BER.1.1` — practice abbreviation, section, running number,
+one level deeper for sub-requirements (`GC.3.1.1`). The share of MUSS requirements is meant
+to fall below 10 %; measured, it is 141 of 1000, so 14 %.
+
+It replaces **BSI-Standard 200-1 and 200-2**. It keeps the other two and says so: **200-3**
+is named as one option for the risk consideration, beside ISO 27005 and ISO 31000; **200-4**
+is referenced eleven times, and the practice NOT (business continuity) defers to it rather
+than regulating it again.
+
+## 1a. The ruleset as it actually is
+
+Measured against the original, 2026-08-14. The BSI publishes the ruleset itself:
+
+**`github.com/BSI-Bund/Stand-der-Technik-Bibliothek`**, directory `control_layer/Grundschutz++/`
+
+| | |
+|---|---|
+| Format | OSCAL 1.1.3, JSON |
+| Catalogue | `Grundschutz++-resolved_catalog.json`, 5.4 MB |
+| Title | Anwenderkatalog Grundschutz++ |
+| Version checked | 2026-08-13 |
+| Requirements | **1000** over four levels of nesting (652 / 327 / 19 / 2), each with `statement` and `guidance` |
+| Practices (top-level groups) | 20 (plus `EXMP`, a test entry) |
+| Target-object categories | 39, a **tree**: 7 roots, 4 levels deep |
+| Licence | **CC BY-SA 4.0** |
+
+Beside the catalogue lies **the method itself**, machine-readable:
+`sources/catalogs/Methodik-Grundschutz++/BSI-Methodik-Grundschutz++-catalog.json`, 368 KB —
+the five ISMS practices as requirements. That file, not a secondary description, is what
+`docs/method-conformance.md` was measured against.
+
+Practices: GC Governance und Compliance, STM Strukturmodellierung, UMS Umsetzung,
+VRB Verbesserung, PERF Monitoring-Evaluation, RISK Risikomanagement, ASST Informationen
+und Assets, PERS Personal, BES Beschaffungsmanagement, DLS Dienstleistersteuerung,
+TEST Änderungen und Tests, GEB Gebäudemanagement, SENS Sensibilisierung, ARCH Architektur,
+BER Berechtigung, NOT Notfallplanung, DET Detektion, REA Sicherheitsvorfallsbehandlung,
+KONF Konfiguration, DEV Entwicklung.
+
+Each requirement carries machine-readable properties that map straight onto fields of the
+taxonomy:
+
+| OSCAL `prop` | Values | what it is here |
+|---|---|---|
+| `sec_level` | `normal-SdT`, `erhöht` | the level from which the requirement applies — **not** an asset's protection need |
+| `effort_level` | 0–5 | effort: 0 = unconditional anyway, 5 = a geo-redundant data centre |
+| `confidentiality`, `integrity`, `availability`, `authenticity` | 0, 1, 2 | how strongly the requirement acts on that objective |
+| `threats` | elementary threats, e.g. `G 0.18` | the join to the risk analysis |
+| `target_object_categories` | from the namespace | which classes of object it applies to — the modelling rule |
+| `modal_verb` | MUSS, SOLLTE, KANN | how binding it is |
+| `documentation`, `result`, `action_word`, `tags` | from the BSI namespaces | evidence, result, action word, filtering |
+
+Modal verbs in the requirement text: 141 MUSS, 618 SOLLTE, 220 KANN.
+
+**Sub-requirements are full requirements.** 348 of the 1000 sit under another, and each
+carries its own text, security level and effort level. Counting only the top level loses a
+third of the ruleset.
+
+**The security objectives appear only on the applied requirements.** The 99 requirements of
+the six methodological practices (GC, STM, UMS, VRB, PERF, RISK) carry no values for
+confidentiality, integrity, availability or authenticity — they govern the ISMS process, not
+the properties of an object. The remaining 901 carry them throughout; the single exception
+is `ASST.5.1`, with no authenticity value.
+
+**The modelling rule is published, not to be derived.** 636 of the 1000 requirements carry
+`target_object_categories`. Of the remaining 364, 99 are the methodological ones, which
+apply to the whole information domain; 265 are applied requirements with no category, and
+each needs a relevance decision of its own (STM.2.1.5).
+
+**208 requirements leave a parameter open** — `{{ insert: param, … }}` in the prose, a
+period or a role the institution sets (STM.5.1).
+
+**Migration is already mapped.** `control_layer/Mappings/IT-GS2023-zu-GSpp/` holds 1013 and
+172 entries mapping Baustein requirements of the 2023 compendium (identifiers of the form
+`APP.3.6.A1-UA.2`) onto Grundschutz++ requirements. A second mapping runs from ISO 27001
+Annex A to GS++. Migration is therefore no longer an open field but the application of an
+existing mapping.
+
+## 2. What this build brings
+
+- **One file, no server.** `dist/index.html` runs over `file://`, without installation or
+  network. Where clearance rules apply, that is not convenience but the precondition for the
+  tool being usable at all.
+- **The ruleset in the build.** Every build fetches the published catalogue, so the product
+  opens with the 1000 current requirements and no preparation step — and a running
+  installation can refresh from the publisher without waiting for a release.
+- **The requirement package derived, with its reasons.** Asset → categories → inheritance up
+  the tree → collection → consolidation, each requirement carrying the rule that placed it.
+- **What implements a requirement, from the publisher.** The 35 component definitions of the
+  implementation layer, linked to their requirements through `alt-identifier`.
+- **Kill chain and effect model.** Measures act on attack steps rather than on a checklist.
+  Grundschutz++ prescribes no risk method (GC.7.2), so this is a permitted choice — entered
+  from the triggers the method names.
+- **Monte-Carlo quantification** with its parametrisation exposed, editable in the interface,
+  every figure carrying its evidence grade (measured / derived / judgement).
+- **A hash-chained change record per study.** Every change with editor, time and comment,
+  chain-verified. Directly usable as evidence towards an auditor.
+- **Semi-deterministic catalogue import** from PDF, Word, CSV and JSON, measured against nine
+  original documents from BSI, NIST, CIS, ISO, EUR-Lex and OWASP.
+
+## 3. How that maps onto the engine
+
+See `src/profile/gspp/taxonomy.ts`. In short: the engine's keys stay, the labels become the
+method's, and the workshops are the five process steps of the guide rather than practice
+names. Four types are added with no engine counterpart (`praktik`, `kennzahl`, `abweichung`,
+`exception`). The reasoning and the tables are in `src/profile/gspp/taxonomy.ts`, at the head of the file.
+
+Not mapped, still open — the full account is in `docs/method-conformance.md`:
+
+- **Protection-need inheritance** along `supports` (maximum principle, cumulation,
+  distribution) is not calculated.
+- **Reference documents** for certification are not produced as such; the report is a
+  security concept, not the A.0–A.6 set.
+- **Effort levels 0–5** are recorded but drive no order of implementation.
+- **A security level lowered** from `erhöht` to `normal-SdT` is the one risk trigger not
+  checked; it is a change rather than a state, and stands in the change history.
+
+## 4. Order of work
+
+Done, in this order:
+
+1. **`test:e2e` rewritten for this product** — 225 checks against the portable build,
+   without network, driven by the position of a group in the taxonomy and by the heading of
+   the section a table sits in, never by label text.
+2. **Vocabularies derived from the publication, and kept current.** `npm run sync` runs
+   before every build: it derives practices, categories, security levels and modal verbs
+   from `documentation/namespaces/*.csv`, checks them against the catalogue and writes them
+   dated. Definition and use agree in all four namespaces.
+3. **OSCAL import**, complete: 1000 requirements with text, modal verb, security level,
+   effort level, security objectives, threats, categories and open parameters. The practice
+   comes from the catalogue's own top-level grouping.
+4. **The requirement package derived** (`STM.2.1`), with the account shown before it is
+   applied and the rule carried on every record.
+5. **Exceptions** (UMS.5), **residual risk** on the requirement (UMS.1.2), and the **risk
+   triggers** of GC.7.2 / STM.4.1 as declared checks.
+
+Next:
+
+6. **Protection-need inheritance** along `supports`, with the maximum principle as the
+   default and a visible reason where it is departed from.
+7. **Migration from the 2023 compendium** through the BSI's own mapping, with a review
+   interface like the catalogue import — applying the published mapping rather than
+   deriving one, and making the open cases visible.
+8. **Reference documents** for certification, if the certification scheme for GS++ settles
+   on a set.
+
+**Settled: the ruleset ships in the build.** Parsed rather than raw — 1.47 MB from 5.38 MB
+of OSCAL, because the reader strips the scaffolding the product never looks at. `dist`
+went from 2.45 MB to 3.94 MB, 1.08 MB gzipped. The generated files are not committed: the
+repository holds no foreign ruleset, the build output does.
+
+## Sources
+
+- BSI, "Leitfaden zur Methodik Grundschutz++", March 2026 — via the BSI website
+- BSI, Stand-der-Technik-Bibliothek: <https://github.com/BSI-Bund/Stand-der-Technik-Bibliothek>
