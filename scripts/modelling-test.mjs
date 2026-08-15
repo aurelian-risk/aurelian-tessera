@@ -12,7 +12,7 @@ import { pathToFileURL } from "node:url";
 
 const MOD = process.env.MOD_M;
 if (!MOD) { console.error("set MOD_M=<bundled modelling.mjs>"); process.exit(2); }
-const { requirementPackage, classificationLink, withAncestors } = await import(pathToFileURL(MOD).href);
+const { requirementPackage, classificationLink, withAncestors, packageRelationField } = await import(pathToFileURL(MOD).href);
 
 let pass = 0, fail = 0;
 const ok = (name, fn) => { try { fn(); pass++; console.log("✓", name); }
@@ -32,6 +32,7 @@ const tax = {
       { key: "framework", label: "Set", type: "text" },
       { key: "description", label: "Text", type: "textarea" },
       { key: "applies_to", label: "Applies to", type: "text", vocabulary: "kind" },
+      { key: "places", label: "Applies to places", type: "multiref", refType: "place", relation: "applies to" },
       { key: "begruendung", label: "Why", type: "textarea" },
     ] },
   ],
@@ -102,6 +103,30 @@ ok("a requirement reaching two objects is carried once, remembering both", () =>
   assert.equal(p.items.filter((i) => i.item.ref_id === "B.1").length, 1);
   assert.equal(b1.reasons.length, 2);
   assert.ok(b1.reasons.every((r) => /\(inherited\)/.test(r)), b1.reasons.join(" | "));
+});
+
+// The package is a relation, not a sentence: the method keeps "den Verweis auf jedes
+// identifizierte Asset" through the de-duplication, which is what lets it be read from the
+// object's end - this object carries these requirements.
+ok("...and the objects it reached are kept as references, de-duplicated", () => {
+  const p = requirementPackage(tax, study([
+    rec("1", "place", { name: "Rose Cottage", kind: "Cottage" }),
+    rec("2", "place", { name: "Garden shed", kind: "Shed" }),
+  ]), fw);
+  assert.deepEqual(p.items.find((i) => i.item.ref_id === "B.1").objects, ["1", "2"]);
+  assert.deepEqual(p.items.find((i) => i.item.ref_id === "C.1").objects, ["1"]);
+});
+
+ok("where the relation is written is found from the taxonomy, not named", () => {
+  const f = packageRelationField(tax, classificationLink(tax));
+  assert.equal(f.key, "places");
+});
+
+ok("a taxonomy that declares no such list still derives, it just writes no relation", () => {
+  const bare = { ...tax, entityTypes: tax.entityTypes.map((t) => t.key !== "requirement" ? t
+    : { ...t, fields: t.fields.filter((f) => f.key !== "places") }) };
+  assert.equal(packageRelationField(bare, classificationLink(bare)), null);
+  assert.ok(requirementPackage(bare, study([rec("1", "place", { name: "R", kind: "Cottage" })]), fw).items.length > 0);
 });
 
 ok("the route is named, and an inherited one is marked as inherited", () => {

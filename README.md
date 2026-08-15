@@ -23,13 +23,20 @@ contract.
 **The requirements appear.** Not a checklist you tick, but the package the method produces:
 the categories are widened along the BSI's hierarchy, the requirements of each are
 collected, duplicates are carried once, and the ISMS practices are added whole. Every
-requirement in your study says which asset brought it in and through which category —
-which is exactly the question an auditor asks.
+requirement says which asset brought it in and through which category, and every asset can
+be asked what it carries — which is the question an auditor asks. Record another asset, run
+the derivation again, and the package grows by exactly what that asset brought.
 
 **Work the register.** 1000 requirements are there; the ones your assets pulled in are
 live, the rest are greyed out until you decide they apply. Filter by scope, by modal verb,
-by security level. Record each as implemented or not — the method knows no "partly". Where
-you cannot implement one, record an exception: who authorised it, why, until when.
+by security level. Record each as implemented or not — the method knows no "partly", and a
+requirement counts as met only when the ones it depends on are met too. Set its priority,
+its owner and its date. Where you cannot implement one, record an exception: who authorised
+it, why, until when.
+
+**Coming from somewhere else?** Each requirement names what corresponds to it in the
+IT-Grundschutz-Kompendium 2023 and in ISO/IEC 27001 Annex A, and how closely — the BSI's own
+mapping, so what you have already done can be carried across rather than done again.
 
 **Where the method sends you into a risk analysis** — a process with high protection needs,
 a requirement you left open — you can model the attack chain: what an attacker would have
@@ -46,8 +53,10 @@ and why, hash-chained so a later reader can verify nothing drifted.
 |---|---|
 | Requirements | 1000, with modal verb, security level, effort level, security objectives, threats |
 | Target-object categories | 39, as a hierarchy — 7 roots, 4 levels |
-| Published implementations | 35 components (Keycloak, AWS Security Hub, network architecture, password policy …), each naming the requirements it answers |
-| Kept current | the ruleset is fetched from the BSI's repository at every build, and you can refresh a running copy yourself |
+| Dependencies | 67 edges the catalogue states between its own requirements, plus 210 weaker relations |
+| Mappings | IT-Grundschutz 2023 (1185 entries) and ISO/IEC 27001 Annex A (96), with the closeness of each correspondence |
+| Published implementations | 35 components, each naming the requirements it answers |
+| Kept current | the ruleset and the mappings are fetched from the BSI's repository at every build, and you can refresh a running copy yourself |
 
 Everything stays on your machine. Nothing is uploaded, nothing is reported, no update is
 fetched behind your back.
@@ -63,17 +72,19 @@ by the certification body.
 
 ## What it does not do yet
 
-Protection needs are not inherited along the asset graph automatically. Effort levels are
-recorded but do not order your implementation plan. The reference documents A.0–A.6 of the
-classic certification are not produced. [`docs/method-conformance.md`](docs/method-conformance.md)
-lists the rest, measured against the BSI's own machine-readable method catalogue.
+Nothing schedules the annual review of whether the package still fits your information
+domain, and nothing records that it was done. Progress is kept per requirement, but the
+reporting procedure around it is not modelled. The improvement plan exists as corrective
+actions on individual findings rather than as a plan.
+[`docs/method-conformance.md`](docs/method-conformance.md) lists the rest, measured against
+the BSI's own machine-readable method catalogue.
 
 ## Build it yourself
 
 ```
 npm install
 npm run build      # fetches the current ruleset, then builds → dist/index.html
-npm run test:e2e   # 231 checks against the built file, without network
+npm run test:e2e   # 219 checks against the built file, without network
 ```
 
 ## Licence

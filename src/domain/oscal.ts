@@ -14,7 +14,8 @@ import type { Framework, FrameworkItem } from "./frameworks";
 interface OscalProp { name: string; value: string; ns?: string; class?: string }
 interface OscalPart { id?: string; name: string; prose?: string; props?: OscalProp[]; parts?: OscalPart[] }
 interface OscalParam { id: string; label?: string; values?: string[]; select?: { choice?: string[] } }
-interface OscalControl { id: string; title: string; class?: string; params?: OscalParam[]; props?: OscalProp[]; parts?: OscalPart[]; controls?: OscalControl[] }
+interface OscalLink { href: string; rel?: string; text?: string }
+interface OscalControl { id: string; title: string; class?: string; params?: OscalParam[]; props?: OscalProp[]; links?: OscalLink[]; parts?: OscalPart[]; controls?: OscalControl[] }
 interface OscalGroup { id?: string; title?: string; props?: OscalProp[]; groups?: OscalGroup[]; controls?: OscalControl[] }
 interface OscalCatalog {
   uuid?: string;
@@ -73,9 +74,24 @@ const flatten = (props: OscalProp[] | undefined, into: Record<string, string>) =
   }
 };
 
+/** A control's links, by relation, as the identifiers they point at. OSCAL writes an
+ *  internal reference as "#ID". They land in `props` under the relation's own name, so a
+ *  taxonomy picks them up through the same field-name-is-the-property-name rule as
+ *  everything else - `related` and `required` are the two the BSI catalogue uses, and
+ *  `required` is what decides whether a requirement can count as implemented at all. */
+const linksByRel = (links: OscalLink[] | undefined, into: Record<string, string>) => {
+  for (const l of links ?? []) {
+    const rel = (l.rel ?? "").trim();
+    if (!rel || !l.href?.startsWith("#")) continue;
+    const id = l.href.slice(1);
+    into[rel] = into[rel] ? `${into[rel]}, ${id}` : id;
+  }
+};
+
 function readControl(c: OscalControl, path: string[], out: FrameworkItem[]): void {
   const props: Record<string, string> = {};
   flatten(c.props, props);
+  linksByRel(c.links, props);
   const parts = c.parts ?? [];
   const statement = parts.find((p) => p.name === "statement");
   const guidance = parts.find((p) => p.name === "guidance");

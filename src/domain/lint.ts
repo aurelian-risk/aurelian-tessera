@@ -247,13 +247,58 @@ export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
   for (const f of tax.followUps ?? []) {
     if (!has(f.when.type) || !has(f.require.type)) continue;
     const answered = referenced(f.require.type, f.require.field);
-    const wanted = new Set(f.when.values);
+    // No values named means "whatever it says, as long as it says something" — which is
+    // how a method states an obligation that follows from the record existing at all.
+    const wanted = f.when.values ? new Set(f.when.values) : null;
     const open = ents(f.when.type).filter((e) => {
       const v = e.values[f.when.field];
-      const held = Array.isArray(v) ? v.map(String) : v == null ? [] : [String(v)];
-      return held.some((x) => wanted.has(x)) && !answered.has(e.id);
+      const held = Array.isArray(v) ? v.map(String).filter(Boolean) : v == null || v === "" ? [] : [String(v)];
+      const hit = wanted ? held.some((x) => wanted.has(x)) : held.length > 0;
+      return hit && !answered.has(e.id);
     });
     add(f.id, f.title, f.severity ?? "medium", f.hint, f.when.type, open);
+  }
+
+  // What a record in a given state has to say for itself — see Taxonomy.mustState. The
+  // decision itself is the study's; that it carries its reason is the method's.
+  const held = (e: EntityRecord, key: string): string[] => {
+    const v = e.values[key];
+    return Array.isArray(v) ? v.map(String).filter(Boolean)
+      : v == null || v === "" ? [] : [String(v)];
+  };
+  for (const m of tax.mustState ?? []) {
+    if (!has(m.type)) continue;
+    const matches = (e: EntityRecord) => m.when.every((c) => {
+      const v = held(e, c.field);
+      if (c.empty) return v.length === 0;
+      return c.values ? v.some((x) => c.values!.includes(x)) : v.length > 0;
+    });
+    // Records set back are normally not judged. This one rule may ask for them by name:
+    // "struck, and no reason given" is a finding precisely about what is out of play.
+    const pool = m.includeSetBack ? study.entities.filter((e) => e.type === m.type) : ents(m.type);
+    add(m.id, m.title, m.severity ?? "medium", m.hint, m.type,
+      pool.filter((e) => matches(e) && m.require.some((f) => held(e, f).length === 0)));
+  }
+
+  // A dependency the publisher stated between its own items — see Taxonomy.dependsOn. An
+  // item that says it is done while something it rests on is not is the one finding a
+  // register cannot produce from a status column alone.
+  const dep = tax.dependsOn;
+  if (dep && has(dep.type)) {
+    const all = ents(dep.type);
+    const byId = new Map<string, EntityRecord>();
+    for (const e of all) {
+      const id = String(e.values[dep.idField] ?? "").trim();
+      if (id) byId.set(id, e);
+    }
+    const done = (e: EntityRecord) => String(e.values[dep.statusField] ?? "") === dep.doneValue;
+    const namesOf = (e: EntityRecord) => String(e.values[dep.field] ?? "")
+      .split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+    // `ents` has already dropped what is set back: a record out of play carries no claim,
+    // and a dependency that is not in play is not evidence of a gap either.
+    add("dependency-unmet", dep.title, dep.severity ?? "high", dep.hint, dep.type,
+      all.filter((e) => done(e)
+        && namesOf(e).some((n) => { const d = byId.get(n); return !!d && !done(d); })));
   }
 
   return checks;

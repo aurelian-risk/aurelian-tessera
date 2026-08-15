@@ -35,6 +35,27 @@ is a separate work under the MPL.
 The generated file is not committed to this repository. It is produced at build time by
 `npm run sync` from the published original.
 
+### The mapping collections
+
+- **Rights holder:** Bundesamt für Sicherheit in der Informationstechnik (BSI)
+- **Source:** the same repository, `control_layer/Mappings/IT-GS2023-zu-GSpp/` and
+  `control_layer/Mappings/ISO-27001-zu-GSpp/`
+- **Licence:** CC BY-SA 4.0, as the catalogue
+
+**Changes made.** Each entry is reduced to what it states — the identifier it comes from,
+the requirement it points at, and how close the correspondence is — and carried on the
+requirement it points at. No correspondence is added, dropped or re-judged.
+
+### The component definitions
+
+- **Rights holder:** Bundesamt für Sicherheit in der Informationstechnik (BSI)
+- **Source:** the same repository, `implementation_layer/`
+- **Licence:** CC BY-SA 4.0, as the catalogue
+
+**Changes made.** Each definition is read into this application's own structure; the
+requirements it names are resolved from the UUID it references to the readable identifier.
+The descriptions are not rewritten.
+
 ### The vocabularies
 
 The practice names, target-object categories, security levels and modal verbs in
@@ -61,7 +82,8 @@ This product is built on the Aurelian engine, shared with Aurelian Lite
 Nothing is fetched to render the application. Two optional features reach the network, and
 only when the user asks for them:
 
-- the embedding and language models (Transformers.js from a CDN, weights from Hugging Face),
+- the embedding model, when text is to be matched against the catalogue (Transformers.js
+  from a CDN, weights from Hugging Face),
 - the ruleset download from the BSI repository.
 
 No telemetry, no error reporting, no automatic update check. The data being worked on never

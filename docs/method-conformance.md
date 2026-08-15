@@ -65,6 +65,15 @@ carries the edges. Without the tree, `STM.2.1.4.1` cannot be executed at all.
 **222 parameter placeholders** of the form `{{ insert: param, ums.1.1-prm1 }}` survive in
 the *resolved* catalogue. They are what `STM.5.1` is about.
 
+The catalogue also states **dependencies between its own requirements**: 67 `required`
+edges over 59 requirements, and 210 weaker `related` ones. `UMS.1.1` makes the first kind
+binding — a requirement counts as implemented only when it and everything it rests on are.
+And it states, in two mapping collections of its own, what a requirement corresponds to in
+the **IT-Grundschutz-Kompendium 2023** (1185 entries reaching 322 requirements) and in
+**ISO/IEC 27001 Annex A** (96 entries reaching 280), each with how close the
+correspondence is: `equal-to`, `equivalent-to`, `subset-of`, `superset-of`,
+`intersects-with`.
+
 ## 3. Risk: an exception path, and the method does not prescribe it
 
 `GC.7.2` and `STM.4.1` name the triggers for a risk consideration:
@@ -89,45 +98,50 @@ before and after treatment. That is what 200-3 asks for.
 
 ## 4. Where this build stands
 
-| Method requires | This build | Verdict |
-|---|---|---|
-| Schutzbedarf `normal` / `hoch`, on the business process | three levels `normal/hoch/sehr hoch`, three C/I/A fields on the target object | **wrong**; the scale is classic IT-Grundschutz, and it sits on the wrong entity |
-| Umsetzungsstatus `ja` / `nein` | five values incl. `teilweise`, `entbehrlich`, `unbearbeitet` | **wrong**; that is the 200-2 Basis-Sicherheitscheck vocabulary |
-| Category **hierarchy** with inheritance | flat list of 39 | **missing**; the inheritance step cannot run |
-| Anforderungspaket per asset | no such concept | **missing** — the core of the product |
-| Relevance decision for the 265 uncategorised, with justification | no such concept | **missing** |
-| Own requirements for uncovered assets, with justification | free-text entry only | partial |
-| Parameters set per requirement | placeholders shown verbatim in the text | **defect** |
-| Risk consideration as an exception with four triggers | a full workshop, entered freely | **misplaced**, not wrong |
-| Verbundweite requirements (95) modelled once | not distinguished from asset requirements | missing |
-| Exceptions authorised and documented (`UMS.5`) | no such concept | missing |
-| Residual risk from unimplemented requirements (`UMS.1.2`) | derived from the kill chain instead | different, and defensible alongside |
+Measured again 2026-08-15, after the second pass over the method catalogue.
 
-What the build already does that the method asks for: the catalogue arrives complete with
-its properties; `sec_level`, `effort_level` and the four security objectives are carried;
-the practice is derived from the catalogue's own grouping; the change history satisfies the
-documentation duties (`GC.11`, `UMS.5.2`); the vocabularies are dated and refreshable.
+| Method requires | This build |
+|---|---|
+| `GC.7.1` Schutzbedarf `normal` / `hoch`, on the business process or the information | two values, on the business process; `sehr hoch` does not exist here either |
+| `STM.2.1.3` every asset mapped to target-object categories, functionally | the BSI's 39 categories, with the reason for the mapping recorded beside it |
+| `STM.2.1.4.1` inheritance up the category hierarchy | the tree is carried, 7 roots and 4 levels, and every parent joins before the requirements are collected |
+| `STM.2.1.4.2` consolidation, keeping the reference to each asset | a requirement reached twice is carried once and names every asset it reached, as a relation |
+| `STM.2.1.1` the ISMS practices modelled onto the whole domain, without selection | the 95 arrive whole, distinguished from what an asset brought in |
+| `STM.2.1.5` relevance decision per business process, with owner; struck ones with a reason | both are checked; the struck ones are checked although they are set back |
+| `STM.2.1.6/.7` own requirements, with the justification and the obligation | recorded as such, and each has to say why the catalogue does not suffice |
+| `STM.3.1` review of the initial security level, per asset where needed | a review record of its own; the published level stays untouched beside it |
+| `STM.4.1` risk consideration on its four triggers | all four are checked — high protection need, level lowered, requirement unimplemented, asset the catalogue does not reach |
+| `STM.5.1` parameters set per requirement | what the catalogue leaves open is listed; what was set is recorded beside it |
+| `UMS.1.1` status `ja` / `nein`, and dependencies met | two values, and the catalogue's own 67 dependency edges are followed |
+| `UMS.1.2` residual risk from what is not implemented | stated per requirement, for consolidation |
+| `UMS.2.2 / 3.1 / 4.1` priority, owner, date | recorded, and their absence is a finding while the requirement is open |
+| `UMS.5` exceptions authorised and documented | a record of its own, with authoriser, reason and validity |
+| `UMS.6` progress and plan revision | recorded per requirement |
+| `PERF.3` audit programme, plan, independent team, report | a record of its own, checked before and after the audit |
+| `PERF.4` management report | a record of its own, drawing on the audits, carrying the last review's follow-ups |
+| `GC.11` / `UMS.5.2` documentation duties | hash-chained change history over every record |
+
+Two things the method names that this build answers differently, and says so:
+
+- **The risk method** is not prescribed (`STM.4.1`). This one models the attack chain and
+  places the risk on a matrix before and after treatment, which is the 200-3 line.
+- **An asset's protection need** is not classified anywhere in `GC.7` — the classification
+  is on the business process, and the target object's level is carried by the requirement's
+  `sec_level`. `STM.4.1` nevertheless names assets with a high protection need as a
+  trigger; here it is reached through the process the asset supports, which is where the
+  rating exists.
 
 ## 5. What follows
 
-Certain and cheap — the method states these literally:
+The method catalogue holds requirements this build does not yet answer:
 
-1. Protection needs `normal` / `hoch`, recorded on the business process; drop `sehr hoch`.
-2. Implementation status `ja` / `nein`; an exception becomes an exception record, not a
-   third status value.
-3. Carry the category **hierarchy**, not a flat list.
-4. Resolve the 222 parameters, or show them as fields to fill.
-
-The core, and the reason the product exists:
-
-5. **Anforderungspaket.** Asset → categories → inherit up the tree → union of the
-   requirements → consolidate → plus the 95 Verbund-wide ones → plus a relevance decision
-   on the 265 uncategorised, each carrying its justification. Every assignment traceable to
-   the rule that produced it.
-
-Then:
-
-6. Exceptions with authorisation and justification (`UMS.5`).
-7. Residual risk from unimplemented requirements (`UMS.1.2`), beside the one the
-   treatment matrix derives.
-8. Risk consideration entered from its four triggers, and marked as such.
+1. `PERF.1.3` — the annual review of whether the package still fits the information domain.
+   The derivation is repeatable and reports what changed, but nothing schedules it or
+   records that it was done.
+2. `UMS.6.1` — progress is recorded per requirement; the procedure the requirement asks for
+   (status reporting, target-versus-actual, KPI measurement) is not modelled as one.
+3. `VRB.5` — the correction and improvement plan as a plan, rather than as corrective
+   actions on individual nonconformities.
+4. `STM.2.1.6` — the closing step, "dem BSI zugestellt": an export of own requirements in
+   the form the BSI reads.
+5. The reference documents of the classic certification, once the scheme for GS++ is fixed.

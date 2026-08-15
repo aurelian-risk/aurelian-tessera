@@ -21,6 +21,7 @@ const cache = resolve(root, "node_modules/.cache/gspp");
 mkdirSync(cache, { recursive: true });
 
 const URL_CATALOG = "https://raw.githubusercontent.com/BSI-Bund/Stand-der-Technik-Bibliothek/main/control_layer/Grundschutz%2B%2B/Grundschutz%2B%2B-resolved_catalog.json";
+const URL_MAP_ITGS = "https://raw.githubusercontent.com/BSI-Bund/Stand-der-Technik-Bibliothek/main/control_layer/Mappings/IT-GS2023-zu-GSpp/ITGS-to-GS%2B%2B-mapping_collection.json";
 
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = "") => { cond ? (pass++, console.log("✓", name)) : (fail++, console.log("✗", name, extra)); };
@@ -142,7 +143,60 @@ ok("every category used is one the Zielobjekt field offers",
   usedCats.every((c) => declaredCats.includes(c)),
   `not offered: ${usedCats.filter((c) => !declaredCats.includes(c)).join(", ")}`);
 
-// ── The vocabulary baked into this build against the published one ───────
+// ── What a requirement depends on ────────────────────────────────────────
+// UMS.1.1 makes the catalogue's own edges binding: a requirement counts as implemented
+// only when it and everything it rests on are. The edges are stated as OSCAL links, which
+// nothing reads unless the field is declared - so this is the check that they arrive.
+const withDeps = records.filter((r) => set(r, "required"));
+const depEdges = withDeps.flatMap((r) => String(r.required).split(",").map((s) => s.trim()).filter(Boolean));
+ok("the dependencies between requirements arrive", withDeps.length === 59,
+  `${withDeps.length} requirements with a dependency - is a field named "required" still declared?`);
+ok("...with every edge the catalogue states", depEdges.length === 67, `${depEdges.length} edges`);
+const ids = new Set(records.map((r) => String(r.ref_id)));
+ok("...and every one of them names a requirement of this catalogue",
+  depEdges.every((d) => ids.has(d)), `unresolved: ${depEdges.filter((d) => !ids.has(d)).join(", ")}`);
+const relEdges = records.flatMap((r) => String(r.related ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+ok("...and the weaker relation is carried in a field of its own", relEdges.length === 210, `${relEdges.length} related edges`);
+const gc21 = records.find((r) => r.ref_id === "GC.2.1");
+ok("...not folded into the binding one", String(gc21?.related ?? "") === "GC.2.2" && !set(gc21, "required"),
+  `related=${gc21?.related} required=${gc21?.required}`);
+ok("GC.7.2 depends on the protection need being set, as published",
+  String(records.find((r) => r.ref_id === "GC.7.2")?.required ?? "").split(",").map((x) => x.trim()).sort().join(",")
+  === "GC.12.1,GC.7.1.2");
+
+// ── The migration path, as the BSI publishes it ──────────────────────────
+// An institution arriving from the 2023 compendium has a body of work behind it. The BSI
+// states the correspondence itself; the only thing that can go wrong on our side is the
+// join, so this is the check that the mapping's target identifiers are this catalogue's.
+{
+  const mapFile = resolve(cache, "map-itgs.json");
+  if (!existsSync(mapFile) || readFileSync(mapFile).length < 100000) {
+    const res = await fetch(URL_MAP_ITGS, { redirect: "follow" });
+    if (res.ok) writeFileSync(mapFile, Buffer.from(await res.arrayBuffer()));
+  }
+  if (existsSync(mapFile)) {
+    const mc = JSON.parse(readFileSync(mapFile, "utf8"))["mapping-collection"];
+    const entries = (mc?.mappings ?? []).flatMap((m) => m.maps ?? []);
+    ok("the mapping from the 2023 compendium is readable", entries.length > 1000, `${entries.length} entries`);
+    const rels = new Set(entries.map((e) => e.relationship).filter(Boolean));
+    ok("...and states how close each correspondence is, not merely that there is one",
+      rels.has("equal-to") && rels.has("subset-of") && rels.size >= 4, [...rels].join(", "));
+    const targets = [...new Set(entries.flatMap((e) => (e.targets ?? []).map((t) => t["id-ref"])).filter(Boolean))];
+    const known = new Set(records.map((r) => String(r.ref_id)));
+    // The collection maps onto TWO catalogues — the Kernel, which is what a user works
+    // to, and the method catalogue. A handful of its targets are therefore requirements
+    // this catalogue does not carry. That is the publisher's structure, not a bad join:
+    // what would be a bad join is the share falling away.
+    const unresolved = targets.filter((t) => !known.has(t));
+    ok("the mapping's targets are this catalogue's requirements, bar the methodological ones",
+      unresolved.length <= 20 && targets.length - unresolved.length >= 300,
+      `${targets.length - unresolved.length} of ${targets.length} resolve; open: ${unresolved.slice(0, 4).join(", ")}`);
+    ok("...and it reaches a substantial part of the ruleset",
+      targets.length > 250 && targets.length < 1000, `${targets.length} of ${records.length}`);
+  }
+}
+
+// ── The vocabulary baked into this build against the published one ───────// ── The vocabulary baked into this build against the published one ───────
 // The lists in vocabulary.generated.ts were derived from the BSI's namespace files by
 // `npm run vocab:sync`. This is the check that they still match the ruleset as published:
 // a build whose vocabulary has drifted offers values the catalogue no longer uses, or

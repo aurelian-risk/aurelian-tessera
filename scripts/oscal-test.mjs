@@ -31,6 +31,12 @@ const FIXTURE = {
             { name: "tags", value: "alpha" },
             { name: "tags", value: "beta" },
           ],
+          links: [
+            { href: "#ZZ.1.1.1", rel: "required" },
+            { href: "#ZZ.9.9", rel: "required" },
+            { href: "#ZZ.2.1", rel: "related" },
+            { href: "https://example.invalid/elsewhere", rel: "reference" },
+          ],
           parts: [
             { name: "statement", prose: "Outer MUSS something do.", props: [{ name: "modal_verb", value: "MUSS" }] },
             { name: "guidance", parts: [{ name: "item", prose: "Guidance one." }, { name: "item", prose: "Guidance two." }] },
@@ -54,6 +60,17 @@ ok("carries the control's properties", byId["ZZ.1.1"]?.props?.effort_level === "
 ok("carries properties that sit on the statement", byId["ZZ.1.1"]?.props?.modal_verb === "MUSS", JSON.stringify(byId["ZZ.1.1"]?.props));
 ok("accumulates a repeated property instead of overwriting", byId["ZZ.1.1"]?.props?.tags === "alpha, beta", byId["ZZ.1.1"]?.props?.tags);
 ok("joins prose from nested parts", /Guidance one\./.test(byId["ZZ.1.1"]?.description ?? "") && /Guidance two\./.test(byId["ZZ.1.1"]?.description ?? ""));
+// The catalogue states dependencies between requirements as links. UMS.1.1 makes them
+// binding - a requirement counts as implemented only when its dependencies are - so they
+// have to survive the import. They land under the relation's own name, like a property.
+ok("a control's dependencies survive as the relation's own property",
+  byId["ZZ.1.1"]?.props?.required === "ZZ.1.1.1, ZZ.9.9", byId["ZZ.1.1"]?.props?.required);
+ok("...and a weaker relation stays apart from it",
+  byId["ZZ.1.1"]?.props?.related === "ZZ.2.1", byId["ZZ.1.1"]?.props?.related);
+ok("...while a link out of the document is not mistaken for one",
+  byId["ZZ.1.1"]?.props?.reference === undefined, byId["ZZ.1.1"]?.props?.reference);
+ok("a control with no links carries no such property",
+  byId["ZZ.1.1.1"]?.props?.required === undefined);
 ok("keeps parts that are neither statement nor guidance", /nobody should lose/.test(byId["ZZ.1.1"]?.description ?? ""));
 
 // A profile selects controls from a catalogue; reading it as one would yield nothing and

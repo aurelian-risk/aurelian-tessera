@@ -75,8 +75,20 @@ export interface PackagedItem {
   /** Why it is in the package — one line per rule that put it there. Kept in full: an
    *  item reached through several objects is carried once, and an audit asks which. */
   reasons: string[];
+  /** The objects that brought it in, by record id. The de-duplication keeps the item once
+   *  and the reference to every object it reached — which is what turns "391 requirements
+   *  are in scope" into "this object carries these 93". */
+  objects: string[];
   /** Already recorded in the study. */
   present: boolean;
+}
+
+/** Where the derivation can record which objects an item reached: a list field on the
+ *  catalogue-backed type pointing at the object type. Declared, the package becomes a
+ *  relation readable from either end; undeclared, only the written account remains. */
+export function packageRelationField(tax: Taxonomy, link: ClassificationLink): FieldDef | null {
+  const t = tax.entityTypes.find((x) => x.key === link.itemType);
+  return t?.fields.find((f) => f.type === "multiref" && f.refType === link.objectType) ?? null;
 }
 
 export interface RequirementPackage {
@@ -123,8 +135,12 @@ export function requirementPackage(tax: Taxonomy, study: Study, fw: Framework, o
       count++;
       const why = `${nameOf(r)} — ${hit}${inherited.includes(hit) ? " (inherited)" : ""}`;
       const seen = byRef.get(item.ref_id);
-      if (seen) { if (!seen.reasons.includes(why)) seen.reasons.push(why); continue; }
-      byRef.set(item.ref_id, { item, reasons: [why], present: already.has(item.ref_id) });
+      if (seen) {
+        if (!seen.reasons.includes(why)) seen.reasons.push(why);
+        if (!seen.objects.includes(r.id)) seen.objects.push(r.id);
+        continue;
+      }
+      byRef.set(item.ref_id, { item, reasons: [why], objects: [r.id], present: already.has(item.ref_id) });
     }
     objects.push({ record: r, name: nameOf(r), own, inherited, count });
   }

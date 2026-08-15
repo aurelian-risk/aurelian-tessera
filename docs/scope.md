@@ -1,6 +1,6 @@
 # Scope: Grundschutz++ on the Aurelian engine
 
-As at 2026-08-14. Everything below marked as measured was taken from the BSI's own
+As at 2026-08-15. Everything below marked as measured was taken from the BSI's own
 published files; where a secondary source disagreed with a measurement, the measurement
 decided. How far the product follows the method, and what is left, is in
 `docs/method-conformance.md`.
@@ -108,14 +108,20 @@ existing mapping.
   opens with the 1000 current requirements and no preparation step — and a running
   installation can refresh from the publisher without waiting for a release.
 - **The requirement package derived, with its reasons.** Asset → categories → inheritance up
-  the tree → collection → consolidation, each requirement carrying the rule that placed it.
+  the tree → collection → consolidation, each requirement carrying the rule that placed it
+  and the reference to every asset it reached. Repeatable: record an asset, derive again,
+  and the package grows by exactly what that asset brought.
+- **The dependencies and the mappings the catalogue states.** 67 `required` edges, so a
+  requirement counts as implemented only when what it rests on is (UMS.1.1); and the BSI's
+  own mappings from the 2023 compendium (1185 entries) and ISO 27001 Annex A (96), each
+  with the closeness of the correspondence.
 - **What implements a requirement, from the publisher.** The 35 component definitions of the
   implementation layer, linked to their requirements through `alt-identifier`.
 - **Kill chain and effect model.** Measures act on attack steps rather than on a checklist.
   Grundschutz++ prescribes no risk method (GC.7.2), so this is a permitted choice — entered
   from the triggers the method names.
-- **Monte-Carlo quantification** with its parametrisation exposed, editable in the interface,
-  every figure carrying its evidence grade (measured / derived / judgement).
+- **The parameters behind the effect model exposed**, editable in the interface, every
+  figure carrying its evidence grade (measured / derived / judgement).
 - **A hash-chained change record per study.** Every change with editor, time and comment,
   chain-verified. Directly usable as evidence towards an auditor.
 - **Semi-deterministic catalogue import** from PDF, Word, CSV and JSON, measured against nine
@@ -125,24 +131,30 @@ existing mapping.
 
 See `src/profile/gspp/taxonomy.ts`. In short: the engine's keys stay, the labels become the
 method's, and the workshops are the five process steps of the guide rather than practice
-names. Four types are added with no engine counterpart (`praktik`, `kennzahl`, `abweichung`,
-`exception`). The reasoning and the tables are in `src/profile/gspp/taxonomy.ts`, at the head of the file.
+names. Seven types are added with no engine counterpart (`praktik`, `kennzahl`, `abweichung`,
+`exception`, `niveau_review`, `audit`, `managementbericht`). The reasoning and the tables are in `src/profile/gspp/taxonomy.ts`, at the head of the file.
 
 Not mapped, still open — the full account is in `docs/method-conformance.md`:
 
-- **Protection-need inheritance** along `supports` (maximum principle, cumulation,
-  distribution) is not calculated.
+- **The annual review of the package** (PERF.1.3) is not scheduled and not recorded as
+  having been done, although the derivation that carries it out is repeatable.
+- **The progress-tracking procedure** (UMS.6.1) is not modelled; progress is kept per
+  requirement.
+- **The improvement plan** (VRB.5) exists as corrective actions on individual findings
+  rather than as a plan of its own.
 - **Reference documents** for certification are not produced as such; the report is a
   security concept, not the A.0–A.6 set.
-- **Effort levels 0–5** are recorded but drive no order of implementation.
-- **A security level lowered** from `erhöht` to `normal-SdT` is the one risk trigger not
-  checked; it is a change rather than a state, and stands in the change history.
+
+Retired rather than open: **protection-need inheritance** along `supports`. The method
+classifies only business processes and information (GC.7.1), in two levels, and the target
+object's level is carried by the requirement's `sec_level`. "Maximumprinzip", "Kumulation"
+and "Verteilungseffekt" do not occur in the method catalogue at all.
 
 ## 4. Order of work
 
 Done, in this order:
 
-1. **`test:e2e` rewritten for this product** — 225 checks against the portable build,
+1. **`test:e2e` rewritten for this product** — 219 checks against the portable build,
    without network, driven by the position of a group in the taxonomy and by the heading of
    the section a table sits in, never by label text.
 2. **Vocabularies derived from the publication, and kept current.** `npm run sync` runs
@@ -156,20 +168,23 @@ Done, in this order:
    applied and the rule carried on every record.
 5. **Exceptions** (UMS.5), **residual risk** on the requirement (UMS.1.2), and the **risk
    triggers** of GC.7.2 / STM.4.1 as declared checks.
+6. **The package as a relation** (STM.2.1.4.2), the **relevance decision** on what the
+   catalogue classifies nowhere (STM.2.1.5), and **own requirements** (STM.2.1.6/.7).
+7. **The security-level review** (STM.3.1) as a record, which turns the fourth risk trigger
+   from a change into a state.
+8. **Implementation planning** (UMS.2.2 / 3.1 / 4.1), **audits and the management report**
+   (PERF.3, PERF.4), and the **migration mappings** carried with the ruleset.
 
 Next:
 
-6. **Protection-need inheritance** along `supports`, with the maximum principle as the
-   default and a visible reason where it is departed from.
-7. **Migration from the 2023 compendium** through the BSI's own mapping, with a review
-   interface like the catalogue import — applying the published mapping rather than
-   deriving one, and making the open cases visible.
-8. **Reference documents** for certification, if the certification scheme for GS++ settles
-   on a set.
+9. **The annual review of the package** (PERF.1.3) as a scheduled and recorded step.
+10. **The improvement plan** (VRB.5) as a plan rather than as individual corrections.
+11. **Reference documents** for certification, if the certification scheme for GS++ settles
+    on a set.
 
-**Settled: the ruleset ships in the build.** Parsed rather than raw — 1.47 MB from 5.38 MB
-of OSCAL, because the reader strips the scaffolding the product never looks at. `dist`
-went from 2.45 MB to 3.94 MB, 1.08 MB gzipped. The generated files are not committed: the
+**Settled: the ruleset ships in the build.** Parsed rather than raw — 1.59 MB from 5.38 MB
+of OSCAL, because the reader strips the scaffolding the product never looks at, and the
+mappings are reduced to what they state. `dist` is 4.25 MB, 1.18 MB gzipped. The generated files are not committed: the
 repository holds no foreign ruleset, the build output does.
 
 ## Sources

@@ -105,11 +105,56 @@ export interface Taxonomy {
     /** What to do about it, and under which requirement of the method. */
     hint: string;
     severity?: "high" | "medium" | "low";
-    /** The condition: a record of this type whose field holds one of these values. */
-    when: { type: string; field: string; values: string[] };
+    /** The condition: a record of this type whose field holds one of these values, or —
+     *  with no values named — holds anything at all. */
+    when: { type: string; field: string; values?: string[] };
     /** The answer: a record of this type pointing back through this field. */
     require: { type: string; field: string };
   }[];
+  /** What a record in a given state has to say for itself. A method rarely just asks for a
+   *  decision — it asks that the decision carry its reason, its owner, its date. Left
+   *  undeclared, a register fills up with decisions nobody can account for later, and the
+   *  gap only surfaces in an audit.
+   *
+   *  The condition is a conjunction, and a term may test for a value or for emptiness, so
+   *  "classified nowhere and struck anyway" is expressible — which is the case a method
+   *  usually cares about. */
+  mustState?: {
+    id: string;
+    title: string;
+    hint: string;
+    severity?: "high" | "medium" | "low";
+    type: string;
+    /** All of these have to hold for the record to be judged. */
+    when: { field: string; values?: string[]; empty?: boolean }[];
+    /** …and then these fields have to carry something. */
+    require: string[];
+    /** Judge records that are set back too. Off by default — a record out of play carries
+     *  no claim — but a rule about what was struck is exactly a rule about those. */
+    includeSetBack?: boolean;
+  }[];
+  /** A dependency a published catalogue states between its own items: this one counts as
+   *  done only when the ones it names are done too. The catalogue carries the edge as an
+   *  identifier list; `idField` says where the identifier itself lives, so the edge is
+   *  followed without the engine knowing either vocabulary.
+   *
+   *  Undeclared, a register happily reports a requirement as met while what it rests on is
+   *  not — which is exactly what the publisher wrote the edge to prevent. */
+  dependsOn?: {
+    /** The type the edge runs between (requirement to requirement, normally). */
+    type: string;
+    /** The field holding the identifiers this item depends on, comma-separated. */
+    field: string;
+    /** The field an item's own identifier is in, so an identifier resolves to a record. */
+    idField: string;
+    /** The field that says whether an item is done, and the value that means it is. */
+    statusField: string;
+    doneValue: string;
+    /** What the finding is called, and under which requirement of the method. */
+    title: string;
+    hint: string;
+    severity?: "high" | "medium" | "low";
+  };
   /** Records that are present but not in play, and how to tell. A register that only holds
    *  what applies cannot be extended by hand; one that holds everything is unreadable
    *  unless what does not apply is visibly set back. Named by state, like followUps. */

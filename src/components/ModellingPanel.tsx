@@ -9,7 +9,7 @@
 // each carrying the rule that put it there.
 import { useMemo, useState } from "react";
 import type { Study, Taxonomy } from "../domain/types";
-import { requirementPackage } from "../domain/modelling";
+import { packageRelationField, requirementPackage } from "../domain/modelling";
 import { catalogTargets } from "../domain/catalog";
 import { BUNDLED_FRAMEWORKS } from "../profile";
 import { useStore } from "../domain/store";
@@ -18,6 +18,7 @@ import { Icon } from "./ui";
 
 export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: Study; color: string }) {
   const addEntity = useStore((s) => s.addEntity);
+  const updateEntity = useStore((s) => s.updateEntity);
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [fwKey, setFwKey] = useState(BUNDLED_FRAMEWORKS[0]?.key ?? "");
@@ -38,27 +39,63 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
   // The field that says whether a record is in play. Its first option is "out", its second
   // "in" — the taxonomy names them; this only needs to know which is which.
   const scopeField = itemType?.fields.find((f) => (tax.dimWhen ?? []).some((d) => d.type === pkg.link.itemType && d.field === f.key));
+  // Where the package is written as a relation rather than only as a sentence: the
+  // requirement records which objects it applies to, so it can be read from either end.
+  const relField = packageRelationField(tax, pkg.link);
   const cls = (c: string) => optionLabel(pkg.link.objectField, c);
 
   // One action, not two. The whole ruleset comes in; what the reading reaches is in scope
   // and says why, the rest is present and set back, to be brought in by hand where it
   // applies. Two separate lists — "the package" and "the ones to decide" — asked the user
   // to hold a distinction the table can simply show.
-  const derived = new Map(pkg.items.map((i) => [i.item.ref_id, i.reasons]));
+  //
+  // Repeatable, because the method is: record an object, run the reading again, and the
+  // package grows by exactly what that object brought. So a second run does not duplicate
+  // anything — it refreshes the relation and the scope of what the reading now reaches,
+  // and leaves everything it does not reach alone, decisions included.
+  const derived = new Map(pkg.items.map((i) => [i.item.ref_id, i]));
+  const byRefRecord = new Map(study.entities.filter((e) => e.type === pkg.link.itemType)
+    .map((e) => [String(e.values.ref_id ?? ""), e]));
   const notYet = fw.items.filter((i) => !already.has(i.ref_id));
+  const sameSet = (a: unknown, b: string[]) =>
+    Array.isArray(a) && a.length === b.length && b.every((x) => a.includes(x));
+  const stale = pkg.items.filter((i) => {
+    const rec = byRefRecord.get(i.item.ref_id);
+    if (!rec) return false;
+    const scopeOff = !!scopeField && String(rec.values[scopeField.key] ?? "") !== (scopeField.options?.[1] ?? "");
+    const relOff = !!relField && !sameSet(rec.values[relField.key], i.objects);
+    return scopeOff || relOff;
+  });
   const apply = () => {
     if (!target || !scopeField) return;
     for (const item of notYet) {
-      const reasons = derived.get(item.ref_id);
+      const d = derived.get(item.ref_id);
       addEntity(target.type.key, {
         ...target.toValues(fw, item),
-        [scopeField.key]: reasons ? scopeField.options?.[1] ?? "" : scopeField.options?.[0] ?? "",
+        [scopeField.key]: d ? scopeField.options?.[1] ?? "" : scopeField.options?.[0] ?? "",
         // The account of why a requirement is in scope travels with the record. Without it
         // the package is a list somebody has to take on trust.
-        ...(reasons ? { begruendung: `In scope: ${reasons.join("; ")}.` } : {}),
+        ...(d ? { begruendung: `In scope: ${d.reasons.join("; ")}.` } : {}),
+        // …and beside the account, the relation itself: which objects it applies to.
+        ...(d && relField ? { [relField.key]: d.objects } : {}),
       });
     }
-    setMsg(`${notYet.length} requirements added — ${derived.size} in scope from the reading, the rest present and set back until a reason is given.`);
+    // Records already in the study that the reading now reaches differently: the relation
+    // and the scope are the derivation's to keep current. The rationale is not overwritten
+    // — it may have been written by hand since.
+    for (const i of stale) {
+      const rec = byRefRecord.get(i.item.ref_id);
+      if (!rec) continue;
+      updateEntity(rec.id, {
+        [scopeField.key]: scopeField.options?.[1] ?? "",
+        ...(relField ? { [relField.key]: i.objects } : {}),
+      });
+    }
+    const parts = [
+      notYet.length ? `${notYet.length} requirements added` : "",
+      stale.length ? `${stale.length} brought up to date with the reading` : "",
+    ].filter(Boolean);
+    setMsg(`${parts.join(", ")} — ${derived.size} in scope from the reading, the rest present and set back until a reason is given.`);
   };
 
   return (
@@ -127,8 +164,10 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
 
         {msg && <div className="guide warn" style={{ marginTop: 10 }}>{msg}</div>}
         <div style={{ marginTop: 10 }}>
-          <button className="btn primary sm modelling-apply" disabled={!notYet.length || !scopeField} onClick={apply}>
-            <Icon.plus /> {notYet.length ? `Bring in the ${notYet.length} not yet recorded` : "The whole ruleset is recorded"}
+          <button className="btn primary sm modelling-apply" disabled={(!notYet.length && !stale.length) || !scopeField} onClick={apply}>
+            <Icon.plus /> {notYet.length ? `Bring in the ${notYet.length} not yet recorded`
+              : stale.length ? `Bring ${stale.length} up to date with the reading`
+              : "The whole ruleset is recorded, and the package is current"}
           </button>
         </div>
       </div>

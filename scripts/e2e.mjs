@@ -112,11 +112,14 @@ try {
     [WS.GC, "Grid control"],
     [WS.STM, "Control system (SCADA)"],
     [WS.STM, "Mehr-Faktor-Authentifizierung"],
+    [WS.STM, "Redundant telecoms connection at the legacy stations"],
     [WS.RISK, "Organised cybercrime"],
     [WS.RISK, "Entry through the manufacturer's remote maintenance"],
     [WS.RISK, "Takeover of the maintenance access"],
     [WS.UMS, "Multi-factor authentication for remote-maintenance access"],
     [WS.PERF, "Share of MUSS requirements implemented"],
+    [WS.PERF, "Internal audit of remote maintenance"],
+    [WS.PERF, "Management report on information security"],
     [WS.VRB, "Maintenance sessions are recorded but never read"],
   ];
   for (const [ws, needle] of wsExpect) {
@@ -201,7 +204,10 @@ try {
     const sec = section("Requirements");
     const rows = await sec.locator("tbody tr.row-clickable").count();
     const dim = await sec.locator("tbody tr.row-dim").count();
-    ok(`the whole ruleset is recorded (${rows})`, rows === 1000);
+    // 1000 published requirements plus the one this institution took on out of its own
+    // compliance obligations (STM.2.1.7) — an own requirement is a member of the package,
+    // not a note beside it.
+    ok(`the whole ruleset is recorded, plus what the institution added (${rows})`, rows === 1001);
     ok(`...with what no rule reached set back (${dim} of ${rows})`, dim === 609);
     // Bringing one in by hand is one press, and the press is what an audit sees: it goes
     // through the change record like any other edit.
@@ -209,17 +215,31 @@ try {
       /In scope/.test(await sec.locator(".facet").first().innerText())
       && /out of scope/.test(await sec.locator(".facet").first().innerText()));
     ok("every row carries the switch, engaged where the reading reached it",
-      (await sec.locator(".cell-toggle").count()) === 1000
-      && (await sec.locator(".cell-toggle.on").count()) === 391);
+      (await sec.locator(".cell-toggle").count()) === 1001
+      && (await sec.locator(".cell-toggle.on").count()) === 392);
     const off = sec.locator("tbody tr.row-dim .cell-toggle").first();
     await off.click();
     await page.waitForTimeout(500);
     ok("...and one press brings a requirement into scope",
       (await sec.locator("tbody tr.row-dim").count()) === dim - 1
-      && (await sec.locator(".cell-toggle.on").count()) === 392);
+      && (await sec.locator(".cell-toggle.on").count()) === 393);
     ok("...what the reading reached is in scope, saying through which asset",
       /In scope: Control system \(SCADA\) — IT-Systeme/.test(
         await sec.locator("tbody tr", { hasText: "BER.1.1" }).first().innerText().catch(() => "")) || dim < rows);
+  }
+  // The migration path: the BSI's own mapping travels with the ruleset, so an institution
+  // arriving from the 2023 compendium can see what it has already done.
+  {
+    const sec = section("Requirements");
+    await sec.locator("tbody tr", { hasText: "ARCH.1.1" }).first().locator(".name").click();
+    await page.waitForTimeout(300);
+    const d = await sec.locator(".detail").first().innerText();
+    ok("a requirement names what it corresponds to in the 2023 compendium",
+      /IT-Grundschutz 2023/i.test(d) && /\bA\d+/.test(d));
+    ok("...with the closeness the mapping states, not merely that there is one",
+      /(equal-to|subset-of|superset-of|intersects-with|equivalent-to)/.test(d));
+    await sec.locator("tbody tr", { hasText: "ARCH.1.1" }).first().locator(".name").click();
+    await page.waitForTimeout(150);
   }
   ok("coverage and traceability are shown for the requirement side",
     (await section("Coverage & traceability").count()) === 1 && (await section("Framework coverage").count()) === 1);
@@ -499,6 +519,66 @@ try {
   ok("...and it names the sabotage chain", /Mis-operation through altered switching commands/.test(await dOnly.innerText()));
   ok("monitored chains with nothing to respond with are flagged",
     (await page.locator(".lint-card .lint-title", { hasText: "Monitored chains with no way to respond" }).count()) === 1);
+  // STM.2.1.4.2: the package is a relation, not a sentence, so an asset can be asked what
+  // it carries. Read from the asset's end — the end an auditor reads it from.
+  await openWs(WS.STM, 350);
+  const scada = section("Assets").locator("tbody tr")
+    .filter({ has: page.locator(".name", { hasText: "Control system (SCADA)" }) });
+  await scada.locator(".name").click();
+  await page.waitForTimeout(400);
+  const scadaDetail = section("Assets").locator(".detail").first();
+  const backlinks = await scadaDetail.locator(".chip.link").count();
+  ok("an asset says which requirements it carries", backlinks > 20, `${backlinks} records point at it`);
+  ok("...and the relation is named as the method names it",
+    /applies to/i.test(await scadaDetail.innerText()));
+  await scada.locator(".name").click();
+  await page.waitForTimeout(200);
+  await page.locator(".ws-tab", { hasText: "Checks" }).click();
+  await page.waitForTimeout(250);
+
+  // PERF.3: an audit is planned before it is held and documented after it. The sample
+  // holds one carried out and one still planned, so both rules have something to say.
+  ok("an audit held without a report is a finding",
+    (await page.locator(".lint-card, .lint-pass").filter({ hasText: "held with no report" }).count()) === 1);
+  ok("an audit with no objective, scope or team is a finding",
+    (await page.locator(".lint-card, .lint-pass").filter({ hasText: "no objective, scope or team" }).count()) === 1);
+  ok("...and the audit still to be held is the one it names",
+    (await page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: "no objective, scope or team" }) }).count()) === 0);
+
+  // STM.2.1.6/.7: the package may be extended by the institution's own requirements. Both
+  // rules have to be offered, and the sample's compliance requirement has to satisfy its.
+  ok("an own requirement has to say why the catalogue does not suffice",
+    (await page.locator(".lint-card, .lint-pass").filter({ hasText: "why the catalogue does not suffice" }).count()) === 1);
+  ok("a compliance requirement has to name its obligation",
+    (await page.locator(".lint-pass", { hasText: "no obligation named" }).count()) === 1);
+  ok("assets the catalogue reaches with nothing are checked for",
+    (await page.locator(".lint-card, .lint-pass").filter({ hasText: "no requirement of the catalogue reaches" }).count()) === 1);
+
+  // STM.3.1 with STM.4.1: lowering a level from erhöht to normal-SdT is the fourth risk
+  // trigger, and the one that was a change rather than a state until the review made it
+  // one. The sample records it complete, so the rule has to pass rather than vanish.
+  ok("lowering a security level is checked against the risk trigger",
+    (await page.locator(".lint-pass", { hasText: "lowered without a risk consideration" }).count()) === 1);
+  ok("...and the sample's review is not a finding",
+    (await page.locator(".lint-card .lint-title", { hasText: "lowered without a risk consideration" }).count()) === 0);
+
+  // What the method requires a decision to carry (STM.2.1.5, UMS.3.1, UMS.4.1). The sample
+  // leaves these open deliberately: the whole ruleset is recorded, and the relevance
+  // decision on what the catalogue classifies nowhere is the reader's to make.
+  const struck = page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: "struck from the package with no reason" }) });
+  ok("striking a requirement without a reason is a finding", (await struck.count()) === 1);
+  const struckN = Number((/(\d+)/.exec(await struck.locator(".lint-count").first().innerText()) ?? [0, 0])[1]);
+  ok("...and it names the ones the catalogue classifies nowhere", struckN >= 200 && struckN <= 300, `${struckN} affected`);
+  ok("an open requirement with nobody answerable is a finding",
+    (await page.locator(".lint-card .lint-title", { hasText: "no one answerable or no date" }).count()) === 1);
+  ok("...and a requirement reached by a category is not asked for a striking reason",
+    !/every requirement/i.test(await struck.innerText()));
+
+  // UMS.1.1: the catalogue's own dependency edges, followed. The rule has to be offered
+  // at all - passing or failing - because a register that cannot see them reports a
+  // requirement as met while what it rests on is open.
+  ok("the dependency between requirements is checked",
+    (await page.locator(".lint-card, .lint-pass").filter({ hasText: "while what they rest on is not" }).count()) === 1);
   ok("the checks cover the effect model, not just missing links",
     (await page.locator(".lint-card, .lint-pass").count()) >= 19);
   // A check written for another method is declared off rather than left to report the
@@ -574,7 +654,9 @@ try {
   ok('focusing from the index shows no detail box', (await page.locator('.detail-dock').count()) === 0);
   // clicking a NODE inspects it: the box appears, with a ring, WITHOUT moving the focus
   const legendBefore = (await page.locator('.graph-legend').first().innerText()).trim();
-  await page.locator('.graph-wrap svg g[transform^="translate"]').first().locator('circle,rect,path').first().click();
+  // force: the node under the pointer may be overlapped by a neighbour once the study
+  // grows — what is being checked is the click handler, not the layout.
+  await page.locator('.graph-wrap svg g[transform^="translate"]').first().locator('circle,rect,path').first().click({ force: true });
   await page.waitForTimeout(200);
   ok('clicking a node opens the box (inspect) without re-centring',
     (await page.locator('.detail-dock .info-panel .ip-title').count()) > 0

@@ -6,6 +6,37 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.2.0] — 2026-08-15
+
+### Added
+
+- **The requirement package is a relation, per asset.** The consolidation keeps the
+  reference to every asset a requirement reached (`STM.2.1.4.2`), so an asset can be asked
+  what it carries. The derivation is repeatable: record an asset, run it again, and the
+  package grows by exactly what that asset brought.
+- **The dependencies the catalogue states between its requirements.** 67 `required` edges
+  over 59 requirements, plus 210 `related` ones. A requirement reported as implemented
+  while something it rests on is not is a finding (`UMS.1.1`).
+- **The migration path, as published.** Every build carries the BSI's own mapping
+  collections: 1185 entries from the IT-Grundschutz-Kompendium 2023 reaching 322
+  requirements, 96 from ISO/IEC 27001 Annex A reaching 280 — each with how close the
+  correspondence is.
+- **The security-level review** (`STM.3.1`) as a record of its own, for one asset where the
+  method allows that. Lowering a level from `erhöht` to `normal-SdT` now fires the fourth
+  risk trigger (`STM.4.1`), which was a change rather than a state until now.
+- **Own requirements** (`STM.2.1.6/.7`): a requirement says where it comes from, and one of
+  the institution's own has to say why the catalogue does not suffice, or name the
+  obligation it follows from.
+- **The audit programme and the management report** (`PERF.3`, `PERF.4`): objective, scope,
+  criteria and an independent team before an audit, the report after it, and a management
+  report that says whether the ISMS is effective and what became of the last review's
+  decisions.
+- **Implementation planning** (`UMS.2.2`, `UMS.3.1`, `UMS.4.1`, `UMS.6.1`): priority, owner,
+  due date and progress on a requirement, with their absence reported while it is open.
+- The relevance decision the method requires on requirements the catalogue classifies
+  nowhere (`STM.2.1.5`) is checked from both sides: assigned with a process owner, or
+  struck with a documented reason.
+
 ## [0.1.0] — 2026-08-14
 
 First release. An ISMS tool for the BSI's Grundschutz++ method, in one HTML file that runs

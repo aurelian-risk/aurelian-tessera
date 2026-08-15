@@ -97,12 +97,16 @@ export function makeSampleStudy(): Study {
   const target = targetByKind(DEFAULT_TAXONOMY, "requirement");
   const byRefId = new Map<string, string>();          // catalogue identifier → entity id
   if (target) {
-    const packaged = new Map<string, { item: (typeof GRUNDSCHUTZ_PP.items)[number]; why: string[] }>();
-    const put = (item: (typeof GRUNDSCHUTZ_PP.items)[number], why: string) => {
+    const packaged = new Map<string, { item: (typeof GRUNDSCHUTZ_PP.items)[number]; why: string[]; assets: string[] }>();
+    const put = (item: (typeof GRUNDSCHUTZ_PP.items)[number], why: string, assetId?: string) => {
       const seen = packaged.get(item.ref_id);
       // STM.2.1.4.2: carried once, but keeping the reference to every asset it reached.
-      if (seen) { if (!seen.why.includes(why)) seen.why.push(why); return; }
-      packaged.set(item.ref_id, { item, why: [why] });
+      if (seen) {
+        if (!seen.why.includes(why)) seen.why.push(why);
+        if (assetId && !seen.assets.includes(assetId)) seen.assets.push(assetId);
+        return;
+      }
+      packaged.set(item.ref_id, { item, why: [why], assets: assetId ? [assetId] : [] });
     };
 
     for (const a of assets) {
@@ -111,7 +115,7 @@ export function makeSampleStudy(): Study {
       for (const item of GRUNDSCHUTZ_PP.items) {
         const hit = categoriesOf(item.props).find((c) => cats.has(c));
         if (!hit) continue;
-        put(item, `${a.name} — category ${hit}${inherited.includes(hit) ? " (inherited)" : ""}`);
+        put(item, `${a.name} — category ${hit}${inherited.includes(hit) ? " (inherited)" : ""}`, a.id);
       }
     }
     for (const item of GRUNDSCHUTZ_PP.items) {
@@ -132,6 +136,9 @@ export function makeSampleStudy(): Study {
         // beyond the handful the measures below account for.
         umsetzung: "nein",
         ...(hit ? { begruendung: `In scope: ${hit.why.join("; ")}.` } : {}),
+        // The package as a relation, not only as a sentence (STM.2.1.4.2). The ISMS
+        // practices reach the whole information domain and name no asset.
+        ...(hit?.assets.length ? { applies_to_asset: hit.assets } : {}),
       }));
     }
   }
@@ -182,6 +189,65 @@ export function makeSampleStudy(): Study {
   own({ name: "Anomaly detection on the telecontrol protocol", description: "Switching commands are checked against the expected operating pattern and deviations reported to the control room.", measure_type: "Detective", status: "In progress", fulfills: [], covers: [b2], implementation_level: 3, priority: 4, verantwortlich: "Network Operations", termin: "2027-09-30" });
   ["DLS.2.1", "ASST.5.6", "DLS.4.1"].forEach(met);
 
+  // PERF.3 · PERF.4: the audit programme and the report the management reads. Planned
+  // before it is held, risk-oriented in what it examines, and independent of it.
+  const audit1 = add("audit", {
+    name: "Internal audit of remote maintenance", audit_type: "Internal",
+    ziel: "Establish whether the requirements on remote-maintenance access are met and whether the measures on it work.",
+    umfang: "The manufacturer's access to the control system, the maintenance jump host and the session records, for the year to date.",
+    supporting_asset: [aProvider, aScada], requirement: req("DLS.2.1").concat(req("ASST.5.6")),
+    kriterien: "Interviews with IT Operations, review of the maintenance contract and the session records, and a technical check of the access rules on the jump host.",
+    auditteam: "Internal Audit, with an external network specialist. Neither is involved in operating the access.",
+    unabhaengig: "ja", geplant_fuer: "2026-09-15", durchgefuehrt_am: "2026-09-17",
+    bericht: "Access is released per assignment and recorded as required. The session records are collected but not evaluated: nobody is named as reading them, so a misuse would be visible only after the fact. Two-factor authentication is in place for three of five accounts.",
+  });
+  add("audit", {
+    name: "Surveillance audit of the telecontrol network", audit_type: "Surveillance",
+    ziel: "Establish whether the separation between the telecontrol network and the office IT holds as designed.",
+    umfang: "The crossing point between the zones and the six legacy dial-up stations.",
+    supporting_asset: [aTelecontrol, aLegacy],
+    kriterien: "Configuration review of the crossing point, and a sample of the dial-up lines on site.",
+    auditteam: "External auditor, appointed for the year.", unabhaengig: "ja",
+    geplant_fuer: "2027-03-10",
+  });
+  add("managementbericht", {
+    name: "Management report on information security, first half of 2026",
+    zeitraum: "January to June 2026", anlass: "Scheduled",
+    eignung: "The requirement package is modelled and the measures on the grid-control process are in place or planned. The intended purpose is not yet effectively met at two points: the maintenance sessions are recorded but not read, and the legacy dial-up lines are still connected.",
+    audit: [audit1],
+    folgemassnahmen: "The decision of the last review to remove the dial-up lines is behind schedule; the budget has been carried into 2027.",
+    entscheidungen: "The removal of the dial-up lines is confirmed for the first half of 2027. An owner is named for reading the session records.",
+    vorgelegt_am: "2026-07-28",
+  });
+
+  // STM.2.1.7: the package is extended by what the institution's own compliance
+  // environment requires. It carries the obligation it follows from and the processes it
+  // applies to, because nothing in the catalogue can supply either.
+  add("requirement", {
+    name: "Report a disturbance of the grid control systems to the Bundesnetzagentur without delay",
+    ref_id: "EIGEN.1", herkunft: "Own — compliance obligation",
+    compliance_basis: "§ 11 (1c) EnWG together with the security catalogue for grid operators — example, not legal advice",
+    modal_verb: "MUSS", praktik: "Governance und Compliance",
+    applies_to_process: [pGrid], verantwortlich: "Head of Network Operations",
+    scope: "in scope", umsetzung: "nein", prioritaet: "1 — first", faellig: "2026-12-31",
+    description: "A disturbance of the systems operating the grid is reported to the regulator without delay, in the form the security catalogue prescribes.",
+    begruendung: "Taken on under STM.2.1.7: the obligation applies to the institution as a grid operator and is not covered by any requirement of the catalogue.",
+    residual_risk: "A late report is a breach of the obligation itself, independently of the disturbance.",
+  });
+
+  // STM.3.1: the initial security level is reviewed and, where the context of the
+  // institution differs, changed — here for one asset rather than everywhere. Lowering it
+  // from erhöht to normal-SdT is the fourth trigger for a risk consideration (STM.4.1),
+  // so the review carries the consideration and the reason.
+  const redundancy = byRefId.get("ARCH.8.2") ?? "";
+  if (redundancy) add("niveau_review", {
+    name: "Redundant telecoms connection at the legacy stations",
+    requirement: redundancy, supporting_asset: aLegacy,
+    level_before: "erhöht", level_after: "normal-SdT",
+    begruendung: "The six dial-up lines are being disconnected within the year and the stations moved onto the telecontrol network. Building a second connection for a link that is to be removed would tie up the budget the removal needs.",
+    risk_considered: "ja", strategic_scenario: tsSabotage, decided_on: "2026-05-20",
+  });
+
   // UMS.5: the method knows two implementation states and no third. What would elsewhere
   // be recorded as "partly" is a decision here — authorised, reasoned, and dated, with the
   // risk consideration that not implementing it triggers (STM.4.1).
@@ -211,7 +277,7 @@ export function makeSampleStudy(): Study {
   add("kennzahl", { name: "Privileged accounts with a second factor", description: "Share of administrative accounts behind multi-factor authentication.", praktik: "BER Berechtigung", zielwert: 100, istwert: 74, einheit: "%" });
 
   // ── Step 5 · Improvement ───────────────────────────────────────────────
-  add("abweichung", { name: "Maintenance sessions are recorded but never read", description: "Sessions by the manufacturer are recorded, and nobody reviews the logs.", requirement: byRefId.get("DLS.2.1") ?? "", schwere: 3, status: "In progress", korrektur: "Connect to the central log evaluation and put the review into the operating manual." });
+  add("abweichung", { name: "Maintenance sessions are recorded but never read", description: "Sessions by the manufacturer are recorded, and nobody reviews the logs.", requirement: byRefId.get("DLS.2.1") ?? "", audit: audit1, schwere: 3, status: "In progress", korrektur: "Connect to the central log evaluation and put the review into the operating manual." });
   add("abweichung", { name: "The role description is out of date", description: "The named role is filled; its description still refers to the previous version of the ruleset.", requirement: "", schwere: 1, status: "Open", korrektur: "" });
 
   // A study that only ever shows creates says nothing about the change history, which is
