@@ -2,8 +2,8 @@
 // The derivation, shown before it is applied.
 //
 // A catalogue that classifies its requirements already says which of them reach which
-// object. This panel performs that reading — classify, widen along the hierarchy, collect,
-// de-duplicate — and shows the result as an account rather than a number: which object
+// object. This panel performs that reading - classify, widen along the hierarchy, collect,
+// de-duplicate - and shows the result as an account rather than a number: which object
 // brought which requirement in, what it inherited, what is already recorded, and what the
 // catalogue leaves undecided. Adding writes the requirements into the study's own table,
 // each carrying the rule that put it there.
@@ -31,13 +31,13 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
   const itemType = getType(tax, pkg.link.itemType);
   const target = catalogTargets(tax).find((t) => t.type.key === pkg.link.itemType);
   const missing = pkg.items.filter((i) => !i.present);
-  // What the catalogue classifies nowhere cannot be derived — it has to be decided. Shown
+  // What the catalogue classifies nowhere cannot be derived - it has to be decided. Shown
   // as its own list, grouped as the catalogue groups it, so the decision is per chapter
   // rather than per record over hundreds of them.
   const already = new Set(study.entities.filter((e) => e.type === pkg.link.itemType)
     .map((e) => String(e.values.ref_id ?? "")).filter(Boolean));
   // The field that says whether a record is in play. Its first option is "out", its second
-  // "in" — the taxonomy names them; this only needs to know which is which.
+  // "in" - the taxonomy names them; this only needs to know which is which.
   const scopeField = itemType?.fields.find((f) => (tax.dimWhen ?? []).some((d) => d.type === pkg.link.itemType && d.field === f.key));
   // Where the package is written as a relation rather than only as a sentence: the
   // requirement records which objects it applies to, so it can be read from either end.
@@ -46,12 +46,12 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
 
   // One action, not two. The whole ruleset comes in; what the reading reaches is in scope
   // and says why, the rest is present and set back, to be brought in by hand where it
-  // applies. Two separate lists — "the package" and "the ones to decide" — asked the user
+  // applies. Two separate lists - "the package" and "the ones to decide" - asked the user
   // to hold a distinction the table can simply show.
   //
   // Repeatable, because the method is: record an object, run the reading again, and the
   // package grows by exactly what that object brought. So a second run does not duplicate
-  // anything — it refreshes the relation and the scope of what the reading now reaches,
+  // anything - it refreshes the relation and the scope of what the reading now reaches,
   // and leaves everything it does not reach alone, decisions included.
   const derived = new Map(pkg.items.map((i) => [i.item.ref_id, i]));
   const byRefRecord = new Map(study.entities.filter((e) => e.type === pkg.link.itemType)
@@ -82,7 +82,7 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
     }
     // Records already in the study that the reading now reaches differently: the relation
     // and the scope are the derivation's to keep current. The rationale is not overwritten
-    // — it may have been written by hand since.
+    // - it may have been written by hand since.
     for (const i of stale) {
       const rec = byRefRecord.get(i.item.ref_id);
       if (!rec) continue;
@@ -95,7 +95,7 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
       notYet.length ? `${notYet.length} requirements added` : "",
       stale.length ? `${stale.length} brought up to date with the reading` : "",
     ].filter(Boolean);
-    setMsg(`${parts.join(", ")} — ${derived.size} in scope from the reading, the rest present and set back until a reason is given.`);
+    setMsg(`${parts.join(", ")} - ${derived.size} in scope from the reading, the rest present and set back until a reason is given.`);
   };
 
   return (
@@ -119,7 +119,7 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
           object twice is carried once. {pkg.items.length} follow for this study
           {missing.length > 0 ? `, of which ${missing.length} are not yet recorded` : " and all are recorded"}.
           {pkg.unclassifiedItems.length > 0 && <> {pkg.unclassifiedItems.length} requirements name no class at
-            all — nothing can derive them, so they are recorded and set back until someone says they apply.</>}
+            all - nothing can derive them, so they are recorded and set back until someone says they apply.</>}
         </div>
 
         {pkg.unclassified.length > 0 && (
@@ -140,7 +140,7 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
                 <td>{o.own.map((c) => <span className="badge" key={c} title={c}>{cls(c)}</span>)}</td>
                 <td>{o.inherited.length
                   ? o.inherited.map((c) => <span className="chip" key={c} title={c}>{cls(c)}</span>)
-                  : <span className="hint">—</span>}</td>
+                  : <span className="hint"> - </span>}</td>
                 <td style={{ fontVariantNumeric: "tabular-nums" }}>{o.count}</td>
               </tr>
             ))}

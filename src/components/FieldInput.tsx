@@ -28,7 +28,7 @@ export function FieldInput({
     case "enum":
       return (
         <select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)}>
-          {!field.required && <option value="">—</option>}
+          {!field.required && <option value=""> - </option>}
           {(field.options ?? []).map((o) => <option key={o} value={o}>{optionLabel(field, o)}</option>)}
         </select>
       );
@@ -74,7 +74,7 @@ export function FieldInput({
       return (
         <MultiSelect options={multirefOptions ?? refOptions(field.refType ?? "")}
           selected={Array.isArray(value) ? (value as string[]) : []}
-          onChange={(ids) => onChange(ids)} emptyHint={multirefOptions ? "no eligible steps — set this step's order and scenario first" : "no entities to link yet"} />
+          onChange={(ids) => onChange(ids)} emptyHint={multirefOptions ? "no eligible steps - set this step's order and scenario first" : "no entities to link yet"} />
       );
 
     default:

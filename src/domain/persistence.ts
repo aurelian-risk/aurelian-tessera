@@ -83,7 +83,7 @@ export async function clearStorage(): Promise<void> {
 // ── File download / upload ─────────────────────────────────────────────
 export type Format = "json" | "yaml";
 
-/** Recursively sort object keys (arrays keep their order — it is meaningful for
+/** Recursively sort object keys (arrays keep their order - it is meaningful for
  *  entities/history). Makes the export deterministic. */
 function sortDeep(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(sortDeep);

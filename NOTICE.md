@@ -2,7 +2,7 @@
 
 ## This software
 
-Aurelian Tessera++ — © Aurelian-Risk, licensed under the **Mozilla Public License 2.0**
+Aurelian Tessera++ - © Aurelian-Risk, licensed under the **Mozilla Public License 2.0**
 (`LICENSE`). MPL-2.0 is a file-level copyleft: a modified source file stays under the MPL,
 and a build combining it with other work does not have to. The built application states its
 licence and where its source is, because a single HTML file may be the only copy a recipient
@@ -28,8 +28,8 @@ rewritten, shortened or paraphrased.
 
 **Share-alike.** Because those changes make the embedded catalogue adapted material, the
 adapted catalogue is distributed under **CC BY-SA 4.0**, the same licence as the original.
-That applies to the catalogue data in the build — `src/profile/gspp/catalog.generated.ts`
-and its equivalent inside `dist/index.html` — not to this application's source code, which
+That applies to the catalogue data in the build - `src/profile/gspp/catalog.generated.ts`
+and its equivalent inside `dist/index.html` - not to this application's source code, which
 is a separate work under the MPL.
 
 The generated file is not committed to this repository. It is produced at build time by
@@ -42,8 +42,8 @@ The generated file is not committed to this repository. It is produced at build 
   `control_layer/Mappings/ISO-27001-zu-GSpp/`
 - **Licence:** CC BY-SA 4.0, as the catalogue
 
-**Changes made.** Each entry is reduced to what it states — the identifier it comes from,
-the requirement it points at, and how close the correspondence is — and carried on the
+**Changes made.** Each entry is reduced to what it states - the identifier it comes from,
+the requirement it points at, and how close the correspondence is - and carried on the
 requirement it points at. No correspondence is added, dropped or re-judged.
 
 ### The component definitions
@@ -55,6 +55,18 @@ requirement it points at. No correspondence is added, dropped or re-judged.
 **Changes made.** Each definition is read into this application's own structure; the
 requirements it names are resolved from the UUID it references to the readable identifier.
 The descriptions are not rewritten.
+
+### MITRE ATT&CK
+
+- **Rights holder:** The MITRE Corporation
+- **Source:** <https://attack.mitre.org/>
+- **Terms:** MITRE ATT&CK Terms of Use,
+  <https://attack.mitre.org/resources/legal-and-branding/terms-of-use/>
+
+`src/domain/mitre.ts` carries the 14 tactic names and a curated set of 50 technique
+identifiers and names, used for an offline typeahead on the kill-chain step. No ATT&CK
+prose, mitigation or group content is carried. MITRE ATT&CK&reg; is a registered trademark
+of The MITRE Corporation; this project is not affiliated with or endorsed by MITRE.
 
 ### The vocabularies
 

@@ -2,7 +2,8 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy } from "../domain/types";
 import { columnFields, getType, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, titleField } from "../domain/taxonomy";
-import { facetsOf, countFacets, filterItems, groupItems, activeCount, TOOLBAR_MIN_ROWS, type Selection } from "../domain/tablefilter";
+import { TOOLBAR_MIN_ROWS } from "../domain/tablefilter";
+import { TableTools, useTableFilter } from "./TableTools";
 import { useStore } from "../domain/store";
 import { ChangeHistoryModal, IntegrityBadge } from "./ChangeHistoryModal";
 import { entryOf } from "../domain/audit";
@@ -11,6 +12,9 @@ import { Icon, ScaleBadge, ScaleBars } from "./ui";
 
 const clip = (s: string, n = 90) => (s.length > n ? s.slice(0, n) + "…" : s);
 
+/** Records shown per incoming relation before the rest fold behind a "+n more". */
+const BACKREF_PREVIEW = 12;
+
 // The name/description column is sized as a fixed FRACTION of the table (≈ window)
 // width so it grows with the viewport, rather than a fixed pixel width. NAME_MIN is
 // only a px floor feeding the table's horizontal-scroll min-width on narrow screens.
@@ -18,16 +22,13 @@ const NAME_PCT = 44;
 const NAME_MIN = 320;
 const VALUE_COL = 150;
 
-/** Facet values shown before the rest fold behind a "+n". */
-const FACET_PREVIEW = 6;
-
 function FieldValueView({ field, value, tax, study, onOpen, onToggle }:
   { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study; onOpen?: (id: string) => void;
     onToggle?: (field: FieldDef, next: string) => void }) {
   const nameOf = (id: string) => {
     const r = study.entities.find((e) => e.id === id);
     const t = r && getType(tax, r.type);
-    return r && t ? recordTitle(t, r) : "—";
+    return r && t ? recordTitle(t, r) : " - ";
   };
   const chip = (id: string) => onOpen
     ? <button className="chip link" key={id} title="Open" onClick={(e) => { e.stopPropagation(); onOpen(id); }}>{nameOf(id)}</button>
@@ -44,7 +45,7 @@ function FieldValueView({ field, value, tax, study, onOpen, onToggle }:
           </button>
         );
       }
-      return value ? <span className="badge" title={String(value)}>{optionLabel(field, String(value))}</span> : <span className="hint">—</span>;
+      return value ? <span className="badge" title={String(value)}>{optionLabel(field, String(value))}</span> : <span className="hint"> - </span>;
     }
     case "scale": {
       const v = typeof value === "number" ? value : 1;
@@ -53,10 +54,10 @@ function FieldValueView({ field, value, tax, study, onOpen, onToggle }:
     case "boolean":
       return <span className="badge">{value ? "yes" : "no"}</span>;
     case "ref":
-      return typeof value === "string" && value ? chip(value) : <span className="hint">—</span>;
+      return typeof value === "string" && value ? chip(value) : <span className="hint"> - </span>;
     case "multiref": {
       const ids = Array.isArray(value) ? (value as string[]) : [];
-      if (!ids.length) return <span className="hint">—</span>;
+      if (!ids.length) return <span className="hint"> - </span>;
       // Compact in the table: first two, then a count - the full list is in the row detail.
       return (
         <div className="multi">
@@ -66,18 +67,24 @@ function FieldValueView({ field, value, tax, study, onOpen, onToggle }:
       );
     }
     default:
-      return <span>{clip(String(value ?? ""), 60) || <span className="hint">—</span>}</span>;
+      return <span>{clip(String(value ?? ""), 60) || <span className="hint"> - </span>}</span>;
   }
 }
 
 /** A record present but not in play: shown, and visibly set back. Declared in the
- *  taxonomy (dimWhen) rather than decided here — which states are dormant is a property
+ *  taxonomy (dimWhen) rather than decided here - which states are dormant is a property
  *  of the method, not of the table. */
 function dimPredicate(tax: Taxonomy, typeKey: string): (r: EntityRecord) => boolean {
   const rules = (tax.dimWhen ?? []).filter((d) => d.type === typeKey);
   if (!rules.length) return () => false;
   return (r) => rules.some((d) => d.values.includes(String(r.values[d.field] ?? "")));
 }
+
+/** Which sections are folded away, by study and type. Kept out of the study itself: it is
+ *  how someone is reading right now, not something about the analysis - it must not land in
+ *  an export or in the change record. Module-level so switching workshop and coming back
+ *  does not silently unfold everything again. */
+const folded = new Set<string>();
 
 export function EntitySection({ type, study, tax, color, draggableRows, renderDetailExtra, headerExtra, hideAdd }:
   { type: EntityTypeDef; study: Study; tax: Taxonomy; color: string;
@@ -88,66 +95,45 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const [expanded, setExpanded] = useState<string | null>(null);
   const [modal, setModal] = useState<{ typeKey: string; record: EntityRecord | null } | null>(null);
 
-  const [query, setQuery] = useState("");
-  const [sel, setSel] = useState<Selection>({});
-  const [groupKey, setGroupKey] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [openFacets, setOpenFacets] = useState<Set<string>>(new Set());
+  const foldKey = `${study.id}:${type.key}`;
+  const [open, setOpen] = useState(() => !folded.has(foldKey));
+  const fold = () => setOpen((o) => { o ? folded.add(foldKey) : folded.delete(foldKey); return !o; });
 
   const items = study.entities.filter((e) => e.type === type.key);
   const cols = columnFields(type);
   const title = titleField(type);
 
-  // How a value READS in the table - a scale as its label, not its number. Filtering and
-  // searching go by this, so a chip always says what the row says.
-  const display = (f: FieldDef, v: FieldValue): string => {
-    if (v == null || v === "") return "";
-    switch (f.type) {
-      case "scale": return typeof v === "number" ? scaleLabel(f, v) : "";
-      case "boolean": return v ? "yes" : "no";
-      case "ref": case "multiref": return "";
-      default: return String(v);
-    }
-  };
-
-  // Which fields and values are offered is fixed by the whole table, so the chips do not
-  // move while you use them; the numbers on them follow the current filters.
-  const facetSet = useMemo(() => facetsOf(type, items, display), [type, items]);
-  const facets = useMemo(() => countFacets(facetSet, items, type, query, sel, display), [facetSet, items, type, query, sel]);
-  const shown = useMemo(() => filterItems(items, type, query, sel, display), [items, type, query, sel]);
-  const groupField = groupKey ? type.fields.find((f) => f.key === groupKey) ?? null : null;
-  const groups = useMemo(() => groupItems(shown, groupField, display), [shown, groupField]);
-  // Only worth showing once a table is long enough to be hard to read, and only when the
-  // data actually repeats somewhere - otherwise there is nothing to filter by.
-  const showTools = items.length >= TOOLBAR_MIN_ROWS && (facets.length > 0 || items.length >= TOOLBAR_MIN_ROWS);
-  const filtered = query.trim() !== "" || activeCount(sel) > 0;
-
-  const toggleFacet = (key: string, value: string) => setSel((s) => {
-    const cur = s[key] ?? [];
-    const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
-    const out = { ...s, [key]: next };
-    if (!next.length) delete out[key];
-    return out;
-  });
-  const clearAll = () => { setQuery(""); setSel({}); };
+  // One filter, shared with every other long table - see TableTools.
+  const f = useTableFilter(type, items, () => setCollapsed(new Set()));
+  const { shown, groups, groupField, filtered } = f;
+  // Only worth showing once a table is long enough to be hard to read.
+  const showTools = items.length >= TOOLBAR_MIN_ROWS;
+  const clearAll = f.clearAll;
   const toggleGroup = (k: string) => setCollapsed((c) => { const n = new Set(c); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
   const refTargets = (typeKey: string) => study.entities.filter((e) => e.type === typeKey);
   const missingReq = type.fields.find((f) => f.type === "ref" && f.required && refTargets(f.refType ?? "").length === 0);
   const targetLabel = missingReq ? getType(tax, missingReq.refType ?? "")?.label ?? "entity" : "";
-  const addBlocked = missingReq ? `Create a ${targetLabel} first — required by "${missingReq.label}".` : null;
+  const addBlocked = missingReq ? `Create a ${targetLabel} first - required by "${missingReq.label}".` : null;
 
   // Open a linked entity from ANOTHER workshop (or type) in the modal popup.
   const openEntity = (id: string) => { const r = study.entities.find((e) => e.id === id); if (r) setModal({ typeKey: r.type, record: r }); };
 
   return (
-    <div className="panel ws-accent" style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
+    <div className={"panel ws-accent" + (open ? "" : " folded")} style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
       <div className="panel-head">
-        <h3>{type.labelPlural}</h3>
+        {/* The heading is the switch: a workshop holding several registers of a thousand
+            rows is unreadable if every one of them is always laid out in full. */}
+        <button className="panel-fold" aria-expanded={open} onClick={fold}
+          title={open ? `Fold ${type.labelPlural.toLowerCase()} away` : `Show ${type.labelPlural.toLowerCase()}`}>
+          <Icon.chevron />
+        </button>
+        <h3 onClick={fold} style={{ cursor: "pointer" }}>{type.labelPlural}</h3>
         <span className="badge" title={filtered ? `${shown.length} shown of ${items.length}` : undefined}>{filtered ? `${shown.length} / ${items.length}` : items.length}</span>
         <span className="spacer" />
-        {headerExtra}
-        {!hideAdd && (
+        {open && headerExtra}
+        {open && !hideAdd && (
           <button className="btn sm primary" disabled={!!addBlocked} title={addBlocked ?? undefined}
             onClick={() => setModal({ typeKey: type.key, record: null })}>
             <Icon.plus /> {type.label}
@@ -155,66 +141,11 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
         )}
       </div>
 
-      {addBlocked && <div style={{ padding: "12px 16px 0" }}><div className="guide warn">{addBlocked}</div></div>}
+      {open && addBlocked && <div style={{ padding: "12px 16px 0" }}><div className="guide warn">{addBlocked}</div></div>}
 
-      {showTools && (
-        <div className="tbl-tools">
-          <div className="tbl-tools-top">
-            <label className="tbl-search">
-              <Icon.search />
-              <input type="search" value={query} placeholder={`Search ${type.labelPlural.toLowerCase()}…`}
-                onChange={(e) => setQuery(e.target.value)} aria-label={`Search ${type.labelPlural}`} />
-            </label>
-            {facets.length > 0 && (
-              <label className="tbl-group">
-                <span className="hint">Group by</span>
-                <select className="btn sm" value={groupKey} onChange={(e) => { setGroupKey(e.target.value); setCollapsed(new Set()); }}>
-                  <option value="">nothing</option>
-                  {facets.map((f) => <option key={f.field.key} value={f.field.key}>{f.field.label}</option>)}
-                </select>
-              </label>
-            )}
-          </div>
+      {open && showTools && <TableTools type={type} f={f} />}
 
-          {facets.map((f) => {
-            // A long tail of one-row values is its own haystack. The commonest few are
-            // shown; the rest stay one click away, and a selected value is always shown
-            // so a filter can never be active behind a fold.
-            const open = openFacets.has(f.field.key);
-            const chosen = sel[f.field.key] ?? [];
-            const shownValues = open ? f.values
-              : f.values.filter((v, i) => i < FACET_PREVIEW || chosen.includes(v.value));
-            const hidden = f.values.length - shownValues.length;
-            return (
-              <div className="facet" key={f.field.key}>
-                <span className="facet-label">{f.field.label}</span>
-                {shownValues.map((v) => {
-                  const on = chosen.includes(v.value);
-                  return (
-                    <button key={v.value} type="button" className={"chip facet-chip" + (on ? " on" : "")}
-                      aria-pressed={on} onClick={() => toggleFacet(f.field.key, v.value)}>
-                      {v.value} <span className="facet-n">{v.count}</span>
-                    </button>
-                  );
-                })}
-                {(hidden > 0 || open) && (
-                  <button type="button" className="chip more facet-more"
-                    onClick={() => setOpenFacets((o) => { const n = new Set(o); n.has(f.field.key) ? n.delete(f.field.key) : n.add(f.field.key); return n; })}>
-                    {open ? "less" : `+${hidden}`}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-
-          <div className="tbl-tools-foot">
-            <span className="hint">{filtered ? `${shown.length} of ${items.length}` : `${items.length} ${items.length === 1 ? "entry" : "entries"}`}</span>
-            {filtered && <button className="btn ghost sm" onClick={clearAll}>Clear filters</button>}
-          </div>
-        </div>
-      )}
-
-      <div className="panel-body">
+      {open && <div className="panel-body">
         {items.length === 0 ? (
           <div className="empty" style={{ padding: "28px 16px" }}>No {type.labelPlural.toLowerCase()} yet.</div>
         ) : shown.length === 0 ? (
@@ -286,7 +217,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
             ))}
           </table>
         )}
-      </div>
+      </div>}
 
       {modal && <EntityModal type={getType(tax, modal.typeKey)!} tax={tax} study={study} record={modal.record} onClose={() => setModal(null)} />}
     </div>
@@ -300,6 +231,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
   onEdit: () => void; onDelete: () => void; onOpenEntity: (id: string) => void; extra?: ReactNode;
 }) {
   const [histOpen, setHistOpen] = useState(false);
+  const [openRels, setOpenRels] = useState<Set<string>>(new Set());
   const title = titleField(type);
   const scalarFields = type.fields.filter((f) => f.key !== title && f.type !== "textarea" && f.type !== "ref" && f.type !== "multiref");
   const scaleFields = scalarFields.filter((f) => f.type === "scale");
@@ -312,21 +244,30 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
     const t = r && getType(tax, r.type);
     return (
       <button className="chip link" key={id} onClick={() => onOpenEntity(id)} title="Open">
-        {r && t ? recordTitle(t, r) : "—"}
+        {r && t ? recordTitle(t, r) : " - "}
       </button>
     );
   };
 
-  const incoming: { rel: string; from: string }[] = [];
+  // What points at this record, grouped by WHO points and THROUGH WHICH relation. An
+  // asset a hundred requirements name is a wall of chips as one flat list; as "Requirements
+  // - applies to (93)" it is a sentence, and the hundred are one press away.
+  const backGroups = new Map<string, { type: EntityTypeDef; rel: string; ids: string[] }>();
   for (const e of study.entities) {
     const et = getType(tax, e.type);
     if (!et || e.id === record.id) continue;
     for (const f of refFields(et)) {
       const v = e.values[f.key];
       const ids = f.type === "multiref" ? (Array.isArray(v) ? (v as string[]) : []) : v ? [v as string] : [];
-      if (ids.includes(record.id)) incoming.push({ rel: f.relation ?? f.label, from: e.id });
+      if (!ids.includes(record.id)) continue;
+      const rel = f.relation ?? f.label;
+      const key = `${et.key}::${rel}`;
+      const g = backGroups.get(key);
+      if (g) g.ids.push(e.id);
+      else backGroups.set(key, { type: et, rel, ids: [e.id] });
     }
   }
+  const incoming = [...backGroups.values()].sort((a, b) => b.ids.length - a.ids.length);
 
   return (
     <div className="detail">
@@ -367,7 +308,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
           return (
             <div className="d-item" key={f.key}>
               <span className="d-k">{f.label}</span>
-              <div className="d-v multi">{ids.length ? ids.map(linkChip) : <span className="hint">—</span>}</div>
+              <div className="d-v multi">{ids.length ? ids.map(linkChip) : <span className="hint"> - </span>}</div>
             </div>
           );
         })}
@@ -375,11 +316,29 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
       {incoming.length > 0 && (
         <div className="detail-rels">
           <span className="d-sub">Referenced by</span>
-          <div className="multi">
-            {incoming.map((r, i) => (
-              <span className="link-rel" key={i}>{linkChip(r.from)} <span className="gi-rel-lbl">{r.rel} →</span></span>
-            ))}
-          </div>
+          {incoming.map((g) => {
+            const key = `${g.type.key}::${g.rel}`;
+            const all = openRels.has(key);
+            const shown = all ? g.ids : g.ids.slice(0, BACKREF_PREVIEW);
+            return (
+              <div className="d-rel-group" key={key}>
+                <div className="d-rel-head">
+                  <span className="d-rel-what">{g.ids.length === 1 ? g.type.label : g.type.labelPlural}</span>
+                  <span className="d-rel-how">{g.rel} &rarr;</span>
+                  <span className="badge">{g.ids.length}</span>
+                </div>
+                <div className="multi">
+                  {shown.map(linkChip)}
+                  {g.ids.length > shown.length && (
+                    <button type="button" className="chip more"
+                      onClick={() => setOpenRels((o) => { const n = new Set(o); n.add(key); return n; })}>
+                      +{g.ids.length - shown.length} more
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
       {(() => {

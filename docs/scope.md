@@ -22,7 +22,7 @@ What changes against the compendium:
 | implicit prioritisation | **effort levels 0–5** (`effort_level`), level 0 = to be implemented in any case |
 | implicit cycle | explicit **PDCA** in five process steps |
 
-Identifiers follow the pattern `BER.1.1` — practice abbreviation, section, running number,
+Identifiers follow the pattern `BER.1.1` - practice abbreviation, section, running number,
 one level deeper for sub-requirements (`GC.3.1.1`). The share of MUSS requirements is meant
 to fall below 10 %; measured, it is 141 of 1000, so 14 %.
 
@@ -49,7 +49,7 @@ Measured against the original, 2026-08-14. The BSI publishes the ruleset itself:
 | Licence | **CC BY-SA 4.0** |
 
 Beside the catalogue lies **the method itself**, machine-readable:
-`sources/catalogs/Methodik-Grundschutz++/BSI-Methodik-Grundschutz++-catalog.json`, 368 KB —
+`sources/catalogs/Methodik-Grundschutz++/BSI-Methodik-Grundschutz++-catalog.json`, 368 KB -
 the five ISMS practices as requirements. That file, not a secondary description, is what
 `docs/method-conformance.md` was measured against.
 
@@ -65,11 +65,11 @@ taxonomy:
 
 | OSCAL `prop` | Values | what it is here |
 |---|---|---|
-| `sec_level` | `normal-SdT`, `erhöht` | the level from which the requirement applies — **not** an asset's protection need |
+| `sec_level` | `normal-SdT`, `erhöht` | the level from which the requirement applies - **not** an asset's protection need |
 | `effort_level` | 0–5 | effort: 0 = unconditional anyway, 5 = a geo-redundant data centre |
 | `confidentiality`, `integrity`, `availability`, `authenticity` | 0, 1, 2 | how strongly the requirement acts on that objective |
 | `threats` | elementary threats, e.g. `G 0.18` | the join to the risk analysis |
-| `target_object_categories` | from the namespace | which classes of object it applies to — the modelling rule |
+| `target_object_categories` | from the namespace | which classes of object it applies to - the modelling rule |
 | `modal_verb` | MUSS, SOLLTE, KANN | how binding it is |
 | `documentation`, `result`, `action_word`, `tags` | from the BSI namespaces | evidence, result, action word, filtering |
 
@@ -81,7 +81,7 @@ third of the ruleset.
 
 **The security objectives appear only on the applied requirements.** The 99 requirements of
 the six methodological practices (GC, STM, UMS, VRB, PERF, RISK) carry no values for
-confidentiality, integrity, availability or authenticity — they govern the ISMS process, not
+confidentiality, integrity, availability or authenticity - they govern the ISMS process, not
 the properties of an object. The remaining 901 carry them throughout; the single exception
 is `ASST.5.1`, with no authenticity value.
 
@@ -90,7 +90,7 @@ is `ASST.5.1`, with no authenticity value.
 apply to the whole information domain; 265 are applied requirements with no category, and
 each needs a relevance decision of its own (STM.2.1.5).
 
-**208 requirements leave a parameter open** — `{{ insert: param, … }}` in the prose, a
+**208 requirements leave a parameter open** - `{{ insert: param, … }}` in the prose, a
 period or a role the institution sets (STM.5.1).
 
 **Migration is already mapped.** `control_layer/Mappings/IT-GS2023-zu-GSpp/` holds 1013 and
@@ -105,7 +105,7 @@ existing mapping.
   network. Where clearance rules apply, that is not convenience but the precondition for the
   tool being usable at all.
 - **The ruleset in the build.** Every build fetches the published catalogue, so the product
-  opens with the 1000 current requirements and no preparation step — and a running
+  opens with the 1000 current requirements and no preparation step - and a running
   installation can refresh from the publisher without waiting for a release.
 - **The requirement package derived, with its reasons.** Asset → categories → inheritance up
   the tree → collection → consolidation, each requirement carrying the rule that placed it
@@ -118,7 +118,7 @@ existing mapping.
 - **What implements a requirement, from the publisher.** The 35 component definitions of the
   implementation layer, linked to their requirements through `alt-identifier`.
 - **Kill chain and effect model.** Measures act on attack steps rather than on a checklist.
-  Grundschutz++ prescribes no risk method (GC.7.2), so this is a permitted choice — entered
+  Grundschutz++ prescribes no risk method (GC.7.2), so this is a permitted choice - entered
   from the triggers the method names.
 - **The parameters behind the effect model exposed**, editable in the interface, every
   figure carrying its evidence grade (measured / derived / judgement).
@@ -134,7 +134,7 @@ method's, and the workshops are the five process steps of the guide rather than 
 names. Seven types are added with no engine counterpart (`praktik`, `kennzahl`, `abweichung`,
 `exception`, `niveau_review`, `audit`, `managementbericht`). The reasoning and the tables are in `src/profile/gspp/taxonomy.ts`, at the head of the file.
 
-Not mapped, still open — the full account is in `docs/method-conformance.md`:
+Not mapped, still open - the full account is in `docs/method-conformance.md`:
 
 - **The annual review of the package** (PERF.1.3) is not scheduled and not recorded as
   having been done, although the derivation that carries it out is repeatable.
@@ -154,7 +154,7 @@ and "Verteilungseffekt" do not occur in the method catalogue at all.
 
 Done, in this order:
 
-1. **`test:e2e` rewritten for this product** — 219 checks against the portable build,
+1. **`test:e2e` rewritten for this product** - 243 checks against the portable build,
    without network, driven by the position of a group in the taxonomy and by the heading of
    the section a table sits in, never by label text.
 2. **Vocabularies derived from the publication, and kept current.** `npm run sync` runs
@@ -182,12 +182,12 @@ Next:
 11. **Reference documents** for certification, if the certification scheme for GS++ settles
     on a set.
 
-**Settled: the ruleset ships in the build.** Parsed rather than raw — 1.59 MB from 5.38 MB
+**Settled: the ruleset ships in the build.** Parsed rather than raw - 1.59 MB from 5.38 MB
 of OSCAL, because the reader strips the scaffolding the product never looks at, and the
-mappings are reduced to what they state. `dist` is 4.25 MB, 1.18 MB gzipped. The generated files are not committed: the
+mappings are reduced to what they state. `dist` is 4.08 MB. The generated files are not committed: the
 repository holds no foreign ruleset, the build output does.
 
 ## Sources
 
-- BSI, "Leitfaden zur Methodik Grundschutz++", March 2026 — via the BSI website
+- BSI, "Leitfaden zur Methodik Grundschutz++", March 2026 - via the BSI website
 - BSI, Stand-der-Technik-Bibliothek: <https://github.com/BSI-Bund/Stand-der-Technik-Bibliothek>

@@ -11,12 +11,12 @@ function valueText(tax: Taxonomy, study: Study, f: FieldDef, v: FieldValue): str
     const t = r && getType(tax, r.type);
     return r && t ? recordTitle(t, r) : "?";
   };
-  if (v == null || v === "") return "—";
+  if (v == null || v === "") return " - ";
   switch (f.type) {
     case "scale": return typeof v === "number" ? scaleLabel(f, v) : String(v);
     case "boolean": return v ? "yes" : "no";
-    case "ref": return typeof v === "string" ? nameOf(v) : "—";
-    case "multiref": return Array.isArray(v) && v.length ? (v as string[]).map(nameOf).join(", ") : "—";
+    case "ref": return typeof v === "string" ? nameOf(v) : " - ";
+    case "multiref": return Array.isArray(v) && v.length ? (v as string[]).map(nameOf).join(", ") : " - ";
     default: return String(v);
   }
 }
@@ -50,7 +50,7 @@ export function EntityInfoPanel({ tax, study, id, onSelect, onEdit, onClose }: {
   const titleOf = (rid: string) => {
     const r = study.entities.find((e) => e.id === rid);
     const t = r && getType(tax, r.type);
-    return r && t ? recordTitle(t, r) : "—";
+    return r && t ? recordTitle(t, r) : " - ";
   };
 
   return (
@@ -68,7 +68,7 @@ export function EntityInfoPanel({ tax, study, id, onSelect, onEdit, onClose }: {
       <div className="ip-fields">
         {type.fields.filter((f) => f.type !== "ref" && f.type !== "multiref").map((f) => {
           const txt = valueText(tax, study, f, rec.values[f.key] ?? null);
-          if (f.type === "textarea") return txt === "—" ? null : <p key={f.key} className="ip-desc">{txt}</p>;
+          if (f.type === "textarea") return txt === " - " ? null : <p key={f.key} className="ip-desc">{txt}</p>;
           return <div key={f.key} className="ip-row"><span className="ip-k">{f.label}</span><span className="ip-v">{txt}</span></div>;
         })}
       </div>

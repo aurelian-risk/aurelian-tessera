@@ -40,12 +40,12 @@ function valueMd(f: FieldDef, v: FieldValue, tax: Taxonomy, study: Study): strin
     const t = r && getType(tax, r.type);
     return r && t ? recordTitle(t, r) : "?";
   };
-  if (v == null || v === "") return "—";
+  if (v == null || v === "") return " - ";
   switch (f.type) {
     case "scale": return typeof v === "number" ? scaleLabel(f, v) : String(v);
     case "boolean": return v ? "yes" : "no";
-    case "ref": return typeof v === "string" ? nameOf(v) : "—";
-    case "multiref": return Array.isArray(v) && v.length ? (v as string[]).map(nameOf).join(", ") : "—";
+    case "ref": return typeof v === "string" ? nameOf(v) : " - ";
+    case "multiref": return Array.isArray(v) && v.length ? (v as string[]).map(nameOf).join(", ") : " - ";
     default: return String(v);
   }
 }
@@ -80,7 +80,7 @@ export function workshopMarkdown(tax: Taxonomy, study: Study, groupKey: string):
       for (const f of t.fields) {
         if (f.key === (t.titleField ?? "name")) continue;
         const val = valueMd(f, e.values[f.key] ?? null, tax, study);
-        if (val !== "—") L.push(`   - ${f.label}: ${val}`);
+        if (val !== " - ") L.push(`   - ${f.label}: ${val}`);
       }
     });
     L.push("");
@@ -478,20 +478,20 @@ function treatmentSection(tax: Taxonomy, study: Study): string[] | null {
   if (!xF || !yF) return null;
   const decF = treatType.fields.find((f) => f.key === "decision"), ownF = treatType.fields.find((f) => f.key === "owner");
   const ddF = treatType.fields.find((f) => f.key === "deadline"), stF = treatType.fields.find((f) => f.key === "status");
-  const cell = (v: FieldValue | undefined) => esc(v == null || v === "" ? "—" : String(v));
+  const cell = (v: FieldValue | undefined) => esc(v == null || v === "" ? " - " : String(v));
 
   const L: string[] = ["---\n", "## Risk treatment\n",
     "_Treatment decision per risk (strategic scenario). The residual risk is DERIVED from the decision and how well the risk's kill chain is already mitigated - Reduce lowers likelihood by that coverage, Share lowers gravity, Accept keeps the inherent level, Avoid removes it._\n"];
   let tbl = `<table class="qt-tbl"><thead><tr><th>Risk</th><th>Decision</th><th>Owner</th><th>Deadline</th><th>Status</th><th>Inherent → Residual (L·G)</th></tr></thead><tbody>`;
   for (const t of treatments) {
     const risk = byId.get(t.values[refF.key] as string);
-    let shift = "—";
+    let shift = " - ";
     if (risk) {
       const res = residualPos(study, tax, risk, t, xF.key, yF.key);
       const inh = `${scaleLabel(xF, Number(risk.values[xF.key]) || 1)}·${scaleLabel(yF, Number(risk.values[yF.key]) || 1)}`;
       shift = `${esc(inh)} → <strong>${esc(scaleLabel(xF, res.x))}·${esc(scaleLabel(yF, res.y))}</strong>`;
     }
-    tbl += `<tr><td>${risk ? esc(recordTitle(riskType, risk)) : "—"}</td><td>${cell(decF && t.values[decF.key])}</td><td>${cell(ownF && t.values[ownF.key])}</td><td>${cell(ddF && t.values[ddF.key])}</td><td>${cell(stF && t.values[stF.key])}</td><td>${shift}</td></tr>`;
+    tbl += `<tr><td>${risk ? esc(recordTitle(riskType, risk)) : " - "}</td><td>${cell(decF && t.values[decF.key])}</td><td>${cell(ownF && t.values[ownF.key])}</td><td>${cell(ddF && t.values[ddF.key])}</td><td>${cell(stF && t.values[stF.key])}</td><td>${shift}</td></tr>`;
   }
   L.push(tbl + "</tbody></table>", "");
 
@@ -519,7 +519,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
   L.push("---\n");
 
   // Document control. A concept handed to an auditor has to state what it was made from
-  // and what has happened to it since — the vocabulary it works to, and the change record
+  // and what has happened to it since - the vocabulary it works to, and the change record
   // with its integrity. Both are already held; not printing them was the omission.
   L.push("## Document control\n");
   const dc: string[] = [];
@@ -629,7 +629,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
     for (const t of types) {
       if (kcStepType && t.key === kcStepType.key) continue;   // nested under its op scenario instead
       // A concept states what applies. What was examined and set aside is a decision of the
-      // study, and printing it makes the document longer and less clear — see reportSkip.
+      // study, and printing it makes the document longer and less clear - see reportSkip.
       const skip = (tax.reportSkip ?? []).filter((r) => r.type === t.key);
       const items = study.entities.filter((e) => e.type === t.key
         && !skip.some((r) => r.values.includes(String(e.values[r.field] ?? ""))));
@@ -641,7 +641,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
       if (left > 0) L.push(`_${left} not printed: decided not to apply here._\n`);
 
       // A register is not read one card at a time. Past a dozen records the account of
-      // each is noise and the comparison between them is the point — which requirement
+      // each is noise and the comparison between them is the point - which requirement
       // is met, at which level, on whose authority. A catalogue-backed type reaches the
       // hundreds, and printing every text in full made the report a copy of the ruleset
       // rather than a statement about this institution.
@@ -666,7 +666,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
           if (f.key === titleKey || f.key === descF?.key) continue;
           const raw = e.values[f.key];
           const val = valueMd(f, raw ?? null, tax, study);
-          if (val === "—") continue;
+          if (val === " - ") continue;
           if (f.type === "scale" && typeof raw === "number") {
             // Encode the level so the HTML report can draw a mini level bar: (n/m)
             // for "higher = worse" scales, [n/m] for "higher = better" (positive).
@@ -795,7 +795,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
     }
     L.push("");
   }
-  L.push(`_Generated with ${PRODUCT.name} — ${PRODUCT.tagline}, offline._  `);
+  L.push(`_Generated with ${PRODUCT.name} - ${PRODUCT.tagline}, offline._  `);
   if (PRODUCT.source) L.push(`[${PRODUCT.source}](https://${PRODUCT.source})`);
   return L.join("\n").trim() + "\n";
 }
@@ -1056,12 +1056,12 @@ export function quantLlmMarkdown(tax: Taxonomy, study: Study): string {
   const L: string[] = [];
   const P = (...x: string[]) => L.push(...x);
 
-  P(`# Quantitative risk analysis — ${study.name}`, "");
+  P(`# Quantitative risk analysis - ${study.name}`, "");
   P(`Organisation: ${study.organization || "not stated"}${study.sector ? ` · sector: ${study.sector}` : " · sector: not set"}`);
   P(`Scope: ${study.scope || "not stated"}`, "");
   P("This is a complete export of the quantitative model behind one risk study: the rules,",
     "the parameters they use, the inputs read from the qualitative analysis, and the results.",
-    "It is self-contained — do not assume a standard method, use the definitions in §1.", "");
+    "It is self-contained - do not assume a standard method, use the definitions in §1.", "");
 
   // ── 1. how the model works ──────────────────────────────────────────────
   P("## 1. The model", "",
@@ -1087,7 +1087,7 @@ export function quantLlmMarkdown(tax: Taxonomy, study: Study): string {
     "the whole walk. Steps are visited in topological order honouring each step's join",
     "(`all` = every predecessor required, `any` = one route suffices). A step only costs",
     "the attacker something if a measure defends it. A loss event requires reaching a",
-    "terminal step — initial compromise alone is not a loss event.", "");
+    "terminal step - initial compromise alone is not a loss event.", "");
   P("**Measures act through the mechanism they work by**, each on a different factor:",
     "preventive raises the bar at its step; detective gives a chance of breaking off the",
     "intrusion there, scaled by response capability; corrective cuts the loss and the",
@@ -1105,30 +1105,30 @@ export function quantLlmMarkdown(tax: Taxonomy, study: Study): string {
     study.calibration ? "\n**This study uses an edited parameterisation** (changed from the shipped defaults)." : "\nThis study uses the shipped defaults unchanged.", "");
   const f = cal.frequency, d = cal.demand;
   const g = (k: string) => CALIBRATION_DOC[k]?.grade ?? "judgement";
-  P(`### Base rate, attacks/yr per organisation — *${g("frequency.baseRate")}*`);
+  P(`### Base rate, attacks/yr per organisation - *${g("frequency.baseRate")}*`);
   P(Object.entries(f.baseRate).map(([k, v]) => `${k} ${v}`).join(" · ") + ` · anything else ${f.baseRateDefault}`);
-  P("", `### Sector exceptions — *${g("frequency.sector")}*`);
+  P("", `### Sector exceptions - *${g("frequency.sector")}*`);
   P(f.sector.map((r) => `${r.actor}×${r.sector} ×${r.factor}`).join(" · ") || "none");
-  P("", `### Frequency multipliers — *tempo/throughput/pull: ${g("frequency.tempo")}, reachability: ${g("frequency.reachability")}*`);
+  P("", `### Frequency multipliers - *tempo/throughput/pull: ${g("frequency.tempo")}, reachability: ${g("frequency.reachability")}*`);
   P(`tempo (by activity): ${f.tempo.join(" · ")}`);
   P(`throughput (by resources): ${f.throughput.join(" · ")}`);
   P(`target pull: declared objective ×${f.targetPull.declared} · has objectives, none match ×${f.targetPull.noMatch} · none modelled, by relevance ${f.targetPull.byRelevance.join(" · ")}`);
   P(`reachability (by entry technique): ${Object.entries(f.reachability).map(([k, v]) => `${k} ×${v}`).join(" · ")} · other ×${f.reachabilityDefault}`);
   P(`cap: ${f.cap}/yr · likelihood cross-check boundaries: ${f.likelihoodBands.join(" · ")} loss events/yr`);
-  P("", `### The bar — *entry: ${g("demand.entry")}, tooling & weights: ${g("demand.tooling")}*`);
+  P("", `### The bar - *entry: ${g("demand.entry")}, tooling & weights: ${g("demand.tooling")}*`);
   P(`entry cost: ${Object.entries(d.entry).map(([k, v]) => `${k} ${v}`).join(" · ")} · other ${d.entryDefault} · granted access −${d.grantedAccess}`);
   P(`weights: tooling ${d.wTooling} · breadth ${d.wDepth} (full at ${d.depthSaturates} distinct tactics) · dwell ${d.wDwell} (${d.dwellTactics.join(", ")})`);
   P(`spread ±${d.spread} · floor ${d.floor} · fallback where no chain is modelled, by difficulty: ${d.difficultyFallback.join(" · ")}`);
   P(`tooling maturity by technique (0 commodity, 0.5 practitioner, 1 bespoke): ${Object.entries(d.tooling).map(([k, v]) => `${k}=${v}`).join(", ")}`);
   P(`  fallback by tactic: ${Object.entries(d.toolingByTactic).map(([k, v]) => `${k}=${v}`).join(", ")}`);
-  P("", `### Attacker capability, share of the attacker population out-performed — *${g("adversary.capability")}*`);
+  P("", `### Attacker capability, share of the attacker population out-performed - *${g("adversary.capability")}*`);
   P(cal.adversary.capability.map((b, i) => `level ${i + 1}: ${rng(b)}`).join(" · "));
-  P("", `### What a measure is worth — *${g("effect")}*`);
+  P("", `### What a measure is worth - *${g("effect")}*`);
   const e = cal.effect;
   P(`preventive raises the bar by ${e.prevention} · detective converts to interruption at ${e.detection} · response floor ${e.responseFloor}`);
   P(`deterrent cuts attempts by ${e.deterrence} · avoidance by ${e.avoidance} · recovery reaches ${e.recoverableShare} of the loss · containment ${e.containment} · late detection ${e.lateDetection}`);
   P(`a single measure never blocks more than ${e.controlCeiling} · counted by status: ${Object.entries(e.statusWeight).map(([k, v]) => `${k} ${v}`).join(", ")}`);
-  P("", `### Loss magnitude by feared-event severity — *${g("magnitude")}*`);
+  P("", `### Loss magnitude by feared-event severity - *${g("magnitude")}*`);
   P(`direct loss: ${cal.magnitude.loss.map((b) => rng(b)).join("  |  ")}`);
   P(`follow-on likelihood: ${cal.magnitude.cascadeLikelihood.map((b) => rng(b)).join("  |  ")}`);
   P(`follow-on loss: ${cal.magnitude.cascadeLoss.map((b) => rng(b)).join("  |  ")}`);
@@ -1149,31 +1149,31 @@ export function quantLlmMarkdown(tax: Taxonomy, study: Study): string {
     const rW = simulate(inW, 40000, dW.chain), rWo = simulate(inWo, 40000, dWo.chain);
     const rs = dW.refs.riskSource, fe = dW.refs.fearedEvent, strat = dW.refs.strategic;
     const lab = (rec: EntityRecord | undefined, key: string) => {
-      if (!rec) return "—";
+      if (!rec) return " - ";
       const fd = getType(tax, rec.type)?.fields.find((x) => x.key === key);
       const v = rec.values[key];
-      return fd && typeof v === "number" ? `${scaleLabel(fd, v)} (${v}/${scaleMax(fd)})` : String(v ?? "—");
+      return fd && typeof v === "number" ? `${scaleLabel(fd, v)} (${v}/${scaleMax(fd)})` : String(v ?? " - ");
     };
 
     P(`### ${recordTitle(opType!, op)}`, "");
-    P(`- Risk: ${strat ? recordTitle(getType(tax, strat.type)!, strat) : "—"}`);
-    P(`- Actor: ${rs ? recordTitle(getType(tax, rs.type)!, rs) : "—"} — category ${String(rs?.values.category ?? "not set")}, capability ${lab(rs, "capability")}, resources ${lab(rs, "resources")}, activity ${lab(rs, "activity")}, relevance ${lab(rs, "relevance")}`);
-    P(`- Feared event: ${fe ? recordTitle(getType(tax, fe.type)!, fe) : "—"} — severity ${lab(fe, "severity")}`);
-    P(`- Analyst ratings on this scenario: likelihood ${lab(op, "likelihood")}, difficulty ${lab(op, "difficulty")} (difficulty is NOT read where a chain is modelled; likelihood is never read — it is only cross-checked)`, "");
+    P(`- Risk: ${strat ? recordTitle(getType(tax, strat.type)!, strat) : " - "}`);
+    P(`- Actor: ${rs ? recordTitle(getType(tax, rs.type)!, rs) : " - "} - category ${String(rs?.values.category ?? "not set")}, capability ${lab(rs, "capability")}, resources ${lab(rs, "resources")}, activity ${lab(rs, "activity")}, relevance ${lab(rs, "relevance")}`);
+    P(`- Feared event: ${fe ? recordTitle(getType(tax, fe.type)!, fe) : " - "} - severity ${lab(fe, "severity")}`);
+    P(`- Analyst ratings on this scenario: likelihood ${lab(op, "likelihood")}, difficulty ${lab(op, "difficulty")} (difficulty is NOT read where a chain is modelled; likelihood is never read - it is only cross-checked)`, "");
 
     const fr = dW.frequency;
     P(`**Attempts per year: ${n2(fr.total)}**`,
-      `base ${n2(fr.base)} × tempo ${n2(fr.tempo)} × throughput ${n2(fr.throughput)} × target pull ${n2(fr.pull)} × reachability ${n2(fr.reachability)}${fr.capped ? " — CAPPED, the multipliers together exceeded the plausible ceiling" : ""}`, "");
+      `base ${n2(fr.base)} × tempo ${n2(fr.tempo)} × throughput ${n2(fr.throughput)} × target pull ${n2(fr.pull)} × reachability ${n2(fr.reachability)}${fr.capped ? " - CAPPED, the multipliers together exceeded the plausible ceiling" : ""}`, "");
 
     if (dW.demand) {
       const dm = dW.demand;
-      P(`**The bar: ${pc(dm.total)}** — an attempt must out-perform this share of the attacker population before any measure of this organisation is counted`,
+      P(`**The bar: ${pc(dm.total)}** - an attempt must out-perform this share of the attacker population before any measure of this organisation is counted`,
         `entry ${pc(dm.entry)} + tooling ${pc(dm.adds.tooling)} (max maturity ${dm.tooling}) + breadth ${pc(dm.adds.depth)} (${dm.tactics} distinct tactics) + dwell ${pc(dm.adds.dwell)}`);
       if (dm.unknown.entry || dm.unknown.tooling)
         P(`_Incomplete input: ${dm.unknown.entry ? "the entry step names no recognised technique" : ""}${dm.unknown.entry && dm.unknown.tooling ? "; " : ""}${dm.unknown.tooling ? `${dm.unknown.tooling} step(s) contribute no tooling because neither technique nor tactic is set` : ""}._`);
       P("");
     } else {
-      P(`**The bar: ${pc(meanOf(inW.controlStrength))}** — derived from the difficulty rating, because this scenario models no chain.`, "");
+      P(`**The bar: ${pc(meanOf(inW.controlStrength))}** - derived from the difficulty rating, because this scenario models no chain.`, "");
     }
 
     P("**Chain**", "");
@@ -1183,7 +1183,7 @@ export function quantLlmMarkdown(tax: Taxonomy, study: Study): string {
       const sc = dW.coverage.steps.find((x) => x.step.id === cs.id);
       const st = sc?.step;
       const ms = (sc?.measures ?? []).map((m) => `${recordTitle(getType(tax, m.type)!, m)} [${effectClassOf(m)}, ${String(m.values.status ?? "?")}, level ${String(m.values.implementation_level ?? "?")}]`).join("; ");
-      P(`| ${i + 1}${cs.terminal ? " (objective)" : ""} | ${st ? recordTitle(getType(tax, st.type)!, st) : cs.id} | ${String(st?.values.tactic ?? "—")} | ${String(st?.values.technique ?? "—")} | ${cs.preds.length > 1 ? cs.join : "—"} | ${cs.gate ? pc(cs.gate.mode) : "—"} | ${cs.interrupt > 0 ? pc(cs.interrupt) : "—"} | ${ms || "none"} |`);
+      P(`| ${i + 1}${cs.terminal ? " (objective)" : ""} | ${st ? recordTitle(getType(tax, st.type)!, st) : cs.id} | ${String(st?.values.tactic ?? " - ")} | ${String(st?.values.technique ?? " - ")} | ${cs.preds.length > 1 ? cs.join : " - "} | ${cs.gate ? pc(cs.gate.mode) : " - "} | ${cs.interrupt > 0 ? pc(cs.interrupt) : " - "} | ${ms || "none"} |`);
     });
     P("");
 
@@ -1202,7 +1202,7 @@ export function quantLlmMarkdown(tax: Taxonomy, study: Study): string {
     P(`| attempts/yr | ${n2(rWo.tef)} | ${n2(rW.tef)} |`);
     P(`| vulnerability | ${pc(rWo.vuln)} | ${pc(rW.vuln)} |`);
     P(`| loss events/yr | ${n2(rWo.lef)} | ${n2(rW.lef)} |`);
-    P(`| return period | ${rWo.lef > 0 ? `1 in ${Math.round(1 / rWo.lef)} yr` : "—"} | ${rW.lef > 0 ? `1 in ${Math.round(1 / rW.lef)} yr` : "—"} |`);
+    P(`| return period | ${rWo.lef > 0 ? `1 in ${Math.round(1 / rWo.lef)} yr` : " - "} | ${rW.lef > 0 ? `1 in ${Math.round(1 / rW.lef)} yr` : " - "} |`);
     P(`| mean annual loss | ${fmtMoney(rWo.ale.mean)} | ${fmtMoney(rW.ale.mean)} |`);
     P(`| P50 / P90 / P99 | ${fmtMoney(rWo.ale.p50)} / ${fmtMoney(rWo.ale.p90)} / ${fmtMoney(rWo.ale.p99)} | ${fmtMoney(rW.ale.p50)} / ${fmtMoney(rW.ale.p90)} / ${fmtMoney(rW.ale.p99)} |`);
     P(`| years with no loss | ${pc(rWo.zeroShare)} | ${pc(rW.zeroShare)} |`);
@@ -1222,14 +1222,14 @@ export function quantLlmMarkdown(tax: Taxonomy, study: Study): string {
       scaleMax(opType!.fields.find((x) => x.key === "likelihood")!));
     if (lk.ratedLevel != null) {
       P(`**Cross-check.** The analyst rated likelihood at level ${lk.ratedLevel}; the model, which does not read that rating, arrives at level ${lk.modelLevel}.`
-        + (lk.diverges ? " **These disagree by more than one level** — either the rating or the model is missing something." : " They agree within one level."), "");
+        + (lk.diverges ? " **These disagree by more than one level** - either the rating or the model is missing something." : " They agree within one level."), "");
     }
   }
 
   // ── 4. limits ───────────────────────────────────────────────────────────
   P("## 4. What this does not claim", "",
     "- Most parameters are reasoned rather than measured; each carries its grade in §2.",
-    "  The base rate is the weakest load-bearing number — published surveys of it differ by",
+    "  The base rate is the weakest load-bearing number - published surveys of it differ by",
     "  roughly a factor of six depending on the population surveyed.",
     "- Published incidence measures NOTICED events, so every rate here is biased downward by",
     "  an unknown amount. The bias runs the same way for all actor classes, so orderings are",

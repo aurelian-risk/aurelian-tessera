@@ -3,7 +3,7 @@
 First release. An ISMS tool for the BSI's Grundschutz++ method, in one HTML file that runs
 over `file://` without installation, server or account.
 
-`dist/index.html` — 3.94 MB, 1.08 MB gzipped.
+`dist/index.html` - 3.94 MB, 1.08 MB gzipped.
 
 ## What is in it
 
@@ -18,7 +18,7 @@ refresh from the publisher without waiting for a release.
 category is widened along the BSI's own hierarchy (7 roots, 4 levels), the requirements of
 those categories are collected, one reaching an asset twice is carried once, and the five
 ISMS practices are added whole. `STM.2.1`, executed. The account is shown before it is
-applied — which asset brought which requirement in, and what it inherited — and every
+applied - which asset brought which requirement in, and what it inherited - and every
 record added carries the rule that placed it.
 
 **The 265 requirements the catalogue classifies nowhere** are put up for a relevance
@@ -33,8 +33,8 @@ Monte-Carlo loss expectation whose parametrisation is open and editable, every f
 carrying its evidence grade. It is entered from the triggers the method names, three of
 which are checked automatically.
 
-**A hash-chained change record** per study — every change with editor, time and reason,
-chain-verified — and **a security concept** as a printable document, set the way the BSI
+**A hash-chained change record** per study - every change with editor, time and reason,
+chain-verified - and **a security concept** as a printable document, set the way the BSI
 sets its own, stating what it was made from and on what terms.
 
 ## Measured against the original
@@ -59,7 +59,7 @@ migration 20, quantification 114, audit 50. Against the published BSI catalogue:
 ## Licence
 
 Software under MPL-2.0. The embedded ruleset is © Bundesamt für Sicherheit in der
-Informationstechnik under CC BY-SA 4.0, carried with the changes made to it stated —
+Informationstechnik under CC BY-SA 4.0, carried with the changes made to it stated -
 see `NOTICE.md`. Not affiliated with, endorsed by or certified by the BSI.
 
 ## Known limits

@@ -3,11 +3,11 @@
 The method, further in. Measured again against the BSI's own method catalogue
 (version 2026-08-13, 95 requirements) rather than against secondary descriptions.
 
-`dist/index.html` — 4.25 MB, 1.18 MB gzipped.
+`dist/index.html` - 4.25 MB, 1.18 MB gzipped.
 
 - **The requirement package is a relation, per asset** (`STM.2.1.4.2`), and the derivation
   is repeatable: record an asset, run it again, and the package grows by what it brought.
-- **The dependencies the catalogue states** — 67 edges. A requirement counts as implemented
+- **The dependencies the catalogue states** - 67 edges. A requirement counts as implemented
   only when what it rests on is (`UMS.1.1`).
 - **The migration path, as published**: 1185 mapping entries from the IT-Grundschutz
   compendium 2023 and 96 from ISO/IEC 27001 Annex A, each with the closeness of the

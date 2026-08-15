@@ -17,7 +17,7 @@
 //
 // Neither file is committed. The repository holds no foreign ruleset; the build output
 // does, which is what makes the product work without preparation. A running installation
-// can go further and refresh from the publisher at any time — see PUBLISHED_CATALOGS.
+// can go further and refresh from the publisher at any time - see PUBLISHED_CATALOGS.
 //
 // Offline: the last download is cached under node_modules/.cache/bsi and reused, with a
 // conditional request so an unchanged file costs nothing. With no network and no cache
@@ -38,8 +38,13 @@ mkdirSync(cache, { recursive: true });
 const RAW = "https://raw.githubusercontent.com/BSI-Bund/Stand-der-Technik-Bibliothek/main";
 /** The implementation layer: what the BSI publishes about things that implement its
  *  requirements. Each one names the controls it implements, so the link between a measure
- *  and its requirements is read rather than guessed. */
-const COMPONENTS = [
+ *  and its requirements is read rather than guessed.
+ *
+ *  The list is DISCOVERED, not kept here - a seventh definition should arrive by itself,
+ *  and a hard-coded list would silently cap what the product offers at whatever was
+ *  published the day it was written. These names are the fallback for when the repository
+ *  listing cannot be read (offline, or the API rate-limited). */
+const COMPONENTS_FALLBACK = [
   "AWS Beispiel-Components/AWS Security Hub",
   "GA-Lotse_Grundmodul/GA-Lotse_Grundmodul",
   "Keycloak/Keycloak",
@@ -50,7 +55,7 @@ const COMPONENTS = [
 /** The BSI's own mapping collections. An institution arriving from the 2023 compendium or
  *  from ISO 27001 has a body of work already done; the mapping says which Grundschutz++
  *  requirement each of its controls corresponds to, and how closely. Applied, not
- *  re-derived — deriving a mapping ourselves would state a correspondence the BSI did not.
+ *  re-derived - deriving a mapping ourselves would state a correspondence the BSI did not.
  *  The relationship is kept with each entry, because "subset-of" and "equal-to" are not
  *  the same claim and a migration that flattens them overstates what was carried over. */
 const MAPPINGS = [
@@ -59,6 +64,24 @@ const MAPPINGS = [
   { key: "iso_27001", label: "ISO/IEC 27001 Annex A",
     url: `${RAW}/control_layer/Mappings/ISO-27001-zu-GSpp/ISO27001-AnnexA-to-GS%2B%2B-mapping_collection.json` },
 ];
+/** Every component definition the repository currently holds, by "<dir>/<file>" without
+ *  the "-component_definition.json" suffix - the shape the fetch below expects. */
+async function discoverComponents() {
+  try {
+    const res = await fetch("https://api.github.com/repos/BSI-Bund/Stand-der-Technik-Bibliothek/git/trees/main?recursive=1");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const found = (await res.json()).tree
+      .map((x) => x.path)
+      .filter((p) => p.startsWith("implementation_layer/") && p.endsWith("-component_definition.json"))
+      .map((p) => p.slice("implementation_layer/".length).replace(/-component_definition\.json$/, ""));
+    if (!found.length) throw new Error("none listed");
+    return found.sort();
+  } catch (e) {
+    console.log(`  · component listing unavailable (${e.message}); using the last known ${COMPONENTS_FALLBACK.length}`);
+    return COMPONENTS_FALLBACK;
+  }
+}
+
 const NS = `${RAW}/documentation/namespaces`;
 const URLS = {
   practices: `${NS}/practices.csv`,
@@ -109,7 +132,7 @@ const get = async (url) => {
     return body;
   } catch (e) {
     if (cached != null) {
-      console.log(`  · ${url.split("/").pop()}: ${e instanceof Error ? e.message : e} — using the cached copy`);
+      console.log(`  · ${url.split("/").pop()}: ${e instanceof Error ? e.message : e} - using the cached copy`);
       return cached;
     }
     throw new Error(`${url} could not be fetched and is not cached: ${e instanceof Error ? e.message : e}`);
@@ -122,7 +145,7 @@ const [practicesCsv, categoriesCsv, secLevelCsv, modalVerbCsv, catalogJson] =
 
 // ── The four lists, as the BSI defines them ──────────────────────────────
 
-// "GC Governance und Compliance" — the form the catalogue's own group labels take, so the
+// "GC Governance und Compliance" - the form the catalogue's own group labels take, so the
 // two are comparable and a requirement's practice can be matched against this list.
 const practiceRows = parseCsv(practicesCsv)
   .filter((r) => r["Kürzel"] && r["Kürzel"] !== "EXMP")            // EXMP is the BSI's test entry
@@ -134,7 +157,7 @@ const practices = practiceRows.map((r) => `${r["Kürzel"]} ${r.Begriff}`);
 const catRows = parseCsv(categoriesCsv).filter((r) => r.Zielobjekt);
 const catGroups = [];
 for (const r of catRows) {
-  const typ = r.Typ || "—";
+  const typ = r.Typ || " - ";
   (catGroups.find((g) => g.typ === typ) ?? catGroups[catGroups.push({ typ, items: [] }) - 1]).items.push(r.Zielobjekt);
 }
 const categories = catGroups.flatMap((g) => g.items);
@@ -193,8 +216,8 @@ let complaints = 0;
 const compare = (what, defined, usedSet) => {
   const undef = [...usedSet].filter((v) => v && !defined.includes(v));
   const unused = defined.filter((v) => !usedSet.has(v));
-  if (undef.length) { complaints++; console.log(`  ! ${what}: used by the catalogue, not defined in the namespace — ${undef.join(", ")}`); }
-  if (unused.length) console.log(`  · ${what}: defined but not used anywhere in the catalogue — ${unused.join(", ")}`);
+  if (undef.length) { complaints++; console.log(`  ! ${what}: used by the catalogue, not defined in the namespace - ${undef.join(", ")}`); }
+  if (unused.length) console.log(`  · ${what}: defined but not used anywhere in the catalogue - ${unused.join(", ")}`);
   if (!undef.length && !unused.length) console.log(`  ✓ ${what}: ${defined.length}, definition and use agree`);
 };
 console.log(`\nChecked against ${catalog.metadata.title}, ${requirements} requirements:`);
@@ -208,7 +231,7 @@ const q = (s) => JSON.stringify(s);
 const list = (items, indent = "  ") => items.map((v) => `${indent}${q(v)},`).join("\n");
 const grouped = catGroups.map((g) => `    // ${g.typ}\n${list(g.items, "    ")}`).join("\n");
 
-const file = `// GENERATED by npm run vocab:sync — do not edit by hand.
+const file = `// GENERATED by npm run vocab:sync - do not edit by hand.
 //
 // The BSI's published namespaces, re-derived from
 // github.com/BSI-Bund/Stand-der-Technik-Bibliothek, documentation/namespaces/*.csv,
@@ -228,11 +251,11 @@ export const VOCABULARY_SOURCE = {
 };
 
 export const VOCABULARY = {
-  /** practices.csv — the ${practices.length} practices, in the BSI's numbering, without the test entry. */
+  /** practices.csv - the ${practices.length} practices, in the BSI's numbering, without the test entry. */
   praktiken: [
 ${list(practices)}
   ],
-  /** target_object_categories.csv — all ${categories.length}, in the BSI's own grouping. */
+  /** target_object_categories.csv - all ${categories.length}, in the BSI's own grouping. */
   zielobjektkategorien: [
 ${grouped}
   ],
@@ -243,11 +266,11 @@ ${grouped}
   parentCategory: {
 ${categories.filter((c) => parentOf[c]).map((c) => `    ${q(c)}: ${q(parentOf[c])},`).join("\n")}
   } as Record<string, string>,
-  /** security_level.csv — the level from which a requirement applies. */
+  /** security_level.csv - the level from which a requirement applies. */
   secLevel: [
 ${list(secLevel)}
   ],
-  /** modal_verbs.csv — ordered by how binding the verb is, not alphabetically. */
+  /** modal_verbs.csv - ordered by how binding the verb is, not alphabetically. */
   modalVerb: [
 ${list(modalVerb)}
   ],
@@ -275,7 +298,7 @@ const fw = parseOscalCatalog(catalogJson, "Grundschutz++");
 // published components resolve through it. Kept.
 // ── What the institution may already have done ──────────────────────────
 // Each mapping becomes one property per requirement, named after the ruleset it comes
-// from, so the taxonomy picks it up by declaring a field of that name — the same rule as
+// from, so the taxonomy picks it up by declaring a field of that name - the same rule as
 // every other property. Unmapped requirements simply carry nothing.
 const mapCounts = [];
 for (const m of MAPPINGS) {
@@ -311,15 +334,15 @@ for (const m of MAPPINGS) {
 
 const payload = JSON.stringify(fw);
 
-writeFileSync(outCatalog, `// GENERATED by npm run sync — do not edit by hand, and do not commit.
+writeFileSync(outCatalog, `// GENERATED by npm run sync - do not edit by hand, and do not commit.
 //
 // ${fw.name}, as published by the BSI:
 // github.com/BSI-Bund/Stand-der-Technik-Bibliothek
 // ${fw.source}
 // Fetched ${new Date().toISOString().slice(0, 10)} · ${fw.items.length} requirements
-// Mappings carried with it — ${mapCounts.join(" · ") || "none reachable"}
+// Mappings carried with it - ${mapCounts.join(" · ") || "none reachable"}
 //
-// Licence: CC BY-SA 4.0. Parsed by src/domain/oscal.ts — the same reader that runs on a
+// Licence: CC BY-SA 4.0. Parsed by src/domain/oscal.ts - the same reader that runs on a
 // file the user imports, so a bundled and an imported catalogue cannot come out different.
 import type { Framework } from "../../domain/frameworks";
 
@@ -331,6 +354,7 @@ console.log(`Written ${outCatalog.replace(root, ".")} · ${fw.items.length} requ
 // ── What implements it ──────────────────────────────────────────────────
 const comps = [];
 let refs = 0, open = [];
+const COMPONENTS = await discoverComponents();
 for (const c of COMPONENTS) {
   const [dir, file] = c.split("/");
   const url = `${RAW}/implementation_layer/${encodeURIComponent(dir)}/${encodeURIComponent(file)}-component_definition.json`;
@@ -347,7 +371,7 @@ const componentsFw = {
   source: `BSI Stand-der-Technik-Bibliothek, implementation layer · ${COMPONENTS.length} definitions`,
   items: comps,
 };
-writeFileSync(outComponents, `// GENERATED by npm run sync — do not edit by hand, and do not commit.
+writeFileSync(outComponents, `// GENERATED by npm run sync - do not edit by hand, and do not commit.
 //
 // The BSI's own component definitions: what implements which requirement, read from
 // implementation_layer/ and resolved against the catalogue through alt-identifier.
@@ -360,4 +384,4 @@ export const GSPP_COMPONENTS: Framework = ${JSON.stringify(componentsFw)};
 `);
 console.log(`Written ${outComponents.replace(root, ".")} · ${comps.length} components · ${refs} requirement references${open.length ? ` · ${open.length} unresolved: ${[...new Set(open)].slice(0, 3).join(", ")}` : " · all resolved"}`);
 
-if (complaints) { console.log("\nA term the catalogue uses is missing from the namespace — check before committing."); process.exit(1); }
+if (complaints) { console.log("\nA term the catalogue uses is missing from the namespace - check before committing."); process.exit(1); }

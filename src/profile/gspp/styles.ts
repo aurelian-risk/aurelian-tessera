@@ -2,7 +2,7 @@
 //
 // Tokens carry a palette. They do not carry a different KIND of page, and that is what
 // separates this build from its sibling: the engine assembles cards on a tinted ground,
-// the BSI's "Leitfaden zur Methodik Grundschutz++" is a printed page — one measure, rules
+// the BSI's "Leitfaden zur Methodik Grundschutz++" is a printed page - one measure, rules
 // instead of frames, tables with real cell borders and a caption underneath, section
 // numbers rather than tabs, and no ornament anywhere.
 //
@@ -14,7 +14,7 @@ export const STYLES = `
 body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
 .content { padding: 34px 40px 60px; max-width: 1180px; }
 
-/* Sidebar: a spine, not a floating panel. Set at reading size — a caption is still text,
+/* Sidebar: a spine, not a floating panel. Set at reading size - a caption is still text,
    and 11px under a 15px name is a label nobody reads. */
 .sidebar { background: var(--bg-1); border-right: 1px solid var(--border-strong); padding: 22px 16px; }
 .sidebar .nav-item { border-radius: 0; font-size: 13.5px; padding: 9px 10px; }
@@ -68,7 +68,7 @@ body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
 .tbl td { border: 1px solid var(--hairline); padding: 6px 8px; }
 /* A wide register scrolls inside its own section. The engine clips the panel to round its
    corners; with square corners there is nothing to round, and the clip was what cut the
-   last columns off silently — worse than a scrollbar. */
+   last columns off silently - worse than a scrollbar. */
 .panel { overflow: visible; }
 .panel-body { overflow-x: auto; }
 .tbl tbody tr:hover td { background: var(--bg-hover); }

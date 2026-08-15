@@ -156,7 +156,7 @@ export function StudyView({ onBack }: { onBack: () => void }) {
             })()}
             {/* The measure workshop: coverage overview (ring + tactic heatmap), the
                 parameters that decide what those measures are worth, and the per-step
-                assignment — all ABOVE the tables. */}
+                assignment - all ABOVE the tables. */}
             {groupHasMeasures && <MitigationCharts tax={tax} study={study} color={activeGroup.color} />}
             {groupHasMeasures && <CalibrationView study={study} color={activeGroup.color} scope="measures" />}
             {groupHasMeasures && <KillChainMitigation tax={tax} study={study} color={activeGroup.color} />}
@@ -172,7 +172,7 @@ export function StudyView({ onBack }: { onBack: () => void }) {
               const biz = gts.find((t) => t.fields.some((f) => f.type === "scale") && gts.some((o) => o.fields.some((f) => f.type === "multiref" && f.refType === t.key)));
               const supp = biz ? (gts.find((t) => t.fields.some((f) => f.type === "multiref" && f.refType === biz.key)) ?? null) : null;
               // Catalog-backed types (requirement, security measure) get the "+ Add"
-              // catalog picker in place of the plain add button — treated analogously.
+              // catalog picker in place of the plain add button - treated analogously.
               const targets = catalogTargets(tax);
               return gts.map((t) => {
                 const target = targets.find((tg) => tg.type.key === t.key);
@@ -190,7 +190,7 @@ export function StudyView({ onBack }: { onBack: () => void }) {
                 );
               });
             })()}
-            {/* Integrated attack-paths projection — all kill chains of this study
+            {/* Integrated attack-paths projection - all kill chains of this study
                 converging on the target assets, as a sub-section below the tables. Shown
                 only in the workshop that owns the kill-chain step type. */}
             {stepType?.group === activeGroup.key

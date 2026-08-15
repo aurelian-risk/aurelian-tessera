@@ -39,10 +39,12 @@ export { parseOscalCatalog } from ${JSON.stringify(resolve(root, "src/domain/osc
 export { catalogTargets } from ${JSON.stringify(resolve(root, "src/domain/catalog"))};
 export { DEFAULT_TAXONOMY } from ${JSON.stringify(resolve(root, "src/profile"))};
 export { GSPP_COMPONENTS } from ${JSON.stringify(resolve(root, "src/profile/gspp/components.generated"))};
+export { planVocabularyUpdate } from ${JSON.stringify(resolve(root, "src/domain/vocabulary"))};
 `);
 execFileSync("npx", ["esbuild", entry, "--bundle", "--format=esm",
   `--outfile=${resolve(cache, "mod.mjs")}`, "--log-level=error"], { cwd: root });
-const { parseOscalCatalog, catalogTargets, DEFAULT_TAXONOMY, GSPP_COMPONENTS } = await import(pathToFileURL(resolve(cache, "mod.mjs")).href);
+const { parseOscalCatalog, catalogTargets, DEFAULT_TAXONOMY, GSPP_COMPONENTS, planVocabularyUpdate } =
+  await import(pathToFileURL(resolve(cache, "mod.mjs")).href);
 
 const fw = parseOscalCatalog(readFileSync(file, "utf8"), "Grundschutz++");
 const target = catalogTargets(DEFAULT_TAXONOMY).find((t) => t.kind === "requirement");
@@ -164,6 +166,17 @@ ok("GC.7.2 depends on the protection need being set, as published",
   String(records.find((r) => r.ref_id === "GC.7.2")?.required ?? "").split(",").map((x) => x.trim()).sort().join(",")
   === "GC.12.1,GC.7.1.2");
 
+// ── Checking against the very catalogue this build was made from ─────────
+// The right answer is "nothing to do". A field that declares where its values come from
+// but holds no list of its own - a requirement's target-object categories, its open
+// parameters - has nothing to refresh, and comparing against its absent options used to
+// report every published value as new on every single check.
+{
+  const changes = planVocabularyUpdate(DEFAULT_TAXONOMY, fw, []);
+  ok("checking against the catalogue this build carries reports nothing",
+    changes.length === 0, changes.map((c) => `${c.fieldKey}: ${c.current.length} -> ${c.merged.length}`).join(", "));
+}
+
 // ── The migration path, as the BSI publishes it ──────────────────────────
 // An institution arriving from the 2023 compendium has a body of work behind it. The BSI
 // states the correspondence itself; the only thing that can go wrong on our side is the
@@ -183,7 +196,7 @@ ok("GC.7.2 depends on the protection need being set, as published",
       rels.has("equal-to") && rels.has("subset-of") && rels.size >= 4, [...rels].join(", "));
     const targets = [...new Set(entries.flatMap((e) => (e.targets ?? []).map((t) => t["id-ref"])).filter(Boolean))];
     const known = new Set(records.map((r) => String(r.ref_id)));
-    // The collection maps onto TWO catalogues — the Kernel, which is what a user works
+    // The collection maps onto TWO catalogues - the Kernel, which is what a user works
     // to, and the method catalogue. A handful of its targets are therefore requirements
     // this catalogue does not carry. That is the publisher's structure, not a bad join:
     // what would be a bad join is the share falling away.
@@ -193,6 +206,29 @@ ok("GC.7.2 depends on the protection need being set, as published",
       `${targets.length - unresolved.length} of ${targets.length} resolve; open: ${unresolved.slice(0, 4).join(", ")}`);
     ok("...and it reaches a substantial part of the ruleset",
       targets.length > 250 && targets.length < 1000, `${targets.length} of ${records.length}`);
+  }
+}
+
+// ── What the BSI publishes as implementing its requirements ──────────────
+// Six component definitions, discovered from the repository rather than listed here, and
+// what they say is carried as a relation: the identifiers they name are the catalogue's.
+{
+  const mt = catalogTargets(DEFAULT_TAXONOMY).find((t) => t.kind === "measure");
+  ok("the measure side of the taxonomy is offered", !!mt);
+  if (mt) {
+    const vals = GSPP_COMPONENTS.items.map((it) => mt.toValues(GSPP_COMPONENTS, it));
+    ok("every published implementation says which library it came from",
+      vals.every((v) => v.framework === GSPP_COMPONENTS.name), String(vals[0]?.framework));
+    ok("...and under which name", vals.every((v) => String(v.ref_id ?? "").trim() !== ""));
+    ok("...without repeating that in the description",
+      vals.every((v) => !/\(Grundschutz\+\+ implementations/.test(String(v.description ?? ""))));
+    const withNotes = vals.filter((v) => /What it does for each requirement:/.test(String(v.description ?? "")));
+    ok("what it does for each requirement is listed, one to a line", withNotes.length >= 20, `${withNotes.length} of ${vals.length}`);
+    // One reference in the published components resolves to nothing in this catalogue, so
+    // it keeps its identifier - rewriting it would name a requirement that is not there.
+    const stillUuid = vals.filter((v) => /_[0-9a-f]{8}-[0-9a-f]{4}/.test(String(v.description ?? "")));
+    ok("...naming the requirement as the catalogue does, bar the one that resolves to nothing",
+      stillUuid.length <= 1, `${stillUuid.length} components still name a UUID`);
   }
 }
 
@@ -219,7 +255,7 @@ for (const [k, field] of [["modal_verb", "modal_verb"], ["sec_level", "sec_level
 // ── What implements a requirement ────────────────────────────────────────
 // The BSI publishes component definitions beside the catalogue: what a named thing
 // implements, referenced by the control's UUID rather than by its readable identifier.
-// That UUID is the join key — which is why alt-identifier is carried after all.
+// That UUID is the join key - which is why alt-identifier is carried after all.
 {
   {
     const fw2 = GSPP_COMPONENTS;
@@ -237,7 +273,7 @@ for (const [k, field] of [["modal_verb", "modal_verb"], ["sec_level", "sec_level
 }
 
 // ── What the institution has to fill in ──────────────────────────────────
-// STM.5.1: selected requirements carry blanks for the institution — a period, a role, a
+// STM.5.1: selected requirements carry blanks for the institution - a period, a role, a
 // standard. Read as they stand, those blanks are OSCAL markup in the middle of a sentence.
 {
   const withParams = records.filter((r) => set(r, "params"));
@@ -256,7 +292,7 @@ for (const [k, field] of [["modal_verb", "modal_verb"], ["sec_level", "sec_level
 // ── Reading language ─────────────────────────────────────────────────────
 // The BSI publishes this ruleset in German only, so the values are German and stay that
 // way. What the interface SHOWS is English, per option. A term arriving from a newer
-// catalogue with no English wording shows in German — visible, not silently wrong — and
+// catalogue with no English wording shows in German - visible, not silently wrong - and
 // this is where it is reported.
 {
   const labelled = (typeKey, fieldKey) => {

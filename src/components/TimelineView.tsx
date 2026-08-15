@@ -58,7 +58,7 @@ export function TimelineView() {
       <div className="page-head">
         <div>
           <h2 style={{ margin: 0 }}>Change timeline</h2>
-          <p className="hint" style={{ margin: "4px 0 0" }}>Every change across “{study.name}”, newest first — hash-chained for tamper-evidence.</p>
+          <p className="hint" style={{ margin: "4px 0 0" }}>Every change across “{study.name}”, newest first - hash-chained for tamper-evidence.</p>
         </div>
       </div>
 

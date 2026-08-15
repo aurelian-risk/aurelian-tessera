@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-// Document references. By design we hold only references (name + metadata) —
+// Document references. By design we hold only references (name + metadata) -
 // content is NOT ingested into the browser. Files can be opened transiently in
 // a viewer, but nothing is stored. (LLM extraction will read content on demand.)
 import { useEffect, useState } from "react";
@@ -9,7 +9,7 @@ import { ExtractionDialog } from "./ExtractionDialog";
 import { CatalogImport } from "./CatalogImport";
 import { Icon } from "./ui";
 
-const fmtSize = (n: number) => (!n ? "—" : n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+const fmtSize = (n: number) => (!n ? " - " : n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 const fmtDate = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export function DocumentsView() {
@@ -69,7 +69,7 @@ export function DocumentsView() {
 
       <div className="guide">
         References keep each source document's name, type and size. For <strong>text files</strong> the plain
-        text is also cached locally (offline, in your browser) so <em>Extract</em> can read it instantly —
+        text is also cached locally (offline, in your browser) so <em>Extract</em> can read it instantly -
         nothing is uploaded. Click <em>Extract</em> on a reference to propose entities for the active study.
       </div>
 
@@ -86,7 +86,7 @@ export function DocumentsView() {
                 {docs.map((d) => (
                   <tr key={d.id}>
                     <td><div className="name">{d.name}</div>{d.note && <div className="desc">{d.note}</div>}</td>
-                    <td><span className="badge">{d.mime || "—"}</span></td>
+                    <td><span className="badge">{d.mime || " - "}</span></td>
                     <td><span className="mono" style={{ fontSize: 12 }}>{fmtSize(d.size)}</span></td>
                     <td><span className="desc">{fmtDate(d.addedAt)}</span></td>
                     <td>

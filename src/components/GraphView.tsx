@@ -3,7 +3,7 @@
 // its DIRECT neighbours fan out around it (coloured by workshop group, shaped by entity
 // type, edges labelled with the relation + direction). Click a neighbour to re-centre on
 // it; search to jump anywhere; ← Back walks the trail. This is deliberately different from
-// the three left→right methodology flows (Flow, Attack paths, Kill chain) — it is for
+// the three left→right methodology flows (Flow, Attack paths, Kill chain) - it is for
 // exploring "what is connected to X", not the linear progression.
 import { useEffect, useMemo, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
@@ -15,7 +15,7 @@ import { EntityModal } from "./EntityModal";
 const FR = 16, NR = 11; // focus + neighbour radii
 
 // Distinct shape per entity type (index within its group) so types sharing a colour are
-// still told apart — e.g. security measures (○) vs risk treatments (◇) in Treatment.
+// still told apart - e.g. security measures (○) vs risk treatments (◇) in Treatment.
 function shapeEl(si: number, r: number, extra: Record<string, unknown>, title: ReactNode) {
   const p = extra as Record<string, unknown>;
   if (si % 4 === 1) return <rect x={-r * 0.9} y={-r * 0.9} width={r * 1.8} height={r * 1.8} rx={2.5} {...p}>{title}</rect>;
@@ -33,7 +33,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
       tax.entityTypes.filter((et) => (et.group ?? "") === key).forEach((et, i) => m.set(et.key, i));
     return m;
   }, [tax]);
-  // Default to the first entity (a business asset — the natural EBIOS starting point),
+  // Default to the first entity (a business asset - the natural EBIOS starting point),
   // and the searchable, grouped index on the left makes the current focus explicit.
   const defaultFocus = useMemo(() => nodes[0]?.id ?? null, [nodes]);
 
@@ -76,7 +76,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
   const back = () => setHistory((h) => { const n = [...h]; const prev = n.pop(); if (prev) setFocusIds([prev]); return n; });
 
   // INSPECT: a plain node click shows that entity in the detail box WITHOUT re-centring
-  // the graph or moving the left selection. Re-centring is a deliberate act — double-click
+  // the graph or moving the left selection. Re-centring is a deliberate act - double-click
   // a node, or click it in the left index.
   const [inspect, setInspect] = useState<string | null>(null);
   const inspectNode = (id: string) => setInspect(id); // clicking a graph node is the ONLY thing that shows the box
@@ -160,7 +160,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
   }, [fociSet, links, byId]);
 
   if (nodes.length === 0) {
-    return <div className="empty"><h3>Nothing to show yet</h3>Add entities in the workshops — the graph grows with them.</div>;
+    return <div className="empty"><h3>Nothing to show yet</h3>Add entities in the workshops - the graph grows with them.</div>;
   }
 
   const cx = size.w / 2, cy = size.h / 2;
@@ -219,7 +219,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
     });
   }
 
-  // Left index: EVERY entity, grouped by workshop and searchable — so the whole model
+  // Left index: EVERY entity, grouped by workshop and searchable - so the whole model
   // is visible at a glance and the current focus is explicit (not an arbitrary node).
   const matches = (n: GNode) => !q.trim() || n.label.toLowerCase().includes(q.trim().toLowerCase());
   const idxGroups = [...tax.groups.map((g) => ({ key: g.key, label: g.label, color: g.color })), { key: "", label: "Other", color: "var(--fg-subtle)" }]
@@ -259,7 +259,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
             <defs>
               <marker id="ego-arrow" markerWidth="8" markerHeight="8" refX="6.5" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0 0.7 L7 3.5 L0 6.3 z" fill="context-stroke" /></marker>
             </defs>
-            {/* neighbour edges — one per (focus, neighbour) link */}
+            {/* neighbour edges - one per (focus, neighbour) link */}
             {scene.neigh.map((e) => {
               const np0 = pos.get(e.node.id); if (!np0) return null;
               const np = off(e.node.id, np0);

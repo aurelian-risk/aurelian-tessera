@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-// Event flow — the parent app's engine, adopted as-is (frontend/src/components/
+// Event flow - the parent app's engine, adopted as-is (frontend/src/components/
 // workshop/event-flow.tsx): rich per-scenario chains, availableSet AND-filter
 // with click-lockout, Sankey ribbons between highlighted cards (rAF-tracked),
 // and the FLIP flight that centres the connected cards into a column tree.
@@ -42,7 +42,7 @@ export function CanvasView({ tax, study }: { tax: Taxonomy; study: Study }) {
     return out;
   }, [study.entities, tax, byId]);
 
-  // === Pre-compute event chains — exact port of the parent's traversal. ===
+  // === Pre-compute event chains - exact port of the parent's traversal. ===
   const eventChains = useMemo(() => {
     const has = new Set(tax.entityTypes.map((t) => t.key));
     const of = (type: string) => study.entities.filter((e) => e.type === type);
@@ -276,7 +276,7 @@ export function CanvasView({ tax, study }: { tax: Taxonomy; study: Study }) {
     <div className="diagram-dock-layout">
       <div className="flow-main">
       <div className="flow-toolbar">
-        <span className="hint">Click a node to trace its chains — pick several to narrow many paths to one.</span>
+        <span className="hint">Click a node to trace its chains - pick several to narrow many paths to one.</span>
         <span style={{ flex: 1 }} />
         {selected.size > 0 && <button className="btn sm" onClick={() => { setSelected(new Set()); setFocused(null); }}>Clear ({selected.size})</button>}
       </div>

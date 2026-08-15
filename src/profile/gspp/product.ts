@@ -5,7 +5,7 @@
 // the BSI's mark. Hence a name of our own plus a descriptive line.
 //
 // A tessera was the tablet carrying the watchword, passed from sentry to sentry through
-// the night — and the single stone a mosaic is composed of. Both readings are the work:
+// the night - and the single stone a mosaic is composed of. Both readings are the work:
 // the round that keeps watch, and the picture that only exists once the pieces are laid.
 import type { Product } from "../../domain/types";
 import { THEME } from "./theme";
@@ -17,13 +17,13 @@ export const PRODUCT: Product = {
   mark: "Aurelian Tessera",
   source: "github.com/aurelian-risk/aurelian-tessera",
   // The method is the BSI's work; this is the acknowledgement of that, not a licence
-  // notice — those travel with the documents that quote the ruleset, and stand in NOTICE.md.
+  // notice - those travel with the documents that quote the ruleset, and stand in NOTICE.md.
   credit: {
     text: "Method: Grundschutz++ © Bundesamt für Sicherheit in der Informationstechnik, CC BY-SA 4.0",
     url: "https://github.com/BSI-Bund/Stand-der-Technik-Bibliothek",
   },
   // CC BY-SA 4.0 asks for the creator, a link, the licence and an indication of what was
-  // changed. The build carries the ruleset, so it carries the notice too — in the
+  // changed. The build carries the ruleset, so it carries the notice too - in the
   // application and in every document it generates.
   attribution: [{
     title: "Anwenderkatalog Grundschutz++",

@@ -2,7 +2,7 @@
 //
 // The Grundschutz++ ruleset is published by the BSI as OSCAL JSON:
 // github.com/BSI-Bund/Stand-der-Technik-Bibliothek, control_layer/Grundschutz++/
-// Grundschutz++-resolved_catalog.json — 1000 requirements, 5.2 MB, CC BY-SA 4.0. Whether
+// Grundschutz++-resolved_catalog.json - 1000 requirements, 5.2 MB, CC BY-SA 4.0. Whether
 // to bundle it or to import it from file is open; the trade-off is in docs/scope.md.
 // src/domain/oscal.ts reads it, and npm run test:gspp measures the import against the
 // published file.
@@ -21,7 +21,7 @@ export const BUNDLED_FRAMEWORKS: Framework[] = [GRUNDSCHUTZ_PP];
 
 /** What the BSI publishes about things that implement its requirements. Each component
  *  names the controls it implements, so the link between a measure and the requirements it
- *  answers is read from the publisher rather than decided here — 304 of 305 references in
+ *  answers is read from the publisher rather than decided here - 304 of 305 references in
  *  the published definitions resolve against the catalogue. An institution still writes
  *  its own measures; these are the ones it does not have to write. */
 export const BUNDLED_MEASURE_CATALOGS: Framework[] = [GSPP_COMPONENTS];

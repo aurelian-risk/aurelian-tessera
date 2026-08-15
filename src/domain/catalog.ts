@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-// One shared definition of the two catalog "targets" — requirement and security
-// measure — so the bundled-seed picker (CatalogAdd, on the tables) and the
+// One shared definition of the two catalog "targets" - requirement and security
+// measure - so the bundled-seed picker (CatalogAdd, on the tables) and the
 // semi-deterministic table import (Documents) treat them analogously: same catalog
 // shape, same value-mapping and de-dup, only the target entity type differs.
 import type { EntityRecord, EntityTypeDef, FieldValue, Taxonomy } from "./types";
@@ -21,8 +21,8 @@ function withProps(type: EntityTypeDef, base: Record<string, FieldValue>, it: Fr
   for (const f of type.fields) {
     // A field may instead name where its value comes from when the catalogue carries it
     // as structure rather than as a property: "@groups" is the top-level grouping the
-    // item sits under, which is how a catalogue states the chapter — practice, family,
-    // domain — a control belongs to. Without this the field stays empty however
+    // item sits under, which is how a catalogue states the chapter - practice, family,
+    // domain - a control belongs to. Without this the field stays empty however
     // faithfully the catalogue was read.
     const raw = f.vocabulary === GROUPS_VOCABULARY ? topGroupOf(it.section)
       : f.vocabulary === PARAMS_VOCABULARY ? it.params
@@ -44,6 +44,32 @@ function withProps(type: EntityTypeDef, base: Record<string, FieldValue>, it: Fr
       default:
         out[f.key] = raw;                         // text, textarea, enum - kept verbatim
     }
+  }
+  return out;
+}
+
+/** Resolve a catalogue item's identifier-valued properties onto the records they name.
+ *
+ *  A property is text and cannot hold a record id, so `withProps` leaves ref and multiref
+ *  fields alone. But a publisher's component definition says, by identifier, which
+ *  requirements it implements - and that is a relation, not a sentence. A list field that
+ *  declares `vocabulary` naming the property gets those identifiers looked up among the
+ *  records already in the study, by their own `ref_id`.
+ *
+ *  What does not resolve is simply not linked: the identifiers stay in the text field
+ *  beside it, so nothing is lost and nothing is invented. */
+export function refsFromProps(existing: EntityRecord[], type: EntityTypeDef, it: FrameworkItem): Record<string, FieldValue> {
+  const out: Record<string, FieldValue> = {};
+  for (const f of type.fields) {
+    if (f.type !== "multiref" || !f.refType || !f.vocabulary) continue;
+    const raw = it.props?.[f.vocabulary];
+    if (!raw) continue;
+    const wanted = new Set(String(raw).split(/[,;]/).map((x) => x.trim()).filter(Boolean));
+    if (!wanted.size) continue;
+    const ids = existing
+      .filter((e) => e.type === f.refType && wanted.has(String(e.values.ref_id ?? "")))
+      .map((e) => e.id);
+    if (ids.length) out[f.key] = ids;
   }
   return out;
 }

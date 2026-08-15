@@ -19,7 +19,7 @@ export interface LintCheck {
 
 export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
   const has = (key: string) => tax.entityTypes.some((t) => t.key === key);
-  // A record the taxonomy sets back is present but not in play — a catalogue entry nobody
+  // A record the taxonomy sets back is present but not in play - a catalogue entry nobody
   // has taken up yet. Judging it produces findings about work not begun, which buries the
   // findings about work that was.
   const dormant = (e: EntityRecord) => (tax.dimWhen ?? []).some((d) =>
@@ -36,14 +36,14 @@ export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
     return out;
   };
   const checks: LintCheck[] = [];
-  // A taxonomy may declare that a check does not apply to its method — see checksOff.
+  // A taxonomy may declare that a check does not apply to its method - see checksOff.
   const off = new Set(tax.checksOff ?? []);
   const add = (id: string, title: string, severity: Severity, hint: string, type: string, affected: EntityRecord[]) => {
     if (off.has(id)) return;
     checks.push({ id, title, severity, hint, affected, total: ents(type).length });
   };
 
-  // Kill-chain steps not covered by any measure — the biggest exposure.
+  // Kill-chain steps not covered by any measure - the biggest exposure.
   if (has("kill_chain_step") && has("security_measure")) {
     const covered = referenced("security_measure", "covers");
     add("uncovered-steps", "Kill-chain steps with no security measure", "high",
@@ -243,11 +243,11 @@ export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
   }
   // Obligations the taxonomy declares: a record in a named state has to be answered by a
   // record of another kind pointing back at it. The engine knows the shape, the method
-  // names the case — see Taxonomy.followUps.
+  // names the case - see Taxonomy.followUps.
   for (const f of tax.followUps ?? []) {
     if (!has(f.when.type) || !has(f.require.type)) continue;
     const answered = referenced(f.require.type, f.require.field);
-    // No values named means "whatever it says, as long as it says something" — which is
+    // No values named means "whatever it says, as long as it says something" - which is
     // how a method states an obligation that follows from the record existing at all.
     const wanted = f.when.values ? new Set(f.when.values) : null;
     const open = ents(f.when.type).filter((e) => {
@@ -259,7 +259,7 @@ export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
     add(f.id, f.title, f.severity ?? "medium", f.hint, f.when.type, open);
   }
 
-  // What a record in a given state has to say for itself — see Taxonomy.mustState. The
+  // What a record in a given state has to say for itself - see Taxonomy.mustState. The
   // decision itself is the study's; that it carries its reason is the method's.
   const held = (e: EntityRecord, key: string): string[] => {
     const v = e.values[key];
@@ -280,7 +280,7 @@ export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
       pool.filter((e) => matches(e) && m.require.some((f) => held(e, f).length === 0)));
   }
 
-  // A dependency the publisher stated between its own items — see Taxonomy.dependsOn. An
+  // A dependency the publisher stated between its own items - see Taxonomy.dependsOn. An
   // item that says it is done while something it rests on is not is the one finding a
   // register cannot produce from a status column alone.
   const dep = tax.dependsOn;

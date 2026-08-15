@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk */
 /* ═══════════════════════════════════════════════════════════════════
-   App-Styles — Glasmorphismus, Tiefe, feine Bewegung. Dark-first.
+   App-Styles - Glasmorphismus, Tiefe, feine Bewegung. Dark-first.
    ═══════════════════════════════════════════════════════════════════ */
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -197,7 +197,7 @@ select { cursor: pointer; }
 .chip.link:hover { background: color-mix(in oklch, var(--primary) 22%, transparent); color: var(--fg); }
 .link-rel { display: inline-flex; align-items: center; gap: 5px; }
 
-/* Large entity modal — fixed header/footer, scrollable body */
+/* Large entity modal - fixed header/footer, scrollable body */
 .modal-lg { display: flex; flex-direction: column; width: min(1020px, 94vw); height: min(880px, 92vh);
   background: var(--bg-raised); border: 1px solid var(--border-strong); border-radius: 18px;
   box-shadow: var(--shadow-lg), var(--edge-top); backdrop-filter: blur(24px) saturate(1.3);
@@ -218,7 +218,10 @@ select { cursor: pointer; }
 /* Expanded detail row */
 .detail-row > td { padding: 0 18px 16px !important; border-top: none; background: var(--bg-hover); }
 .detail { background: var(--bg-panel); border: 1px solid var(--hairline); border-radius: 12px; padding: 15px 16px; }
-.d-desc { grid-column: 1 / -1; margin: 0 0 12px; font-size: 13px; color: var(--fg-muted); line-height: 1.55; }
+.d-desc { grid-column: 1 / -1; margin: 0 0 12px; font-size: 13px; color: var(--fg-muted); line-height: 1.55; 
+  /* A description may carry a list - a published implementation states what it does
+     for each requirement on its own line. Collapsing it turns that into a wall. */
+  white-space: pre-wrap; }
 .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 22px; }
 .d-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .d-k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-subtle); font-weight: 600; }
@@ -312,7 +315,7 @@ select { cursor: pointer; }
 
 .import-modes-inline { display: inline-flex; }
 
-/* Attack paths — integrated cross-chain DAG view */
+/* Attack paths - integrated cross-chain DAG view */
 .ap-wrap { max-width: none; }
 .ap-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 12px; }
 .ap-tb-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--fg-subtle); font-weight: 700; }
@@ -622,7 +625,7 @@ select { cursor: pointer; }
 .flow-lane { flex: 1 0 192px; max-width: 240px; display: flex; flex-direction: column; min-width: 178px; }
 .lane-header { display: flex; align-items: center; gap: 7px; padding: 5px 10px 6px; border: 1px solid var(--border);
   border-bottom-width: 2px; border-radius: 10px 10px 0 0;
-  /* opaque base (--bg-0) so cards scroll cleanly UNDER the sticky header — the glassy
+  /* opaque base (--bg-0) so cards scroll cleanly UNDER the sticky header - the glassy
      --bg-panel/--bg-raised are translucent and would let items bleed through. */
   background: linear-gradient(var(--bg-panel), var(--bg-panel)), var(--bg-0);
   position: sticky; top: 0; z-index: 40; transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.4, 1); will-change: transform; }
@@ -830,7 +833,7 @@ select { cursor: pointer; }
 .scale.mini { gap: 2px; }
 .scale.mini i { width: 4px; height: 9px; border-radius: 2px; }
 
-/* Status dot (blue = Planned) — a channel distinct from the level bar */
+/* Status dot (blue = Planned) - a channel distinct from the level bar */
 .status-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px color-mix(in oklch, var(--bg-raised) 60%, transparent); }
 
 /* ── Analytical charts ─────────────────────────────────────────────── */
@@ -1435,36 +1438,21 @@ select.btn { display: inline-block; width: auto; flex: none; line-height: 1.4; }
 .cal-edited.off, .cal-reset.off, .btn.off, .badge.off { visibility: hidden; pointer-events: none; }
 .cal-actions { min-height: 30px; }
 
-/* ── Tabellen-Werkzeugleiste: Suche, Facetten, Gruppierung ────────────
-   Sitzt zwischen Panel-Kopf und Tabelle und übernimmt dessen Polsterung,
-   damit Suchfeld und Titel auf einer Flucht liegen. */
-.tbl-tools { padding: 11px 18px 10px; border-bottom: 1px solid var(--hairline);
-  display: flex; flex-direction: column; gap: 8px; }
-.tbl-tools-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.tbl-search { flex: 1 1 240px; min-width: 200px; display: flex; align-items: center; gap: 7px;
-  padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 9px;
+/* ── Table toolbar: search, facets, grouping ──────────────────────────
+   One line between the panel head and the table, taking the head's padding so the
+   search box and the title line up. A facet is a menu, not a row of every value it
+   has: thirty values would make the filter taller than the table it serves. */
+.tbl-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  padding: 8px 18px; border-bottom: 1px solid var(--hairline); }
+.tbl-search { flex: 1 1 200px; min-width: 150px; display: flex; align-items: center; gap: 7px;
+  padding: 0 9px; border: 1px solid var(--border-strong); border-radius: 7px;
   background: var(--bg-0); transition: border-color 0.14s; }
 .tbl-search:focus-within { border-color: var(--primary); }
 .tbl-search .inline-icon { flex: none; color: var(--fg-subtle); }
-.tbl-search input { flex: 1; border: none; background: none; padding: 7px 0; font: inherit;
-  font-size: 13px; color: var(--fg); min-width: 0; }
+.tbl-search input { flex: 1; border: none; background: none; padding: 5px 0; font: inherit;
+  font-size: 12.5px; color: var(--fg); min-width: 0; }
 .tbl-search input:focus { outline: none; }
 .tbl-search input::-webkit-search-cancel-button { filter: grayscale(1); opacity: 0.6; }
-.tbl-group { display: flex; align-items: center; gap: 7px; flex: none; }
-.tbl-group select.btn { display: inline-block; width: auto; }
-
-.facet { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
-.facet-label { flex: 0 0 auto; min-width: 88px; font-size: 11.5px; font-weight: 600;
-  color: var(--fg-subtle); letter-spacing: 0.01em; }
-.facet-chip { cursor: pointer; border: 1px solid transparent; font: inherit; font-size: 12px;
-  display: inline-flex; align-items: center; gap: 6px; transition: background 0.14s, color 0.14s, border-color 0.14s; }
-.facet-chip:hover { border-color: var(--border-strong); color: var(--fg); }
-.facet-chip.on { background: color-mix(in oklch, var(--primary) 26%, transparent);
-  border-color: color-mix(in oklch, var(--primary) 55%, transparent); color: var(--fg); }
-.facet-chip.empty { opacity: 0.42; }   /* nothing left under the other filters */
-.facet-n { font-size: 10.5px; color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
-.facet-chip.on .facet-n { color: var(--fg-muted); }
-.tbl-tools-foot { display: flex; align-items: center; gap: 10px; min-height: 22px; }
 
 /* Gruppen-Kopfzeile in der Tabelle. Klebt nicht, damit sie nicht mit dem
    Sticky-Tabellenkopf konkurriert (siehe Flow-Header-Regeln). */
@@ -1475,11 +1463,9 @@ select.btn { display: inline-block; width: auto; flex: none; line-height: 1.4; }
 .tbl .group-row th .caret { margin-right: 7px; }
 .tbl .group-row th .badge { margin-left: 9px; }
 .tbl tbody.grouped:first-of-type .group-row th { border-top: none; }
-.facet-more { cursor: pointer; font: inherit; font-size: 11.5px; line-height: 1.5; }
-.facet-more:hover { color: var(--fg); border-color: var(--fg-subtle); }
 
 /* Herkunftszeile am Fuß der Seitenleiste. Die ausgelieferte Einzeldatei muss sagen,
-   woher ihr Quellcode stammt (MPL-2.0 §3.2) — leise, aber vorhanden. */
+   woher ihr Quellcode stammt (MPL-2.0 §3.2) - leise, aber vorhanden. */
 .colophon .credit { display: block; margin-top: 4px; }
 .colophon { padding: 10px 14px 14px; font-size: 10.5px; line-height: 1.5;
   color: var(--fg-subtle); border-top: 1px solid var(--hairline); }
@@ -1488,8 +1474,7 @@ select.btn { display: inline-block; width: auto; flex: none; line-height: 1.4; }
 
 /* Spaltenauswahl fürs Body-Feld: mehrere Spalten dürfen zusammen ein Feld füllen. */
 .map-multi .map-cols { display: flex; flex-wrap: wrap; gap: 6px; }
-.map-multi .facet-chip { font-size: 11.5px; }
-
+.map-multi 
 /* Kandidaten-Zeile: umklassifizieren und die Fundstelle im Dokument aufklappen. */
 .ex-cand-tools { display: flex; gap: 6px; align-items: center; flex: none; }
 select.chip.ex-cand-type { display: inline-block; width: auto; cursor: pointer; font-size: 11.5px;
@@ -1501,3 +1486,130 @@ select.chip.ex-cand-type { display: inline-block; width: auto; cursor: pointer; 
 .ex-ctx-side { color: var(--fg-subtle); }
 .ex-ctx-text mark { background: color-mix(in oklch, var(--primary) 26%, transparent);
   color: var(--fg); border-radius: 3px; padding: 1px 2px; }
+
+/* A register folds away by its own heading. The switch is part of the head, not a
+   floating control, so the row reads as one thing whether it is open or shut. */
+.panel-fold { background: none; border: 0; padding: 0; margin-right: -3px; cursor: pointer;
+  color: var(--fg-subtle); display: flex; align-items: center; }
+.panel-fold svg { width: 15px; height: 15px; transition: transform 0.18s var(--ease); }
+.panel-fold[aria-expanded="true"] svg { transform: rotate(90deg); }
+.panel-fold:hover { color: var(--fg); }
+.panel.folded .panel-head { border-bottom: 0; }
+
+/* ── The taxonomy explorer ────────────────────────────────────────── */
+.tx-seg { display: flex; gap: 4px; }
+.tx-seg .seg-btn { flex: none; padding: 4px 12px; font-size: 12px; }
+.tx-row { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 5px 10px; border: 0; background: none; color: inherit; font: inherit;
+  border-bottom: 1px solid var(--hairline); }
+button.tx-row { cursor: pointer; }
+button.tx-row:hover { background: var(--bg-hover, rgba(127,127,127,0.07)); }
+.tx-row .caret { display: inline-flex; width: 14px; color: var(--fg-subtle); }
+.tx-row .caret svg { width: 13px; height: 13px; transition: transform 0.15s var(--ease); }
+.tx-row .caret.open svg { transform: rotate(90deg); }
+.tx-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.tx-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-row-g .tx-name { font-weight: 700; }
+.tx-row-t { padding-left: 26px; }
+.tx-row-f { padding-left: 52px; color: var(--fg-muted); font-size: 12.5px; }
+.tx-key, .tx-spec { font-family: var(--mono, ui-monospace, monospace); font-size: 11.5px; color: var(--fg-subtle); }
+.tx-spec { min-width: 190px; text-align: right; }
+.tx-num { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--fg-muted);
+  min-width: 62px; text-align: right; flex: none; }
+.tx-num.strong { color: var(--fg); font-weight: 700; min-width: 48px; }
+.tx-num.dim { color: var(--fg-subtle); min-width: 48px; }
+.tx-only { padding: 0 10px 8px; }
+.tx-only label { display: inline-flex; align-items: center; gap: 7px; font-size: 12px;
+  color: var(--fg-muted); cursor: pointer; }
+/* `input { width: 100% }` applies to a checkbox too, which would squeeze its label into
+   a column one word wide. */
+.tx-only input { margin: 0; flex: none; width: auto; }
+.tx-only label span { white-space: nowrap; }
+.tx-class .tx-name { flex: none; width: 260px; }
+.tx-class.used .tx-name { font-weight: 700; }
+.tx-bar { flex: 1; height: 9px; display: flex; background: var(--hairline); border-radius: 2px;
+  overflow: hidden; min-width: 60px; }
+.tx-bar-own { background: var(--ws-color, var(--primary)); }
+.tx-bar-inh { background: var(--ws-color, var(--primary)); opacity: 0.32; }
+.tx-graph-wrap { overflow-x: auto; padding: 4px 10px 10px; }
+.tx-graph .tx-node { fill: var(--bg-panel); stroke-width: 1.5; }
+.tx-graph .tx-node-t { font-size: 12px; fill: var(--fg); }
+.tx-graph .tx-node-n { font-size: 11px; fill: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+.tx-graph .tx-edge { fill: none; stroke: var(--fg-subtle); stroke-width: 1.2; opacity: 0.55; }
+.tx-graph .tx-edge.dim { opacity: 0.12; }
+.tx-graph g:hover .tx-node { stroke-width: 2.5; }
+/* The catalogue, one press away where a measure is missing. Sized to sit beside the
+   assignment control rather than to compete with it. */
+.cat-add-icon { display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; flex: none; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg-panel); color: var(--fg-muted); cursor: pointer; }
+.cat-add-icon svg { width: 13px; height: 13px; }
+.cat-add-icon:hover { color: var(--fg); border-color: var(--primary); }
+/* Measures on a step are a list, so they read as one: every chip the full width of the
+   card, the name cut where it runs out rather than each chip a different length. */
+.kcc-mit .multi { flex-direction: column; align-items: stretch; gap: 5px; }
+.kcc-mit .multi .chip { width: 100%; justify-content: flex-start; }
+.kcc-mit .multi .chip .chip-lbl { flex: 1; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.kcc-mit .multi select { width: 100%; min-width: 0; }
+
+/* ── The table filter, compact ────────────────────────────────────── */
+/* One line for search, the facets and the count. A facet is a menu that says its name and
+   how many of its values are picked, not a row of every value it has. */
+.facet-menu { position: relative; }
+.facet-btn { display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 12px;
+  padding: 4px 8px; border: 1px solid var(--border); border-radius: 7px; background: none;
+  color: var(--fg-muted); cursor: pointer; white-space: nowrap; }
+.facet-btn:hover { color: var(--fg); border-color: var(--fg-subtle); }
+.facet-btn.on { color: var(--fg); border-color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 10%, transparent); }
+.facet-btn .facet-caret svg { width: 11px; height: 11px; transform: rotate(90deg); opacity: 0.7; }
+.facet-btn[aria-expanded="true"] .facet-caret svg { transform: rotate(-90deg); }
+.facet-n { font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--fg-subtle);
+  background: var(--hairline); border-radius: 999px; padding: 0 5px; min-width: 16px; text-align: center; }
+.facet-btn.on .facet-n { color: var(--primary-fg); background: var(--primary); }
+.facet-pop { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; min-width: 190px;
+  max-height: 320px; overflow-y: auto; padding: 4px; border: 1px solid var(--border);
+  border-radius: 9px; background: var(--bg-panel); box-shadow: var(--shadow-md); }
+.facet-opt { display: flex; align-items: center; gap: 7px; width: 100%; font: inherit; font-size: 12px;
+  padding: 5px 7px; border: 0; border-radius: 6px; background: none; color: var(--fg-muted);
+  cursor: pointer; text-align: left; }
+.facet-opt:hover { background: var(--hairline); color: var(--fg); }
+.facet-opt.on { color: var(--fg); font-weight: 600; }
+.facet-opt.more { justify-content: center; color: var(--fg-subtle); font-style: italic; }
+.facet-tick { width: 12px; flex: none; display: inline-flex; color: var(--primary); }
+.facet-tick svg { width: 12px; height: 12px; }
+.facet-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tbl-tools .tbl-group { font-size: 12px; padding: 4px 8px; width: auto; border-radius: 7px;
+  color: var(--fg-muted); }
+.tbl-count { margin-left: auto; font-size: 11.5px; color: var(--fg-subtle);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl-clear { display: inline-flex; padding: 3px; border: 0; background: none; cursor: pointer;
+  color: var(--fg-subtle); }
+.tbl-clear:hover { color: var(--fg); }
+.tbl-clear svg { width: 13px; height: 13px; }
+/* The explorer's records level, and a type opened onto its detail. */
+.tx-row-r-head { padding-left: 52px; color: var(--fg-muted); font-size: 12.5px; }
+.tx-records { display: flex; flex-wrap: wrap; gap: 5px; padding: 7px 12px 9px 68px;
+  border-bottom: 1px solid var(--hairline); }
+.tx-rec { font: inherit; font-size: 11.5px; padding: 2px 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg-panel); color: var(--fg-muted);
+  cursor: pointer; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-rec:hover { color: var(--fg); border-color: var(--primary); }
+.tx-rec.more { cursor: default; border-style: dashed; }
+.tx-graph .tx-node-g { cursor: pointer; }
+.tx-graph .tx-node-g.dim { opacity: 0.28; }
+.tx-detail-h { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--fg-subtle); padding: 12px 10px 4px; }
+.tx-detail button.tx-row-f { cursor: pointer; width: 100%; text-align: left; }
+.tx-detail button.tx-row-f:hover { background: var(--hairline); color: var(--fg); }
+/* "Referenced by", grouped: who points at this record, and through which relation. */
+.d-rel-group { margin-top: 9px; }
+.d-rel-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.d-rel-what { font-size: 12px; font-weight: 650; color: var(--fg); }
+.d-rel-how { font-size: 11px; color: var(--fg-subtle); }
+.d-rel-group .multi { gap: 5px; }
+.d-rel-group .chip.more { cursor: pointer; }
+/* The derivation, said as the steps it performs. */
+.mod-steps { margin: 6px 0 7px; padding-left: 20px; display: grid; gap: 2px; }
+.mod-steps li { padding-left: 2px; }

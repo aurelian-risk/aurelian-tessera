@@ -39,7 +39,7 @@ const { praktiken: PRAKTIKEN, zielobjektkategorien: ZIELOBJEKTKATEGORIE,
   secLevel: SEC_LEVEL, modalVerb: MODAL_VERB } = VOCABULARY;
 
 // GC.7.1: "Hierbei wird zwischen dem Schutzbedarf "normal" und "hoch" unterschieden." TWO
-// levels, and they are set on the business process or the information — not per asset and
+// levels, and they are set on the business process or the information - not per asset and
 // not per security objective. An asset's level is carried by the requirement's sec_level
 // ("Eine Klassifizierung des Schutzbedarfs der Zielobjekte erfolgt auf Anforderungsebene").
 // The three-level scale is classic IT-Grundschutz; "sehr hoch" does not occur once in the
@@ -47,7 +47,7 @@ const { praktiken: PRAKTIKEN, zielobjektkategorien: ZIELOBJEKTKATEGORIE,
 const SCHUTZBEDARF = ["normal", "hoch"];
 // UMS.1.1: "Der Umsetzungsstatus einer Anforderung kann grundsätzlich nur "umgesetzt"
 // ("ja") oder "nicht umgesetzt" ("nein") sein." Not a scale: "teilweise" is what the
-// method replaces with a dependency rule — a requirement counts as met only when it and
+// method replaces with a dependency rule - a requirement counts as met only when it and
 // everything it depends on are met. An exception is recorded as an exception (UMS.5), not
 // as a third status.
 const UMSETZUNG = ["ja", "nein"];
@@ -91,20 +91,20 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
     { type: "security_measure", field: "scope", values: ["not in use"] },
   ],
   // Present, not in play: the whole ruleset is in the study, and what no rule has reached
-  // is set back rather than hidden — a register you cannot see cannot be extended.
+  // is set back rather than hidden - a register you cannot see cannot be extended.
   dimWhen: [
     { type: "requirement", field: "scope", values: ["out of scope", ""] },
     { type: "security_measure", field: "scope", values: ["not in use", ""] },
   ],
   // GC.7.2 and STM.4.1 name the points at which the method leaves the catalogue and enters
   // a risk consideration. Three of the four are states of a record, so they are checked
-  // rather than remembered. The fourth — a security level lowered from erhöht to
-  // normal-SdT — is a change rather than a state, and is visible in the change history.
+  // rather than remembered. The fourth - a security level lowered from erhöht to
+  // normal-SdT - is a change rather than a state, and is visible in the change history.
   followUps: [
     {
       id: "gspp-high-need-unassessed",
       title: "Business processes rated hoch with no risk consideration",
-      hint: "GC.7.2: a high protection need requires a dedicated risk consideration under the method the institution has chosen. Record a threat scenario that names this process, or lower the rating with a reason.",
+      hint: "A process rated hoch needs a risk consideration. Add a threat scenario that names it - or lower the rating and say why. (GC.7.2)",
       severity: "high",
       when: { type: "business_asset", field: "protection_need", values: ["hoch"] },
       require: { type: "feared_event", field: "business_asset" },
@@ -112,7 +112,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
     {
       id: "gspp-unimplemented-unexcepted",
       title: "Requirements not implemented and not excepted",
-      hint: "UMS.5 and STM.4.1: a requirement left unimplemented is either an authorised exception with its reason, or a risk carried knowingly. Record the exception, or state the residual risk on the requirement.",
+      hint: "A requirement you have not implemented needs either an approved exception or a stated residual risk. Add the exception, or write down what you are carrying. (UMS.5, STM.4.1)",
       severity: "medium",
       when: { type: "requirement", field: "umsetzung", values: ["nein"] },
       require: { type: "exception", field: "requirement" },
@@ -124,7 +124,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       // fourth trigger for a risk consideration under STM.4.1.
       id: "gspp-asset-without-requirement",
       title: "Assets no requirement of the catalogue reaches",
-      hint: "STM.2.1.6: where the catalogue holds no requirement for an asset, write additional requirements for it — stated against the security objectives — and record why Grundschutz++ does not suffice. It is also one of the four triggers for a risk consideration (STM.4.1).",
+      hint: "The catalogue has no requirement for this asset. Write your own, along the security objectives - confidentiality, integrity, availability - and say why Grundschutz++ does not cover it. This is also a case where the method wants a risk consideration. (STM.2.1.6, STM.4.1)",
       severity: "high",
       when: { type: "supporting_asset", field: "asset_type" },
       require: { type: "requirement", field: "applies_to_asset" },
@@ -138,10 +138,10 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       // werden aus dem Anforderungspaket gestrichen, was mit einer Begründung zu
       // dokumentieren ist, um Nachvollziehbarkeit bei einem späteren Audit bzw.
       // Zertifizierung zu sichern." Only the requirements the catalogue classifies nowhere
-      // are struck — one that names a category simply was not reached by any asset.
+      // are struck - one that names a category simply was not reached by any asset.
       id: "gspp-struck-without-reason",
       title: "Requirements struck from the package with no reason recorded",
-      hint: "STM.2.1.5: a requirement the catalogue gives no target-object category is decided against the business processes, and one found not to apply is struck with a documented reason. Write the reason in the rationale, or bring it into scope.",
+      hint: "The catalogue does not say which objects this requirement is for, and you have left it out. Say in the rationale why it does not apply - or bring it in. (STM.2.1.5)",
       severity: "medium",
       type: "requirement",
       when: [{ field: "target_object_categories", empty: true }, { field: "scope", values: ["out of scope"] }],
@@ -153,7 +153,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       // business processes it applies to and to a process owner.
       id: "gspp-relevant-without-owner",
       title: "Requirements brought in by judgement with no process or owner",
-      hint: "STM.2.1.5: a requirement without a target-object category that is found relevant is assigned to the business processes it applies to and to a process owner. Name both.",
+      hint: "You brought this one in yourself, so it needs the business processes it applies to and someone who owns it. (STM.2.1.5)",
       severity: "medium",
       type: "requirement",
       when: [{ field: "target_object_categories", empty: true }, { field: "scope", values: ["in scope"] }],
@@ -164,18 +164,18 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       // and a realistic date. Both are MUSS, both at effort level 0.
       id: "gspp-open-without-owner-or-date",
       title: "Open requirements with no one answerable or no date",
-      hint: "UMS.3.1 and UMS.4.1: for every requirement not yet implemented, name who is to implement it and by when. Overrunning dates have to be acted on.",
+      hint: "Say who implements this, and by when. A date that slips has to be acted on. (UMS.3.1, UMS.4.1)",
       severity: "medium",
       type: "requirement",
       when: [{ field: "scope", values: ["in scope"] }, { field: "umsetzung", values: ["nein"] }],
       require: ["verantwortlich", "faellig"],
     },
     {
-      // PERF.3.2: an audit that has been held is documented in a report — "nachvollziehbar,
+      // PERF.3.2: an audit that has been held is documented in a report - "nachvollziehbar,
       // vollständig und strukturiert", with the findings in it.
       id: "gspp-audit-without-report",
       title: "Audits held with no report",
-      hint: "PERF.3.2: record how the audit was carried out and what it found — deviations, improvement potential, and what was found to be working.",
+      hint: "This audit has been held but has no report. Write how it was done and what came out - deviations, room for improvement, and what worked. (PERF.3.2)",
       severity: "medium",
       type: "audit",
       when: [{ field: "durchgefuehrt_am" }],
@@ -186,7 +186,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       // independent of what it examines.
       id: "gspp-audit-unplanned",
       title: "Audits with no objective, scope or team",
-      hint: "PERF.3.1.1 and PERF.3.1.3: set the objective, the scope and the methods before the audit, and name a team competent and independent of the processes examined.",
+      hint: "Set the objective, the scope and the methods before the audit, and name a team that does not work on what it examines. (PERF.3.1.1, PERF.3.1.3)",
       severity: "medium",
       type: "audit",
       when: [{ field: "name" }],
@@ -198,10 +198,10 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       // is an addition nobody can defend at an audit.
       id: "gspp-own-requirement-unjustified",
       title: "Own requirements that do not say why the catalogue does not suffice",
-      hint: "STM.2.1.6: for an asset the catalogue does not cover, record why Grundschutz++ does not suffice, which asset it is for, and which security objectives the requirement is stated against.",
+      hint: "A requirement of your own has to say why the catalogue is not enough, and which asset it is for. (STM.2.1.6)",
       severity: "medium",
       type: "requirement",
-      when: [{ field: "herkunft", values: ["Own — asset not covered"] }],
+      when: [{ field: "herkunft", values: ["Own - asset not covered"] }],
       require: ["begruendung", "applies_to_asset"],
     },
     {
@@ -209,10 +209,10 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       // obligation it follows from, or it cannot be traced back to anything.
       id: "gspp-compliance-requirement-unsourced",
       title: "Compliance requirements with no obligation named",
-      hint: "STM.2.1.7: name the statutory or contractual obligation the requirement follows from, and the business processes it applies to.",
+      hint: "Name the law or the contract this requirement comes from, and the business processes it applies to. (STM.2.1.7)",
       severity: "medium",
       type: "requirement",
-      when: [{ field: "herkunft", values: ["Own — compliance obligation"] }],
+      when: [{ field: "herkunft", values: ["Own - compliance obligation"] }],
       require: ["compliance_basis", "applies_to_process"],
     },
     {
@@ -221,7 +221,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       // because it is a change rather than a state. Recorded as a review, it is a state.
       id: "gspp-downgrade-unconsidered",
       title: "Security levels lowered without a risk consideration",
-      hint: "STM.4.1: lowering a security level from erhöht to normal-SdT requires a risk consideration under the method the institution has chosen. Record it, and name the reason for the change.",
+      hint: "You lowered a level from erhöht to normal-SdT. That is one of the cases where the method wants a risk consideration: record it, and say why you lowered it. (STM.4.1)",
       severity: "high",
       type: "niveau_review",
       when: [{ field: "level_before", values: ["erhöht"] }, { field: "level_after", values: ["normal-SdT"] }],
@@ -230,29 +230,29 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
   ],
   // UMS.1.1: "Eine Anforderung gilt nur dann als umgesetzt, wenn sie selbst sowie alle in
   // Abhängigkeit stehenden Anforderungen umgesetzt sind." The catalogue states those
-  // dependencies itself — 67 `required` edges over 59 requirements — so the rule is
+  // dependencies itself - 67 `required` edges over 59 requirements - so the rule is
   // followed rather than asserted.
   dependsOn: {
     type: "requirement", field: "required", idField: "ref_id",
     statusField: "umsetzung", doneValue: "ja",
     title: "Requirements reported implemented while what they rest on is not",
-    hint: "UMS.1.1: a requirement counts as implemented only when it and every requirement it depends on are implemented. The dependency is the catalogue's own, in the field \"Depends on\".",
+    hint: "This one counts as implemented only once everything it rests on is. What it rests on is in \"Depends on\", and comes from the catalogue itself. (UMS.1.1)",
     severity: "high",
   },
   groups: [
     // The five process steps of the method (Leitfaden 1.4), not the practice names: a
     // practitioner works a step, and each step is carried by one ISMS practice. Risk sits
-    // where the method puts it — a branch out of the requirements analysis, entered on a
+    // where the method puts it - a branch out of the requirements analysis, entered on a
     // trigger, not a stage everyone passes through.
-    { key: "gc", label: "Scope and Planning", description: "Step 1 — the institution's context, the scope, the roles, and the protection need of its business processes (practice GC)", color: "var(--gs-governance)" },
-    { key: "stm", label: "Requirements Analysis", description: "Step 2 — the information domain, its assets, their target-object categories, and the requirement package that follows (practice STM)", color: "var(--gs-structure)" },
-    { key: "risk", label: "Risk Consideration", description: "The branch out of step 2, entered on one of four triggers: a high protection need, a security level lowered, a requirement left unimplemented, or an asset the catalogue does not cover. GS++ prescribes no method here — this one models the attack chain", color: "var(--gs-risk)" },
-    { key: "ums", label: "Implementation", description: "Step 3 — implementation status, measures, owners and dates (practice UMS)", color: "var(--gs-implementation)" },
-    { key: "perf", label: "Monitoring", description: "Step 4 — metrics, audits and effectiveness (practice PERF)", color: "var(--gs-monitoring)" },
-    { key: "vrb", label: "Improvement", description: "Step 5 — nonconformities and corrective action (practice VRB)", color: "var(--gs-improvement)" },
+    { key: "gc", label: "Scope and Planning", description: "Step 1 - the institution's context, the scope, the roles, and the protection need of its business processes (practice GC)", color: "var(--gs-governance)" },
+    { key: "stm", label: "Requirements Analysis", description: "Step 2 - the information domain, its assets, their target-object categories, and the requirement package that follows (practice STM)", color: "var(--gs-structure)" },
+    { key: "risk", label: "Risk Consideration", description: "The branch out of step 2, entered on one of four triggers: a high protection need, a security level lowered, a requirement left unimplemented, or an asset the catalogue does not cover", color: "var(--gs-risk)" },
+    { key: "ums", label: "Implementation", description: "Step 3 - implementation status, measures, owners and dates (practice UMS)", color: "var(--gs-implementation)" },
+    { key: "perf", label: "Monitoring", description: "Step 4 - metrics, audits and effectiveness (practice PERF)", color: "var(--gs-monitoring)" },
+    { key: "vrb", label: "Improvement", description: "Step 5 - nonconformities and corrective action (practice VRB)", color: "var(--gs-improvement)" },
     // No "quant" group: the monetary loss expectation is a feature of Aurelian Lite.
     // GS++ leaves the risk method open (STM.4.1) and this product answers it
-    // qualitatively — attack chain, coverage, treatment matrix. See QUANT_GROUP.
+    // qualitatively - attack chain, coverage, treatment matrix. See QUANT_GROUP.
   ],
   entityTypes: [
     // ── Governance und Compliance ──
@@ -265,11 +265,11 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "verantwortlich", label: "Owner", type: "text" },
         { key: "criticality", label: "Importance", type: "scale", scaleLabels: SCALE },
         // GC.7.1.2: the classification is made here, on the process or the information,
-        // and in two steps. An asset does not carry one — its level is decided per
+        // and in two steps. An asset does not carry one - its level is decided per
         // requirement (sec_level). "hoch" is also the first of the four triggers into a
         // risk consideration (GC.7.2).
         { key: "protection_need", label: "Protection need", type: "enum", options: SCHUTZBEDARF, optionLabels: labelsFor(SCHUTZBEDARF, VALUE_EN),
-          help: "GC.7.1: normal or hoch, decided with the management and measured against what the process means for the institution's objectives. A high protection need requires a risk consideration (GC.7.2)." },
+          help: "How badly this process would be hurt if its information lost confidentiality, integrity or availability. Two levels only, normal or hoch, decided with the management. Rating it hoch means a risk consideration follows. (GC.7.1, GC.7.2)" },
         { key: "protection_rationale", label: "Rationale for the protection need", type: "textarea" },
       ],
     },
@@ -280,13 +280,17 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       fields: [
         { key: "name", label: "Name", type: "text", required: true },
         { key: "description", label: "Description", type: "textarea" },
+        // The one decision that carries the whole modelling: everything else follows from
+        // it mechanically, which is why the help says how.
         { key: "asset_type", label: "Target-object category", type: "enum", options: ZIELOBJEKTKATEGORIE,
-          optionLabels: labelsFor(ZIELOBJEKTKATEGORIE, CATEGORY_EN), vocabulary: "target_object_categories" },
+          optionLabels: labelsFor(ZIELOBJEKTKATEGORIE, CATEGORY_EN), vocabulary: "target_object_categories",
+          help: "What kind of thing this is, from the BSI's own list. Pick it by what the asset does, not by what it is built from. This one choice decides which requirements land on it - and the class you pick brings the classes above it with it: a dial-up line is an external network connection, which sits under networks, so it gets the requirements for both. (STM.2.1.3, STM.2.1.4.1)" },
         { key: "supports", label: "Supports", type: "multiref", refType: "business_asset", relation: "supports" },
         // 3.4.2: "Bei manueller Zuordnung ist die Entscheidung nachvollziehbar zu
         // dokumentieren." The category decides which requirements reach this asset, so
         // why it was chosen is what an auditor asks for first.
-        { key: "begruendung", label: "Rationale for the category", type: "textarea" },
+        { key: "begruendung", label: "Rationale for the category", type: "textarea",
+          help: "Why this class and not another. Whoever checks the package reads this to see whether the choice holds. (Leitfaden 3.4.2)" },
       ],
     },
     {
@@ -317,14 +321,14 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "ref_id", label: "Identifier", type: "text" },
         { key: "framework", label: "Ruleset", type: "text" , column: false },
         // STM.2.1.6 and STM.2.1.7: the package may be extended by requirements of the
-        // institution's own — for assets the catalogue does not cover, and out of its
+        // institution's own - for assets the catalogue does not cover, and out of its
         // compliance obligations. Which of the three a requirement is decides what it has
         // to carry, and an auditor asks the question in exactly these terms.
         { key: "herkunft", label: "Origin", type: "enum", column: false,
-          options: ["Grundschutz++", "Own — asset not covered", "Own — compliance obligation"],
-          help: "STM.2.1.6/.7. Left as published for a requirement of the catalogue. An own requirement says why the catalogue does not suffice; one from a compliance obligation names the obligation." },
+          options: ["Grundschutz++", "Own - asset not covered", "Own - compliance obligation"],
+          help: "Where this requirement comes from. Leave it empty for one out of the catalogue. One of your own has to say why the catalogue was not enough; one from a law or contract has to name it. (STM.2.1.6, STM.2.1.7)" },
         { key: "compliance_basis", label: "Obligation it comes from", type: "text", column: false,
-          help: "STM.2.1.7. The statutory or contractual obligation this requirement follows from." },
+          help: "The law or the contract this requirement comes from. (STM.2.1.7)" },
         { key: "category", label: "Section", type: "text" , column: false },
         { key: "praktik", label: "Practice", type: "enum", options: PRAKTIKEN, column: false,
           optionLabels: labelsFor(PRAKTIKEN, PRACTICE_EN), vocabulary: "@groups" },
@@ -335,7 +339,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         // requirement package be derived rather than assembled by hand (STM.2.1.4).
         { key: "target_object_categories", label: "Applies to target-object categories", type: "text", column: false,
           vocabulary: "target_object_categories",
-          help: "The target-object categories this requirement applies to, as the catalogue states them. This is what the requirement package of an asset is built from (STM.2.1.4). 636 of the 1000 carry it; the ISMS practices apply to the whole information domain and carry none." },
+          help: "The kinds of object this requirement is for, as the catalogue states them. This is what decides which of your assets it lands on. 636 of the 1000 have it; the ISMS practices have none, because they apply to everything. (STM.2.1.4)" },
         { key: "effort_level", label: "Effort level (0–5)", type: "number", column: false },
         { key: "confidentiality", label: "Acts on confidentiality (0–2)", type: "number" , column: false },
         { key: "integrity", label: "Acts on integrity (0–2)", type: "number" , column: false },
@@ -343,19 +347,19 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "authenticity", label: "Acts on authenticity (0–2)", type: "number" , column: false },
         { key: "threats", label: "Elementary threats", type: "text" , column: false },
         // The catalogue's own edges between requirements. `required` is binding under
-        // UMS.1.1 — implemented means this one and everything it rests on; `related` is
+        // UMS.1.1 - implemented means this one and everything it rests on; `related` is
         // context. Both are carried by identifier, as the catalogue writes them.
         // The BSI's own mapping collections, carried with the ruleset. An institution
         // arriving from the 2023 compendium or from ISO 27001 reads here which of its
-        // existing controls corresponds to this requirement, and how closely — equal-to,
+        // existing controls corresponds to this requirement, and how closely - equal-to,
         // subset-of, superset-of, intersects-with, equivalent-to. The correspondence is
         // the publisher's; nothing here derives one.
         { key: "itgs_2023", label: "IT-Grundschutz 2023", type: "text", column: false,
-          help: "The requirements of the IT-Grundschutz-Kompendium 2023 that map to this one, with the relationship the BSI's mapping states. A migration takes the implementation status across on this basis rather than starting again." },
+          help: "What this matches in the IT-Grundschutz compendium 2023, and how closely - the BSI's own mapping. If you have already done the old requirement, this is where you see it." },
         { key: "iso_27001", label: "ISO/IEC 27001 Annex A", type: "text", column: false,
-          help: "The Annex A controls that map to this requirement, with the relationship the BSI's mapping states." },
+          help: "What this matches in ISO/IEC 27001 Annex A, and how closely. Again the BSI's own mapping." },
         { key: "required", label: "Depends on", type: "text", column: false,
-          help: "UMS.1.1. The requirements this one depends on, as the catalogue states them. It counts as implemented only when they are implemented too." },
+          help: "The requirements this one rests on, named by the catalogue. It only counts as implemented once they are. (UMS.1.1)" },
         { key: "related", label: "Related requirements", type: "text", column: false },
         { key: "documentation", label: "Evidence document", type: "text" , column: false },
         { key: "result", label: "Result", type: "text" , column: false },
@@ -365,47 +369,51 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         // STM.2.1.5: a requirement the catalogue gives no target-object category to is
         // judged against the business processes, given an owner, and struck with a reason
         // where it does not apply. 265 of the 1000 are in that position.
-        // STM.5.1: selected requirements carry parameters the institution fills in —
+        // STM.5.1: selected requirements carry parameters the institution fills in -
         // a period, a role, a standard. 208 of the 1000 do. The catalogue states what is
         // open; what was chosen is recorded beside it, because setting a parameter is also
         // how the leading responsibility for a practice gets assigned.
         { key: "params", label: "Parameters left open", type: "text", column: false,
           vocabulary: "@params",
-          help: "STM.5.1. What the catalogue leaves to the institution, as identifier and suggested wording. The suggestion already reads in the requirement text, in guillemets." },
+          help: "What the catalogue leaves for you to fill in - a period, a role, a standard. The suggested wording already reads in the requirement text, in «guillemets». (STM.5.1)" },
         { key: "parameter_values", label: "Parameters as set", type: "textarea", column: false,
-          help: "What this institution set, and by whose decision. A requirement whose parameters are unset is not yet a requirement of this institution." },
+          help: "What you set, and who decided it. Until the parameters are set, the requirement is not yet yours." },
         // The whole ruleset is recorded; this says what is in play. The derivation sets it
         // where a category reached the requirement (STM.2.1.4) and states the route in the
         // rationale; everything else stays out until someone gives a reason (STM.2.1.5).
         // The order matters: the first option is "out", the second "in".
         { key: "scope", label: "In scope", type: "enum", options: ["out of scope", "in scope"], toggle: true,
-          help: "STM.2.1.4 and STM.2.1.5. A requirement the modelling reaches is in scope and says through which asset and category. One the catalogue classifies nowhere stays out until it is judged against the business processes — and a requirement struck from the package carries the reason in its rationale." },
+          help: "Whether this requirement is part of your package. The derivation switches it on for everything your assets pull in, and the rationale says which asset did it. The rest stays off until you decide it applies - and if you decide it does not, write why. (STM.2.1.4, STM.2.1.5)" },
         // STM.2.1.4.2: "Ergebnis ist pro Asset ein vollständiger Satz an Anforderungen."
         // The consolidation keeps the reference to every asset a requirement reached, so
         // the package can be read from the asset's end as well as the requirement's. The
         // derivation writes this; it is not typed in.
-        { key: "applies_to_asset", label: "Applies to assets", type: "multiref", refType: "supporting_asset", relation: "applies to", column: false,
-          help: "STM.2.1.4. Which assets brought this requirement into the package, through their target-object category. Written by the derivation and refreshed when it runs again." },
+        // A column, not a hidden field: "which asset put this here" is the question the
+        // register is read with. Empty means the requirement reached the whole information
+        // domain rather than an object - the 95 ISMS practices under STM.2.1.1 - or that it
+        // was brought in by judgement, where the business process carries it instead.
+        { key: "applies_to_asset", label: "Applies to assets", type: "multiref", refType: "supporting_asset", relation: "applies to",
+          help: "Which of your assets pulled this requirement in, through its class. The derivation fills this in; run it again after adding an asset and it updates. Empty means the requirement applies to everything - the ISMS practices - or that you brought it in by hand for a business process. (STM.2.1.4)" },
         { key: "applies_to_process", label: "Applies to business processes", type: "multiref", refType: "business_asset", relation: "applies to", column: false,
-          help: "STM.2.1.5. For a requirement the catalogue classifies nowhere: the business processes it was judged relevant for. Set by hand, with the owner and the rationale beside it." },
+          help: "For a requirement the catalogue does not classify: which business processes you judged it relevant for. Add the owner and the reason beside it. (STM.2.1.5)" },
         { key: "verantwortlich", label: "Owner", type: "text" , column: false,
-          help: "STM.2.1.5 for a requirement decided by judgement, UMS.3.1 for one still to be implemented: the person or role answerable, named unambiguously." },
+          help: "Who is answerable - a person or a role, named so there is no doubt who is meant. (STM.2.1.5, UMS.3.1)" },
         // UMS.2.2 · UMS.4.1: the plan side. Priority is decided on risk, dependencies and
         // resources; effort level 0 is the catalogue's own "required in any case" and is a
         // starting point for it, not a substitute.
-        { key: "prioritaet", label: "Priority", type: "enum", options: ["1 — first", "2", "3", "4 — last"], column: false,
-          help: "UMS.2.2. Set from the risk consideration, what this requirement depends on, and what resources are available. The catalogue's effort level says what it costs, not when it is due." },
+        { key: "prioritaet", label: "Priority", type: "enum", options: ["1 - first", "2", "3", "4 - last"], column: false,
+          help: "When this should be done, next to everything else. Decide it from the risk, from what it waits on, and from the people you have. The catalogue's effort level says what it costs, not when it is due. (UMS.2.2)" },
         { key: "faellig", label: "Due", type: "text", column: false,
-          help: "UMS.4.1. A realistic target date, taking scale, resources and dependencies into account. An overrun has to be acted on." },
+          help: "A date you can actually keep, given the size of the job, the people, and what it waits on. If it slips, that has to be acted on. (UMS.4.1)" },
         { key: "fortschritt", label: "Progress", type: "textarea", column: false,
-          help: "UMS.6.1. Where the implementation stands, and what was decided at the last review." },
+          help: "Where it stands, and what was decided the last time it was looked at. (UMS.6.1)" },
         { key: "description", label: "Requirement text and guidance", type: "textarea" },
         { key: "begruendung", label: "Rationale", type: "textarea" },
         // UMS.1.2: "das bestehende Restrisiko durch die nicht umgesetzten Anforderungen
         // festlegen." Stated per requirement so it can be consolidated for the management,
         // which is what the requirement asks for.
         { key: "residual_risk", label: "Residual risk if not implemented", type: "textarea",
-          help: "UMS.1.2. What remains carried when this requirement is not met. Leaving a requirement unimplemented is also one of the four triggers for a risk consideration (STM.4.1)." },
+          help: "What you are carrying if this stays unimplemented. Leaving a requirement open is also a case where the method wants a risk consideration. (UMS.1.2, STM.4.1)" },
       ],
     },
 
@@ -420,7 +428,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "capability", label: "Capability", type: "scale", scaleLabels: SCALE },
         { key: "resources", label: "Resources", type: "scale", scaleLabels: SCALE , column: false },
         { key: "activity", label: "Activity", type: "scale", scaleLabels: SCALE , column: false },
-        // STM.5.1: selected requirements carry parameters the institution fills in —
+        // STM.5.1: selected requirements carry parameters the institution fills in -
         // a period, a role, a standard. 208 of the 1000 do. The catalogue states what is
         // open; what was chosen is recorded beside it, because setting a parameter is also
         // how the leading responsibility for a practice gets assigned.
@@ -479,7 +487,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "owner", label: "Owner", type: "text" , column: false },
         { key: "deadline", label: "Due", type: "text" , column: false },
         { key: "status", label: "Status", type: "enum", options: TREAT_STATUS },
-        { key: "justification", label: "Rationale", type: "textarea", help: "Measures are not listed again here: they already reduce this risk through the attack chain (a measure acts on an attack step), and the residual risk is derived from that." },
+        { key: "justification", label: "Rationale", type: "textarea", help: "You do not list measures here. A measure acts on an attack step, and the residual risk follows from that." },
       ],
     },
 
@@ -492,22 +500,31 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "name", label: "Name", type: "text", required: true },
         { key: "description", label: "Description", type: "textarea" },
         { key: "measure_type", label: "Effect class", type: "enum", options: [...EFFECT_CLASSES],
-          help: "What the measure actually does — the effect model reads it from this. Preventive: stops the attacker at the step it covers. Detective: catches him and breaks the chain before the objective. Corrective: limits the damage once the attack has succeeded. Deterrent: fewer attempts are made. Avoidance: removes the exposure, so contact is made less often." },
+          help: "What the measure actually does. Preventive stops the attacker at the step it covers. Detective catches him, so the chain can be broken before he reaches his goal. Corrective limits the damage once it has happened. Deterrent means fewer attempts are made at all. Avoidance removes the exposure, so there is less to attack." },
         { key: "status", label: "Status", type: "enum", options: ["Implemented", "Planned", "Missing", "Recommended"] },
         // The published implementations are all recorded; this says which are in use here.
         // Same systematic as the requirements: present, set back, one press to bring in.
         { key: "scope", label: "In use", type: "enum", options: ["not in use", "in use"], toggle: true,
-          help: "The BSI publishes what implements its requirements. All of it is recorded so it can be found; what this institution actually uses is switched on, and the rest stays visible for the day it becomes relevant." },
+          help: "The BSI publishes what implements its requirements, and all of it is here so you can find it. Switch on what you actually use; the rest stays visible for the day it becomes relevant." },
         { key: "priority", label: "Priority", type: "scale", scaleLabels: SCALE, column: false },
         { key: "implementation_level", label: "Roll-out", type: "scale", scaleLabels: ["none", "partial", "substantial", "full"], polarity: "positive" },
+        // Where the measure comes from. A control taken out of a publisher's library says
+        // whose it is and under which name, exactly as a requirement does; one of the
+        // institution's own leaves both empty.
+        { key: "framework", label: "Source catalogue", type: "text", column: false,
+          help: "Which library this came from. Empty for a measure of your own." },
+        { key: "ref_id", label: "Name as published", type: "text", column: false },
+        { key: "category", label: "Kind as published", type: "text", column: false },
         // What the publisher says this component implements, by requirement identifier.
         // Read from the implementation layer rather than decided here.
         { key: "implements", label: "Implements requirements", type: "text", column: false,
-          help: "The requirements this implementation answers, as the publisher states them. Filled from the BSI's component definitions; a measure of the institution's own is linked through 'Fulfils requirements' instead." },
+          help: "The requirements this implementation answers, as the publisher names them. Comes from the BSI's component definitions. For a measure of your own, use \"Fulfils requirements\" instead." },
         { key: "component_type", label: "Kind", type: "text", column: false },
         { key: "covers", label: "Acts on attack steps", type: "multiref", refType: "kill_chain_step", relation: "acts on" },
         { key: "protects", label: "Protects assets", type: "multiref", refType: "supporting_asset", relation: "protects" , column: false },
-        { key: "fulfills", label: "Fulfils requirements", type: "multiref", refType: "requirement", relation: "fulfils" , column: false },
+        // Declaring where the identifiers come from is what turns the published mapping
+        // into a relation: the import resolves "implements" onto the requirement records.
+        { key: "fulfills", label: "Fulfils requirements", type: "multiref", refType: "requirement", relation: "fulfils", vocabulary: "implements" , column: false },
         { key: "verantwortlich", label: "Owner", type: "text" , column: false },
         { key: "termin", label: "Implement by", type: "text" , column: false },
       ],
@@ -524,16 +541,16 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "name", label: "Name", type: "text", required: true },
         { key: "requirement", label: "Requirement", type: "ref", refType: "requirement", relation: "reviews", required: true },
         { key: "supporting_asset", label: "Limited to asset", type: "ref", refType: "supporting_asset", relation: "applies to", column: false,
-          help: "STM.3.1 allows the change to be made for a single asset rather than for the requirement everywhere." },
+          help: "You can change the level for one asset only, instead of for the requirement everywhere. (STM.3.1)" },
         { key: "level_before", label: "Level as published", type: "enum", options: SEC_LEVEL,
           optionLabels: labelsFor(SEC_LEVEL, VALUE_EN), vocabulary: "sec_level" },
         { key: "level_after", label: "Level in force", type: "enum", options: SEC_LEVEL,
           optionLabels: labelsFor(SEC_LEVEL, VALUE_EN), vocabulary: "sec_level" },
         { key: "begruendung", label: "Reason", type: "textarea",
-          help: "STM.3.1. Why the initial classification does not fit the context of this institution." },
+          help: "Why the level the catalogue set does not fit here. (STM.3.1)" },
         { key: "risk_considered", label: "Risk consideration carried out", type: "enum", options: ["ja", "nein"],
           optionLabels: labelsFor(["ja", "nein"], VALUE_EN),
-          help: "STM.4.1 names lowering a security level from erhöht to normal-SdT as one of the four triggers for a risk consideration." },
+          help: "Lowering a level from erhöht to normal-SdT is one of the cases where the method wants a risk consideration. (STM.4.1)" },
         { key: "strategic_scenario", label: "Risk considered", type: "ref", refType: "strategic_scenario", relation: "considered as", column: false },
         { key: "decided_on", label: "Decided on", type: "text", column: false },
       ],
@@ -542,21 +559,21 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
     {
       // UMS.5. The method knows two implementation states and no third: what would have
       // been "partly" or "not applicable" is an exception, and an exception is a decision
-      // — authorised by someone (UMS.5.1) and written down with its reason (UMS.5.2).
+      // - authorised by someone (UMS.5.1) and written down with its reason (UMS.5.2).
       key: "exception", label: "Exception", labelPlural: "Exceptions", group: "ums",
       fields: [
         { key: "name", label: "Name", type: "text", required: true },
         { key: "requirement", label: "Requirement", type: "ref", refType: "requirement", relation: "excepts", required: true },
         { key: "supporting_asset", label: "Limited to asset", type: "ref", refType: "supporting_asset", relation: "applies to" , column: false },
         { key: "begruendung", label: "Reason", type: "textarea", required: true,
-          help: "UMS.5.2: an exception is documented with its reason, so a decision that matters legally can be followed later." },
+          help: "Why the requirement is not implemented. Someone will read this later to understand a decision that may carry legal weight. (UMS.5.2)" },
         { key: "authorised_by", label: "Authorised by", type: "text", required: true,
-          help: "UMS.5.1: exceptions are authorised by the person or role competent to weigh the conflicting obligations." },
+          help: "Who approved it - someone senior enough to weigh the obligations against each other. (UMS.5.1)" },
         { key: "decided_on", label: "Decided on", type: "text" , column: false },
         { key: "valid_until", label: "Valid until", type: "text" },
         { key: "risk_considered", label: "Risk consideration carried out", type: "enum", options: ["ja", "nein"],
           optionLabels: labelsFor(["ja", "nein"], VALUE_EN),
-          help: "Not implementing a requirement is one of the four triggers for a risk consideration (STM.4.1)." },
+          help: "Not implementing a requirement is one of the cases where the method wants a risk consideration. (STM.4.1)" },
         { key: "strategic_scenario", label: "Risk considered", type: "ref", refType: "strategic_scenario", relation: "considered as" , column: false },
       ],
     },
@@ -584,24 +601,24 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "name", label: "Name", type: "text", required: true },
         { key: "audit_type", label: "Kind", type: "enum",
           options: ["Internal", "External", "Surveillance", "Repeat", "Special"],
-          help: "PERF.3.1. Internal by the institution's own people, external by an independent third party, or held on an occasion — a security incident, for instance." },
+          help: "Internal by your own people, external by an independent third party, or held because something happened - an incident, say. (PERF.3.1)" },
         { key: "ziel", label: "Objective", type: "textarea",
-          help: "PERF.3.1.1. What this audit is to establish: compliance with the requirements, the effectiveness of the measures, or weaknesses." },
+          help: "What this audit is meant to establish: whether the requirements are met, whether the measures work, or where the weak points are. (PERF.3.1.1)" },
         { key: "umfang", label: "Scope", type: "textarea",
-          help: "PERF.3.1.4. What is examined, over which period, and in what depth — sites, departments, systems." },
+          help: "What gets examined, over what period and how deeply - which sites, departments, systems. (PERF.3.1.4)" },
         { key: "supporting_asset", label: "Assets examined", type: "multiref", refType: "supporting_asset", relation: "examines", column: false },
         { key: "requirement", label: "Requirements examined", type: "multiref", refType: "requirement", relation: "examines", column: false,
-          help: "PERF.3.1.2. Planned by risk: the requirements where an audit is expected to be worth the most." },
+          help: "Plan by risk: the requirements where looking is likely to be worth the most. (PERF.3.1.2)" },
         { key: "kriterien", label: "Criteria and methods", type: "textarea", column: false,
-          help: "PERF.3.1.1. How evidence is gathered: interviews, document review, observation, technical analysis." },
+          help: "How you gather evidence: interviews, reading documents, watching the process, technical checks. (PERF.3.1.1)" },
         { key: "auditteam", label: "Audit team", type: "text",
-          help: "PERF.3.1.3. Competent and independent of the processes examined." },
+          help: "Who audits. They have to know the subject and must not work on what they examine. (PERF.3.1.3)" },
         { key: "unabhaengig", label: "Independence established", type: "enum", options: ["ja", "nein"],
           optionLabels: labelsFor(["ja", "nein"], VALUE_EN), column: false },
         { key: "geplant_fuer", label: "Planned for", type: "text" },
         { key: "durchgefuehrt_am", label: "Held on", type: "text", column: false },
         { key: "bericht", label: "Report", type: "textarea", column: false,
-          help: "PERF.3.2. How the audit was carried out and what came of it — findings, deviations, improvement potential, and what was found to be working." },
+          help: "How the audit was done and what came out - findings, deviations, room for improvement, and what worked. (PERF.3.2)" },
       ],
     },
 
@@ -615,10 +632,10 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "zeitraum", label: "Period", type: "text" },
         { key: "anlass", label: "Occasion", type: "enum", options: ["Scheduled", "On occasion"], column: false },
         { key: "eignung", label: "Suitability, adequacy and effectiveness", type: "textarea",
-          help: "PERF.4.1. Whether the intended security purpose is effectively met. Short, clear, focused on what matters." },
+          help: "Whether the security you set out to achieve is actually being achieved. Keep it short: this is what the management reads. (PERF.4.1)" },
         { key: "audit", label: "Audits it rests on", type: "multiref", refType: "audit", relation: "draws on", column: false },
         { key: "folgemassnahmen", label: "Status of what the last review decided", type: "textarea", column: false,
-          help: "PERF.4.1.1. Whether the actions decided last time were carried out and reached their objective." },
+          help: "What became of the decisions from the last review - done, and did they work? (PERF.4.1.1)" },
         { key: "entscheidungen", label: "Decisions and resources", type: "textarea", column: false },
         { key: "vorgelegt_am", label: "Submitted on", type: "text", column: false },
       ],
@@ -632,7 +649,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "description", label: "Finding", type: "textarea" },
         { key: "requirement", label: "Requirement affected", type: "ref", refType: "requirement", relation: "affects" },
         { key: "audit", label: "Found by", type: "ref", refType: "audit", relation: "found by", column: false,
-          help: "PERF.3.2 into VRB.2: a deviation an audit reported is followed up here, and the audit it came from stays named." },
+          help: "The audit that found this, so the finding can be traced back to it. (PERF.3.2, VRB.2)" },
         { key: "schwere", label: "Severity", type: "scale", scaleLabels: SCALE },
         { key: "status", label: "Status", type: "enum", options: ["Open", "In progress", "Resolved", "Accepted"] },
         { key: "korrektur", label: "Corrective action", type: "textarea" },

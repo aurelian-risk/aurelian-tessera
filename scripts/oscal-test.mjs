@@ -145,6 +145,12 @@ ok("does not claim plain JSON is OSCAL", looksLikeOscal('{"name":"x","items":[]}
   ok("the component's kind is carried", fw.items[1].props.component_type === "service");
   ok("what it does about each control is kept with it",
     /keeps the log/.test(fw.items[0].description) && /signs the log/.test(fw.items[0].description));
+  // …and kept WITH that control rather than run together into one paragraph: a definition
+  // of eleven components with a hundred statements between them is unreadable as prose.
+  ok("...beside the identifier it is about, as a list",
+    /What it does for each requirement:/.test(fw.items[0].description)
+    && /· _uuid-a - Widget core keeps the log\./.test(fw.items[0].description),
+    fw.items[0].description);
   ok("a component implementing nothing is still an item, with no claim on it",
     fw.items[2].props === undefined);
 
@@ -160,6 +166,9 @@ ok("does not claim plain JSON is OSCAL", looksLikeOscal('{"name":"x","items":[]}
   const partial = linkComponents(fw, { ...cat, items: [cat.items[0]] }, "alt-identifier");
   ok("an unresolved reference is reported, not dropped in silence",
     partial.unresolved.length === 1 && partial.unresolved[0] === "_uuid-b");
+  ok("...and the prose no longer names a requirement by its UUID",
+    !/_uuid-a/.test(linked.items[0].description) && /AA\.1 - Widget core keeps the log/.test(linked.items[0].description),
+    linked.items[0].description);
   ok("...and what did resolve still resolves", partial.linked.items[0].props.implements === "AA.1");
 }
 

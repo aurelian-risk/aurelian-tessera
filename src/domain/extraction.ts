@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-// Embeddings-based candidate extraction — fully taxonomy- and entity-neutral:
+// Embeddings-based candidate extraction - fully taxonomy- and entity-neutral:
 // nothing about any specific schema, type or example is hard-coded. Every signal
 // is derived at runtime from (a) the taxonomy passed in and (b) the entities the
 // active study already contains.
 //
 // Design (anti-overfitting):
-//  A. Type PROTOTYPES from real data — each type is represented by the centroid
+//  A. Type PROTOTYPES from real data - each type is represented by the centroid
 //     of the embeddings of the records that type already has in the study, and
 //     falls back to its own label when it has none. No synthetic "concept" string
 //     of field/option words (which biased matching), no baked-in examples.
-//  B. RELATIVE, self-calibrating decisions — a sentence is accepted on an
+//  B. RELATIVE, self-calibrating decisions - a sentence is accepted on an
 //     absolute floor, and flagged "uncertain" when the margin between the best
 //     and second-best type is small (abstention instead of confident-wrong).
-//  C. STRUCTURE as a soft prior — a section heading nudges its sentences toward a
+//  C. STRUCTURE as a soft prior - a section heading nudges its sentences toward a
 //     type, but when no heading exists the prior is absent and only the sentence
 //     decides. No structural assumption is load-bearing.
 import type { EntityRecord, EntityTypeDef, FieldValue, Taxonomy } from "./types";
@@ -50,7 +50,7 @@ function splitSentences(paragraph: string): string[] {
 // sentence prose. Pure text heuristic, no schema knowledge.
 function enumItems(sentence: string): string[] {
   let s = sentence.trim();
-  const intro = s.match(/[:\-–—]\s+(.+)$/); // a list usually follows a ":" or dash
+  const intro = s.match(/[:\-– - ]\s+(.+)$/); // a list usually follows a ":" or dash
   if (intro) s = intro[1];
   const parts = s.split(/\s*,\s*|\s+and\s+|\s+or\s+/).map((p) => p.trim()).filter(Boolean);
   if (parts.length < 3) return [];
@@ -83,7 +83,7 @@ function shortName(seg: string): string {
   return (words.length > 68 ? words.slice(0, 68) + "…" : words).replace(/[.,;:]+$/, "");
 }
 
-// The generic text of an existing record: its title plus its long-text field —
+// The generic text of an existing record: its title plus its long-text field -
 // derived from the taxonomy structure only, never from named fields.
 function recordText(t: EntityTypeDef, rec: EntityRecord): string {
   const title = String(rec.values[t.titleField ?? "name"] ?? "").trim();
@@ -100,7 +100,7 @@ export interface ExtractOpts { studyEntities?: EntityRecord[]; threshold?: numbe
 
 /** Extract candidates from text, grouped by type, with enum fields pre-filled.
  *  Favours recall: keeps everything over a modest floor and only *flags* the
- *  ambiguous ones (never drops them) — the embedding engine's job is to surface
+ *  ambiguous ones (never drops them) - the embedding engine's job is to surface
  *  candidates, the user (or the smart engine) decides. */
 export async function extractByEmbeddings(tax: Taxonomy, text: string, opts: ExtractOpts = {}): Promise<TypeCandidates[]> {
   const threshold = opts.threshold ?? 0.12;
@@ -142,7 +142,7 @@ export async function extractByEmbeddings(tax: Taxonomy, text: string, opts: Ext
   optRef.forEach((r, i) => { const a = optByField.get(r.key) ?? []; a.push({ option: r.option, vec: optVecs[i] }); optByField.set(r.key, a); });
 
   // Score every segment; keep everything over the floor (favour recall), and
-  // flag — but never drop — the ones where the top two types are close.
+  // flag - but never drop - the ones where the top two types are close.
   interface Raw { i: number; bi: number; b1: number; margin: number }
   const raws: Raw[] = [];
   const seen = new Set<string>();
@@ -177,7 +177,7 @@ export async function extractByEmbeddings(tax: Taxonomy, text: string, opts: Ext
       if (best && bs >= 0.16) enumVals[f.key] = best;
     }
     // Only a CONFIDENT sentence that is a clear enumeration is expanded into one
-    // candidate per list item (assigned its type); prose is never split — so a
+    // candidate per list item (assigned its type); prose is never split - so a
     // list of assets extracts each item without misreading a comma-heavy sentence.
     const items = !uncertain && r.b1 >= threshold + 0.06 ? enumItems(seg.text) : [];
     const names = items.length >= 3 ? items : [shortName(seg.text)];

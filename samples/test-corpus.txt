@@ -1,4 +1,4 @@
-Musterstadt Hospital — Information Security Assessment (test corpus)
+Musterstadt Hospital - Information Security Assessment (test corpus)
 
 1. Scope and business assets
 The hospital depends on several business values. Patient records are the core information asset holding the electronic health records of all treated patients. Emergency care is the critical process of admitting and treating emergency patients. Billing is the function that invoices services to insurers and patients. Laboratory diagnostics is a clinical process that supports treatment decisions. Medical imaging is an information asset used across wards.

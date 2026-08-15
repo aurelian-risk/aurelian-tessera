@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 // Deriving the requirements that apply to a record, from the catalogue that states them.
 //
-// A publisher that classifies its requirements — "this one applies to network connections"
-// — has already written down which requirements reach which object. The work then is not
+// A publisher that classifies its requirements - "this one applies to network connections"
+// - has already written down which requirements reach which object. The work then is not
 // to decide, but to apply: classify the object, widen the class along the publisher's own
 // hierarchy, collect, and de-duplicate. That is mechanical, and doing it by hand over a
 // thousand requirements is where the errors come from.
@@ -33,7 +33,7 @@ export interface ClassificationLink {
 /** Find the classification the taxonomy declares, if it declares one.
  *
  *  Two fields naming the same vocabulary are not automatically the two ends of one: a
- *  catalogue item may also carry a class of its OWN — which chapter it belongs to, say —
+ *  catalogue item may also carry a class of its OWN - which chapter it belongs to, say -
  *  and a record elsewhere may carry that same class. What separates the two cases is
  *  cardinality. A record IS one class, so its field is an enum; an item APPLIES TO
  *  several, so its field is a list. Pairing an enum with an enum would derive from
@@ -72,11 +72,11 @@ const listOf = (v: unknown): string[] =>
 
 export interface PackagedItem {
   item: FrameworkItem;
-  /** Why it is in the package — one line per rule that put it there. Kept in full: an
+  /** Why it is in the package - one line per rule that put it there. Kept in full: an
    *  item reached through several objects is carried once, and an audit asks which. */
   reasons: string[];
   /** The objects that brought it in, by record id. The de-duplication keeps the item once
-   *  and the reference to every object it reached — which is what turns "391 requirements
+   *  and the reference to every object it reached - which is what turns "391 requirements
    *  are in scope" into "this object carries these 93". */
   objects: string[];
   /** Already recorded in the study. */
@@ -95,12 +95,12 @@ export interface RequirementPackage {
   link: ClassificationLink;
   /** Objects that carry a class, with the classes they inherit. */
   objects: { record: EntityRecord; name: string; own: string[]; inherited: string[]; count: number }[];
-  /** Objects with no class at all — nothing can be derived for them, and that is a finding
+  /** Objects with no class at all - nothing can be derived for them, and that is a finding
    *  rather than an empty result. */
   unclassified: EntityRecord[];
   items: PackagedItem[];
   /** Catalogue items that name no class. Nothing can derive them, and a method may well
-   *  require a decision on each — kept in full rather than counted, so a product can put
+   *  require a decision on each - kept in full rather than counted, so a product can put
    *  that decision in front of the user instead of losing them in silence. */
   unclassifiedItems: FrameworkItem[];
 }
@@ -133,7 +133,7 @@ export function requirementPackage(tax: Taxonomy, study: Study, fw: Framework, o
       const hit = classes.find((c) => all.includes(c));
       if (!hit) continue;
       count++;
-      const why = `${nameOf(r)} — ${hit}${inherited.includes(hit) ? " (inherited)" : ""}`;
+      const why = `${nameOf(r)} - ${hit}${inherited.includes(hit) ? " (inherited)" : ""}`;
       const seen = byRef.get(item.ref_id);
       if (seen) {
         if (!seen.reasons.includes(why)) seen.reasons.push(why);

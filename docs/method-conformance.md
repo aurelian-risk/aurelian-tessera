@@ -15,17 +15,17 @@ hoch` does not occur once in the 368 KB method catalogue.
 
 ## 1. The method, as the BSI specifies it
 
-The method is written as five ISMS practices — GC, STM, UMS, VRB, PERF — each a set of
+The method is written as five ISMS practices - GC, STM, UMS, VRB, PERF - each a set of
 requirements. `STM.2 Anforderungspaket` is the core, and it is an algorithm:
 
 | Step | What it requires |
 |---|---|
 | `STM.1.1/1.2` | Define the Informationsverbund and its external interfaces |
-| `STM.2.1.1` | Model **all** requirements of the ISMS practices (GC, STM, PERF, VRB, UMS) onto the Verbund, without selection — "verbundweite Anforderungen" |
+| `STM.2.1.1` | Model **all** requirements of the ISMS practices (GC, STM, PERF, VRB, UMS) onto the Verbund, without selection - "verbundweite Anforderungen" |
 | `STM.2.1.2` | Record the relevant assets. First PDCA pass: only the most important business process |
 | `STM.2.1.3` | Map every asset to one or more **Zielobjektkategorien**, functionally, not by technology |
 | `STM.2.1.4` | Model the requirements of those categories onto the asset |
-| `STM.2.1.4.1` | **Inherit up the category hierarchy** — every parent up to the root. "Die Vererbung ist deterministisch" |
+| `STM.2.1.4.1` | **Inherit up the category hierarchy** - every parent up to the root. "Die Vererbung ist deterministisch" |
 | `STM.2.1.4.2` | Consolidate: a requirement reaching an asset through several categories is carried once |
 | `STM.2.1.5` | Requirements **without** a category: decide relevance per business process, assign a process owner, strike the rest **with a justification** |
 | `STM.2.1.6` | Assets with no matching requirement: write additional requirements, with a justification for why the catalogue does not suffice |
@@ -36,12 +36,12 @@ requirements. `STM.2 Anforderungspaket` is the core, and it is an algorithm:
 
 Two further statements bind the data model:
 
-- `GC.7.1` — "Hierbei wird zwischen dem Schutzbedarf „normal" und „hoch" unterschieden."
+- `GC.7.1` - "Hierbei wird zwischen dem Schutzbedarf „normal" und „hoch" unterschieden."
   The classification is made on the **business process or the information**, not per target
   object. "Eine Klassifizierung des Schutzbedarfs der Zielobjekte erfolgt auf
-  Anforderungsebene" — the target object's level is carried by the requirement's
+  Anforderungsebene" - the target object's level is carried by the requirement's
   `sec_level` (`normal-SdT` / `erhöht`).
-- `UMS.1.1` — "Der Umsetzungsstatus einer Anforderung kann grundsätzlich nur „umgesetzt"
+- `UMS.1.1` - "Der Umsetzungsstatus einer Anforderung kann grundsätzlich nur „umgesetzt"
   („ja") oder „nicht umgesetzt" („nein") sein. Eine Anforderung gilt nur dann als
   umgesetzt, wenn sie selbst sowie alle in Abhängigkeit stehenden Anforderungen umgesetzt
   sind."
@@ -67,7 +67,7 @@ the *resolved* catalogue. They are what `STM.5.1` is about.
 
 The catalogue also states **dependencies between its own requirements**: 67 `required`
 edges over 59 requirements, and 210 weaker `related` ones. `UMS.1.1` makes the first kind
-binding — a requirement counts as implemented only when it and everything it rests on are.
+binding - a requirement counts as implemented only when it and everything it rests on are.
 And it states, in two mapping collections of its own, what a requirement corresponds to in
 the **IT-Grundschutz-Kompendium 2023** (1185 entries reaching 322 requirements) and in
 **ISO/IEC 27001 Annex A** (96 entries reaching 280), each with how close the
@@ -89,7 +89,7 @@ oder der BSI Standard 200-3."
 
 This is the single most consequential finding for this product. The kill chain and the
 effect model are **not** in conflict with Grundschutz++: they are a permitted choice of
-risk method. But they are the exception path, entered under four named conditions — not
+risk method. But they are the exception path, entered under four named conditions - not
 the main line of work, which is where this build currently puts them.
 
 The risk consideration is qualitative throughout: the chain is modelled, the measures on
@@ -110,7 +110,7 @@ Measured again 2026-08-15, after the second pass over the method catalogue.
 | `STM.2.1.5` relevance decision per business process, with owner; struck ones with a reason | both are checked; the struck ones are checked although they are set back |
 | `STM.2.1.6/.7` own requirements, with the justification and the obligation | recorded as such, and each has to say why the catalogue does not suffice |
 | `STM.3.1` review of the initial security level, per asset where needed | a review record of its own; the published level stays untouched beside it |
-| `STM.4.1` risk consideration on its four triggers | all four are checked — high protection need, level lowered, requirement unimplemented, asset the catalogue does not reach |
+| `STM.4.1` risk consideration on its four triggers | all four are checked - high protection need, level lowered, requirement unimplemented, asset the catalogue does not reach |
 | `STM.5.1` parameters set per requirement | what the catalogue leaves open is listed; what was set is recorded beside it |
 | `UMS.1.1` status `ja` / `nein`, and dependencies met | two values, and the catalogue's own 67 dependency edges are followed |
 | `UMS.1.2` residual risk from what is not implemented | stated per requirement, for consolidation |
@@ -125,7 +125,7 @@ Two things the method names that this build answers differently, and says so:
 
 - **The risk method** is not prescribed (`STM.4.1`). This one models the attack chain and
   places the risk on a matrix before and after treatment, which is the 200-3 line.
-- **An asset's protection need** is not classified anywhere in `GC.7` — the classification
+- **An asset's protection need** is not classified anywhere in `GC.7` - the classification
   is on the business process, and the target object's level is carried by the requirement's
   `sec_level`. `STM.4.1` nevertheless names assets with a high protection need as a
   trigger; here it is reached through the process the asset supports, which is where the
@@ -135,13 +135,13 @@ Two things the method names that this build answers differently, and says so:
 
 The method catalogue holds requirements this build does not yet answer:
 
-1. `PERF.1.3` — the annual review of whether the package still fits the information domain.
+1. `PERF.1.3` - the annual review of whether the package still fits the information domain.
    The derivation is repeatable and reports what changed, but nothing schedules it or
    records that it was done.
-2. `UMS.6.1` — progress is recorded per requirement; the procedure the requirement asks for
+2. `UMS.6.1` - progress is recorded per requirement; the procedure the requirement asks for
    (status reporting, target-versus-actual, KPI measurement) is not modelled as one.
-3. `VRB.5` — the correction and improvement plan as a plan, rather than as corrective
+3. `VRB.5` - the correction and improvement plan as a plan, rather than as corrective
    actions on individual nonconformities.
-4. `STM.2.1.6` — the closing step, "dem BSI zugestellt": an export of own requirements in
+4. `STM.2.1.6` - the closing step, "dem BSI zugestellt": an export of own requirements in
    the form the BSI reads.
 5. The reference documents of the classic certification, once the scheme for GS++ is fixed.

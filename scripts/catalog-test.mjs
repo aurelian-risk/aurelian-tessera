@@ -2,7 +2,7 @@
 // Exhaustive unit test for the semi-deterministic catalog table importer.
 // The pure module (src/domain/catalogimport.ts) is bundled in isolation with esbuild
 // (see the npm script) and imported here; we drive it through a fixture corpus of
-// real-world CSV/TSV shapes and assert FIELD-LEVEL exactness — every row, every cell,
+// real-world CSV/TSV shapes and assert FIELD-LEVEL exactness - every row, every cell,
 // verbatim. Any format that under-imports is a failure, never a silent drop.
 //
 // Run: npm run test:catalog
@@ -125,7 +125,7 @@ const G = (ref_id, title, category, description) => {
   ok("pipe detect", t.delimiter === "|", t.delimiter, "|");
   ok("pipe items", eq(items, [G("P1", "Piped", "Cat")]), items);
 }
-// 15) large table — exact row count, no drops
+// 15) large table - exact row count, no drops
 {
   let s = "ref_id,title\n";
   for (let i = 1; i <= 1000; i++) s += `R${i},Item ${i}\n`;
@@ -204,7 +204,7 @@ const G = (ref_id, title, category, description) => {
   ok("asvs quoted-comma requirement intact", items[1].title.includes("design change, plan countermeasures"), items[1].title);
 }
 
-// 24) non-ASCII (German umlauts/ß) + semicolon delimiter round-trip verbatim — real
+// 24) non-ASCII (German umlauts/ß) + semicolon delimiter round-trip verbatim - real
 // shape of an ISO-27002-style European export; headers here don't auto-map (that's the
 // mapping UI's job), so we assert the deterministic parse + values with an explicit map.
 {
@@ -215,10 +215,10 @@ const G = (ref_id, title, category, description) => {
   ok("german rows count", items.length === 2 && items[1].ref_id === "8.28", items);
 }
 
-// 25) golden checks against the real sample catalogs in samples/ — skipped when the
+// 25) golden checks against the real sample catalogs in samples/ - skipped when the
 // files are absent (e.g. the public repo doesn't ship them), so the suite stays green.
 // NOTE: this file is mirrored to the public repo, so keep only record COUNTS and
-// public-domain identifiers here — never copyrighted framework titles. The licensed
+// public-domain identifiers here - never copyrighted framework titles. The licensed
 // ISO/BSI/PCI sample files live in the main repo only (see samples/README.md); public
 // lacks them, so their checks are skipped there.
 const SAMPLES = [

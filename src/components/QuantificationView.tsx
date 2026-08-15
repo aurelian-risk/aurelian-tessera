@@ -351,7 +351,7 @@ function BreakExplain({ what, result, derived, tax, cal, onClose }: {
                   {line(
                     recordTitle(getType(tax, m.type)!, m),
                     p1(measureEfficacyOf(tax, m, cal)),
-                    <>{effectClassOf(m)} — {EFFECT_CHANNEL[effectClassOf(m)]}<br />
+                    <>{effectClassOf(m)} - {EFFECT_CHANNEL[effectClassOf(m)]}<br />
                       rolled out {lvlOf(m)} (×{lvlW(m).toPrecision(2)}) · {String(m.values.status ?? "no status")} (×{stW(m).toPrecision(2)})
                       {" "}· most one measure can protect {p0(cal.effect.controlCeiling)}</>,
                   )}
@@ -361,7 +361,7 @@ function BreakExplain({ what, result, derived, tax, cal, onClose }: {
                 "together they protect",
                 p1(sc.prevention),
                 <>1 − {sc.measures.filter((m) => effectClassOf(m) === "Preventive")
-                  .map((m) => `(1 − ${p1(measureEfficacyOf(tax, m, cal))})`).join(" × ")} — each only helps where the others failed</>,
+                  .map((m) => `(1 − ${p1(measureEfficacyOf(tax, m, cal))})`).join(" × ")} - each only helps where the others failed</>,
                 "bx-sum",
               )}
 

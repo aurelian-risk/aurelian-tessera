@@ -4,7 +4,7 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 import pkg from "./package.json";
 
 // Bundles everything (JS/CSS/assets) into exactly ONE index.html.
-// That file runs by double-click over file:// — no server, no CDN, offline.
+// That file runs by double-click over file:// - no server, no CDN, offline.
 export default defineConfig({
   plugins: [react(), viteSingleFile()],
   // The version and licence the running build reports. Read from package.json so the

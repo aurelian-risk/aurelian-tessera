@@ -11,7 +11,7 @@
 // over it at startup (src/domain/theme.ts), which is what keeps the shared stylesheet from
 // diverging between the two products on this engine.
 
-/** Group accents. The engine's accent set is kept as it is — the logo draws on
+/** Group accents. The engine's accent set is kept as it is - the logo draws on
  *  --color-workshop-2, and the guide itself uses three colour families rather than one
  *  (blue for the methodical practices, green for the technical, orange for the
  *  organisational, Abbildung 4). What makes this product look unlike its sibling is the
@@ -19,7 +19,7 @@
  *  names exist so the taxonomy can refer to a step by meaning instead of by number. */
 const GROUP = {
   "--gs-governance": "var(--color-workshop-1)",       // blue
-  "--gs-structure": "var(--color-workshop-2)",        // amber — also the logo's accent
+  "--gs-structure": "var(--color-workshop-2)",        // amber - also the logo's accent
   "--gs-risk": "var(--color-workshop-4)",             // red
   "--gs-implementation": "var(--color-workshop-5)",   // green
   "--gs-monitoring": "var(--color-workshop-3)",       // violet
@@ -37,7 +37,7 @@ export const THEME = {
     "--radius-lg": "4px",
     "--radius-pill": "2px",
 
-    // Serif titles over a sans body — the guide's voice, without setting dense tables in
+    // Serif titles over a sans body - the guide's voice, without setting dense tables in
     // a serif, which costs more in legibility than it returns.
     "--font-display": '"Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif',
     "--font-sans": '"Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif',

@@ -9,11 +9,11 @@ import { Icon } from "./ui";
 
 function fmtVal(tax: Taxonomy, study: Study, e: EntityRecord, key: string, v: FieldValue): string {
   const f = getType(tax, e.type)?.fields.find((x) => x.key === key);
-  if (v == null || v === "") return "—";
+  if (v == null || v === "") return " - ";
   if (f?.type === "scale" && typeof v === "number") return scaleLabel(f, v);
   if (f?.type === "ref" && typeof v === "string") {
     const r = study.entities.find((x) => x.id === v), t = r && getType(tax, r.type);
-    return r && t ? recordTitle(t, r) : "—";
+    return r && t ? recordTitle(t, r) : " - ";
   }
   if (Array.isArray(v)) return `${v.length} link${v.length === 1 ? "" : "s"}`;
   return String(v).length > 44 ? String(v).slice(0, 44) + "…" : String(v);
@@ -51,9 +51,9 @@ export function IntegrityBadge({ study, entityId }: { study: Study; entityId?: s
   const text = { ok: "integrity verified", chain: "log altered", drift: "changed outside the app", untracked: "not in the log" }[state];
   const title = {
     ok: "Hash chain intact and matching the data",
-    chain: `Hash chain broken at entry ${v.brokenAt ?? "?"} — an entry was altered, removed or reordered`,
-    drift: "The values no longer match what the log last recorded — the file was edited outside the application. Re-import it and confirm the changes to re-establish the chain.",
-    untracked: "The log knows nothing about this record — it was added to the file from outside. Re-import it and confirm to take it into the log.",
+    chain: `Hash chain broken at entry ${v.brokenAt ?? "?"} - an entry was altered, removed or reordered`,
+    drift: "The values no longer match what the log last recorded - the file was edited outside the application. Re-import it and confirm the changes to re-establish the chain.",
+    untracked: "The log knows nothing about this record - it was added to the file from outside. Re-import it and confirm to take it into the log.",
   }[state];
   return <span className={"hist-chain " + (state === "ok" ? "ok" : "bad")} title={title}>{text}</span>;
 }

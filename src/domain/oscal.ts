@@ -193,19 +193,27 @@ export function parseOscalComponents(raw: string, fallbackName: string): Framewo
   const items: FrameworkItem[] = [];
   for (const c of cd.components ?? []) {
     const ids: string[] = [];
+    // What the component says about EACH requirement, kept with that requirement rather
+    // than run together into one paragraph. A definition of eleven components with a
+    // hundred and forty-five statements between them is unreadable as prose.
     const notes: string[] = [];
     for (const impl of c["control-implementations"] ?? []) {
       for (const r of impl["implemented-requirements"] ?? []) {
         const id = String(r["control-id"] ?? "").trim();
         if (id && !ids.includes(id)) ids.push(id);
-        if (r.description) notes.push(r.description.replace(/\s+/g, " ").trim());
+        const note = r.description?.replace(/\s+/g, " ").trim();
+        if (note) notes.push(id ? `${id} - ${note}` : note);
       }
     }
+    const body = [
+      c.description?.trim(),
+      notes.length ? `What it does for each requirement:\n\n${notes.map((n) => `  · ${n}`).join("\n\n")}` : "",
+    ].filter(Boolean).join("\n\n");
     items.push({
       ref_id: c.title ?? c.uuid ?? "",
       title: c.title ?? c.uuid ?? "",
       category: c.type ?? "",
-      description: [c.description?.trim(), ...notes].filter(Boolean).join("\n\n"),
+      description: body,
       ...(ids.length ? { props: { implements: ids.join(", "), component_type: c.type ?? "" } } : {}),
     });
   }
@@ -237,7 +245,13 @@ export function linkComponents(components: Framework, catalogue: Framework, idPr
       if (!hit) { unresolved.push(id); return null; }
       return hit;
     }).filter((x): x is string => !!x);
-    return { ...it, props: { ...it.props, implements: out.join(", ") } };
+    // The prose names the same requirements by the same identifier. Left as published it
+    // reads as a wall of UUIDs, so it is rewritten with what the catalogue calls them.
+    let description = it.description ?? "";
+    for (const [uuid, ref] of byId) {
+      if (description.includes(uuid)) description = description.split(`_${uuid}`).join(ref).split(uuid).join(ref);
+    }
+    return { ...it, description, props: { ...it.props, implements: out.join(", ") } };
   });
   return { linked: { ...components, items }, unresolved };
 }

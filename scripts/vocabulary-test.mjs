@@ -40,6 +40,10 @@ const tax = () => ({
       { key: "colour", label: "Colour", type: "enum", options: ["red", "green"], vocabulary: "colour" },
       { key: "applies_to", label: "Applies to", type: "enum", options: ["Doors"], vocabulary: "applies_to" },
       { key: "prose", label: "Prose", type: "text" },                 // no vocabulary: not touched
+      // Declares a vocabulary but is NOT an enum: it carries whatever the catalogue names,
+      // as text. There is no options array to refresh, and comparing against the absent one
+      // would report every published value as new on every check.
+      { key: "carries", label: "Carries", type: "text", vocabulary: "applies_to" },
       { key: "unrelated", label: "Unrelated", type: "enum", options: ["x"] },
     ],
   }],
@@ -160,6 +164,23 @@ ok("a second run has nothing left to add", () => {
   // Replacing settles completely: after it the catalogue's list IS the field's list.
   const replaced = applyVocabularyUpdate(t0, changes, ids, fw, undefined, "replace");
   assert.deepEqual(planVocabularyUpdate(replaced, fw), []);
+});
+
+ok("a field with no list of its own is not compared against an empty one", () => {
+  const changes = planVocabularyUpdate(tax(), fw);
+  assert.equal(changes.filter((c) => c.fieldKey === "carries").length, 0,
+    "a text field carrying the catalogue's values has no options to refresh");
+  // …while the enum on the same vocabulary is still compared.
+  assert.equal(changes.filter((c) => c.fieldKey === "applies_to").length, 1);
+});
+
+ok("a taxonomy whose lists already agree reports nothing at all", () => {
+  const t = tax();
+  const f = t.entityTypes[0].fields;
+  f.find((x) => x.key === "chapter").options = ["AA Alpha", "BB Beta"];
+  f.find((x) => x.key === "colour").options = ["red", "blue"];
+  f.find((x) => x.key === "applies_to").options = ["Doors", "Windows", "Roofs"];
+  assert.deepEqual(planVocabularyUpdate(t, fw), []);
 });
 
 console.log(`\n${pass}/${pass + fail} vocabulary assertions passed · ${fail} failed`);

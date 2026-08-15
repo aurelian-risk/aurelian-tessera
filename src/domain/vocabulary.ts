@@ -4,7 +4,7 @@
 // A profile that works to a published ruleset carries lists the publisher owns: the
 // practices a requirement can belong to, the object categories it applies to, the modal
 // verbs it uses. Typed into the taxonomy by hand, those lists are a copy that ages
-// silently — nothing fails when the publisher adds a category, the value simply never
+// silently - nothing fails when the publisher adds a category, the value simply never
 // appears in the picker.
 //
 // A field says where its values come from (`FieldDef.vocabulary`, see types.ts), and this
@@ -21,8 +21,8 @@ import type { Framework } from "./frameworks";
 
 /** The label of the catalogue's top-level grouping, as a vocabulary source. */
 export const GROUPS_VOCABULARY = "@groups";
-/** What a catalogue item leaves for the reader to fill in. Not a vocabulary — there is
- *  nothing to choose from — but declared the same way, because it answers the same
+/** What a catalogue item leaves for the reader to fill in. Not a vocabulary - there is
+ *  nothing to choose from - but declared the same way, because it answers the same
  *  question: where does this field's content come from. */
 export const PARAMS_VOCABULARY = "@params";
 
@@ -33,7 +33,7 @@ export function topGroupOf(section: string | undefined): string {
 
 /** Distinct values per vocabulary source, in the order the catalogue first shows them.
  *
- *  A property that lists several terms carries them comma-separated — OSCAL allows the
+ *  A property that lists several terms carries them comma-separated - OSCAL allows the
  *  property to repeat, and oscal.ts joins repetitions the same way. Splitting therefore
  *  recovers the individual terms. It is applied only to sources a field declares, so a
  *  prose property that happens to contain a comma is never cut up. */
@@ -92,11 +92,19 @@ export function catalogDefinesVocabulary(tax: Taxonomy, fw: Framework): boolean 
   return Object.values(catalogVocabularies(fw, sources)).some((v) => v.length > 0);
 }
 
-/** Every field of the taxonomy that declares where its values come from. */
+/** Every field of the taxonomy that declares where its values come from AND has a list to
+ *  refresh - which means an enum, and only an enum.
+ *
+ *  A field may declare a vocabulary for the other half of the job: it is how an imported
+ *  record gets the value written into it. A requirement's "applies to these classes" is a
+ *  text field carrying whatever the catalogue names, and it has no options array. Comparing
+ *  against it read an empty list, found every published value "new", and reported a change
+ *  on a catalogue that had not moved - visible as "0 -> 39", where a real change would read
+ *  "39 -> 41". Applying it would have written an options array onto a field nothing reads. */
 function vocabularyFields(tax: Taxonomy): { typeKey: string; typeLabel: string; field: FieldDef }[] {
   const out: { typeKey: string; typeLabel: string; field: FieldDef }[] = [];
   for (const t of tax.entityTypes) {
-    for (const f of t.fields) if (f.vocabulary) out.push({ typeKey: t.key, typeLabel: t.label, field: f });
+    for (const f of t.fields) if (f.vocabulary && f.type === "enum") out.push({ typeKey: t.key, typeLabel: t.label, field: f });
   }
   return out;
 }

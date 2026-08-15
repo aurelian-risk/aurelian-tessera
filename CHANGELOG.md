@@ -6,7 +6,47 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
-## [0.2.0] — 2026-08-15
+## [0.3.0] - 2026-08-15
+
+### Added
+
+- **Explore** - a page in the navigation with three views of the loaded model: an outline
+  (6 groups, 17 entity types, their fields and the records themselves), the 39
+  target-object categories as a tree showing per class how many requirements it carries by
+  itself and how many it inherits, and the 17 types with their 25 relationships as a graph
+  where a box opens onto its fields and both directions of its links. One search box for
+  all three.
+- Tables fold away by their heading.
+- On a kill-chain step, "From a catalogue..." is the last entry of the measure list; what
+  is picked already covers that step and is set to "in use".
+- The 35 published BSI implementations carry the source catalogue, the name as published
+  and the kind as fields, and the requirements they implement as links to the requirement
+  records - 291 links, resolved from the identifiers the BSI states. The list of component
+  definitions is read from the repository at build time instead of being fixed in the
+  build script.
+
+### Changed
+
+- The table filter is one line: one menu per column instead of one row of chips per
+  column. The coverage matrix has the same filter and a "gaps only" switch.
+- "Applies to assets" is a column. 296 of the 392 requirements in scope name an asset; the
+  95 ISMS practices name none, because they apply to the whole information domain
+  (`STM.2.1.1`).
+- What points at a record is grouped by kind and relation, with a count; the first twelve
+  are shown.
+- What a published implementation does for each requirement is listed against that
+  requirement, in the catalogue's naming rather than by UUID.
+- The help texts on the fields were rewritten in plain language.
+
+### Fixed
+
+- A measure marked "not in use" counted towards chain coverage, the framework radar and
+  the traceability matrix. It no longer does.
+- The vocabulary check reported "39 new" on every run against an unchanged catalogue,
+  because it compared a text field that has no list of its own against an empty one. Only
+  fields with a list are compared now.
+
+## [0.2.0] - 2026-08-15
 
 ### Added
 
@@ -19,7 +59,7 @@ downloadable single-file build under
   while something it rests on is not is a finding (`UMS.1.1`).
 - **The migration path, as published.** Every build carries the BSI's own mapping
   collections: 1185 entries from the IT-Grundschutz-Kompendium 2023 reaching 322
-  requirements, 96 from ISO/IEC 27001 Annex A reaching 280 — each with how close the
+  requirements, 96 from ISO/IEC 27001 Annex A reaching 280 - each with how close the
   correspondence is.
 - **The security-level review** (`STM.3.1`) as a record of its own, for one asset where the
   method allows that. Lowering a level from `erhöht` to `normal-SdT` now fires the fourth
@@ -37,7 +77,7 @@ downloadable single-file build under
   nowhere (`STM.2.1.5`) is checked from both sides: assigned with a process owner, or
   struck with a documented reason.
 
-## [0.1.0] — 2026-08-14
+## [0.1.0] - 2026-08-14
 
 First release. An ISMS tool for the BSI's Grundschutz++ method, in one HTML file that runs
 over `file://` without installation, server or account.
@@ -50,7 +90,7 @@ over `file://` without installation, server or account.
   open. Fetched from the BSI repository before every build, so a release carries the state
   of its release day and says which version that was.
 - **The requirement package is derived, not assembled.** An asset's target-object
-  categories are widened along the BSI's own hierarchy — 7 roots, 4 levels — the
+  categories are widened along the BSI's own hierarchy - 7 roots, 4 levels - the
   requirements of those categories are collected, one reaching an asset twice is carried
   once, and the five ISMS practices are added whole. That is `STM.2.1`, executed. The
   reading is shown as an account before anything is written, and every record carries the
@@ -59,8 +99,8 @@ over `file://` without installation, server or account.
   scope from the reading, 609 present and dimmed. One press brings a requirement in, and
   the press goes through the change record with its reason.
 - **What the BSI publishes as implementations.** 35 components from the implementation
-  layer — AWS Security Hub, Keycloak, network architecture, password policy, supply-chain
-  security, GA-Lotse — each naming the requirements it answers. 304 of 305 references
+  layer - AWS Security Hub, Keycloak, network architecture, password policy, supply-chain
+  security, GA-Lotse - each naming the requirements it answers. 304 of 305 references
   resolve against the catalogue, so the link between a measure and its requirements is
   read rather than judged.
 - **Exceptions as decisions** (`UMS.5`): authorised by a named role, reasoned, dated and
@@ -99,5 +139,5 @@ table filter 35.
 ### Licence
 
 Software under MPL-2.0. The embedded ruleset is © Bundesamt für Sicherheit in der
-Informationstechnik under CC BY-SA 4.0, carried with the changes made to it named — see
+Informationstechnik under CC BY-SA 4.0, carried with the changes made to it named - see
 `NOTICE.md`. Not affiliated with, endorsed by or certified by the BSI.

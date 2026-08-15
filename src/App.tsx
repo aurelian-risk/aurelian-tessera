@@ -5,12 +5,13 @@ import { PRODUCT } from "./profile";
 import { Dashboard } from "./components/Dashboard";
 import { StudyView } from "./components/StudyView";
 import { TaxonomyView } from "./components/TaxonomyView";
+import { ExplorerView } from "./components/TaxonomyExplorer";
 import { DocumentsView } from "./components/DocumentsView";
 import { ModelView } from "./components/ModelView";
 import { TimelineView } from "./components/TimelineView";
 import { Icon } from "./components/ui";
 
-type Route = "dashboard" | "study" | "taxonomy" | "documents" | "model" | "timeline";
+type Route = "dashboard" | "study" | "explore" | "taxonomy" | "documents" | "model" | "timeline";
 
 function Sidebar({ route, go, hasStudy }: { route: Route; go: (r: Route) => void; hasStudy: boolean }) {
   const [light, setLight] = useState(() => document.documentElement.classList.contains("light"));
@@ -46,6 +47,10 @@ function Sidebar({ route, go, hasStudy }: { route: Route; go: (r: Route) => void
       </button>
       <button className={"nav-item" + (route === "model" ? " active" : "")} onClick={() => go("model")}>
         <span className="num"><Icon.spark /></span> Model
+      </button>
+      <button className={"nav-item" + (route === "explore" ? " active" : "")} onClick={() => go("explore")}
+        title="The model itself: what it is made of, what the classes carry, what points at what">
+        <span className="num"><Icon.graph /></span> Explore
       </button>
       <button className={"nav-item" + (route === "taxonomy" ? " active" : "")} onClick={() => go("taxonomy")}>
         <span className="num"><Icon.schema /></span> Taxonomy
@@ -99,6 +104,8 @@ export default function App() {
         <div className="main"><DocumentsView /></div>
       ) : route === "model" ? (
         <div className="main"><ModelView /></div>
+      ) : route === "explore" ? (
+        <div className="main"><ExplorerView /></div>
       ) : route === "taxonomy" ? (
         <div className="main"><TaxonomyView /></div>
       ) : route === "study" && activeStudyId ? (

@@ -2,8 +2,8 @@
 // ─────────────────────────────────────────────────────────────────────────
 // Generic, schema-driven data model. The taxonomy (meta-schema) defines
 // entity types, their fields and the relationships between them (via ref
-// fields). Instances are stored as generic records. Everything — taxonomy
-// and data — is exportable/importable as a single swappable file.
+// fields). Instances are stored as generic records. Everything - taxonomy
+// and data - is exportable/importable as a single swappable file.
 // ─────────────────────────────────────────────────────────────────────────
 
 import type { Calibration } from "./calibration";
@@ -35,15 +35,15 @@ export interface FieldDef {
    *  the engaged one and is shown as such. */
   toggle?: boolean;
   /** enum: what to SHOW for each option, positionally. The stored value stays the option.
-   *  A published vocabulary is an identifier as much as a word — the engine matches on it,
+   *  A published vocabulary is an identifier as much as a word - the engine matches on it,
    *  an auditor checks it against the publisher's list, and translating it would break
    *  both. This is how a product can read in one language while recording in another. */
   optionLabels?: string[];
   /** Where this field's values come from in a published catalogue, so the vocabulary can
    *  be refreshed from the source instead of being maintained by hand:
-   *   · a property name  — the values that property takes across the catalogue
+   *   · a property name  - the values that property takes across the catalogue
    *                        (a value listing several, comma-separated, counts as each);
-   *   · "@groups"        — the labels of the catalogue's top-level groups.
+   *   · "@groups"        - the labels of the catalogue's top-level groups.
    *  For an imported record the same declaration says where the field's own value comes
    *  from, so declaring it once serves both the option list and the import. */
   vocabulary?: string;
@@ -93,7 +93,7 @@ export interface Taxonomy {
    *  can state its own currency rather than leaving it to be guessed. */
   vocabularySource?: { name: string; version?: string; at: string };
   /** States that oblige a follow-up. A method often says: a record in THIS condition must
-   *  be answered by a record of THAT kind — a process rated high must be risk-assessed, a
+   *  be answered by a record of THAT kind - a process rated high must be risk-assessed, a
    *  requirement left unimplemented must be excepted or its risk carried knowingly. Left
    *  undeclared, that obligation lives in someone's head and is found in an audit.
    *
@@ -105,19 +105,19 @@ export interface Taxonomy {
     /** What to do about it, and under which requirement of the method. */
     hint: string;
     severity?: "high" | "medium" | "low";
-    /** The condition: a record of this type whose field holds one of these values, or —
-     *  with no values named — holds anything at all. */
+    /** The condition: a record of this type whose field holds one of these values, or -
+     *  with no values named - holds anything at all. */
     when: { type: string; field: string; values?: string[] };
     /** The answer: a record of this type pointing back through this field. */
     require: { type: string; field: string };
   }[];
   /** What a record in a given state has to say for itself. A method rarely just asks for a
-   *  decision — it asks that the decision carry its reason, its owner, its date. Left
+   *  decision - it asks that the decision carry its reason, its owner, its date. Left
    *  undeclared, a register fills up with decisions nobody can account for later, and the
    *  gap only surfaces in an audit.
    *
    *  The condition is a conjunction, and a term may test for a value or for emptiness, so
-   *  "classified nowhere and struck anyway" is expressible — which is the case a method
+   *  "classified nowhere and struck anyway" is expressible - which is the case a method
    *  usually cares about. */
   mustState?: {
     id: string;
@@ -129,8 +129,8 @@ export interface Taxonomy {
     when: { field: string; values?: string[]; empty?: boolean }[];
     /** …and then these fields have to carry something. */
     require: string[];
-    /** Judge records that are set back too. Off by default — a record out of play carries
-     *  no claim — but a rule about what was struck is exactly a rule about those. */
+    /** Judge records that are set back too. Off by default - a record out of play carries
+     *  no claim - but a rule about what was struck is exactly a rule about those. */
     includeSetBack?: boolean;
   }[];
   /** A dependency a published catalogue states between its own items: this one counts as
@@ -139,7 +139,7 @@ export interface Taxonomy {
    *  followed without the engine knowing either vocabulary.
    *
    *  Undeclared, a register happily reports a requirement as met while what it rests on is
-   *  not — which is exactly what the publisher wrote the edge to prevent. */
+   *  not - which is exactly what the publisher wrote the edge to prevent. */
   dependsOn?: {
     /** The type the edge runs between (requirement to requirement, normally). */
     type: string;
@@ -182,7 +182,7 @@ export type FieldValue = string | number | boolean | string[] | null;
 export interface FieldChange { field: string; from: FieldValue; to: FieldValue }
 
 /** A hash-chained change-history entry (see domain/audit.ts). `editor` is a
- *  self-declared name — there is no authentication (single-user desktop). */
+ *  self-declared name - there is no authentication (single-user desktop). */
 export interface ChangeEntry {
   /** Position in the study log, starting at 1. Consecutive by construction, so a log
    *  truncated at the end is detectable - a bare hash chain alone would still verify. */
@@ -267,7 +267,7 @@ export interface AppState {
   activeStudyId: ID | null;
 }
 
-/** A reference document, portable form — carries the cached text too. */
+/** A reference document, portable form - carries the cached text too. */
 export interface RefDocRecord {
   id: string;
   studyId: string;
@@ -280,7 +280,7 @@ export interface RefDocRecord {
 }
 
 /** App-level settings that travel with a fully portable export. Model WEIGHTS
- *  are never included (too large — the embedding model is a separate .bin, the
+ *  are never included (too large - the embedding model is a separate .bin, the
  *  language model is re-fetched/cached by its library); only the selections. */
 export interface PortableSettings {
   modelId?: string;      // selected embedding model
@@ -321,22 +321,22 @@ export interface Product {
     dark?: Record<string, string>;
   };
   /** The acknowledgement that the method is someone else's work, shown in the application
-   *  and linked to where it is published. Not a licence notice — those belong with the
+   *  and linked to where it is published. Not a licence notice - those belong with the
    *  documents that quote the content, and in the notice file. */
   credit?: { text: string; url?: string };
   /** Content this product carries that belongs to someone else, and on what terms. Shown
    *  in the application and in every generated document, because attribution that lives
    *  only in a repository file does not travel with the build or with the concept. */
   attribution?: { title: string; holder: string; licence: string; url?: string; changes?: string }[];
-  /** What the generated document is called — a security concept, a risk analysis, an
+  /** What the generated document is called - a security concept, a risk analysis, an
    *  assessment. The method decides the name of its own deliverable. */
   documentTitle?: string;
   /** A stylesheet for the generated report, appended after the engine's. The report is
    *  read beside the publisher's own documents; a product may need it to look the part. */
   reportCss?: string;
   /** A stylesheet of this product's own, appended after the engine's. Tokens carry a
-   *  palette; a product whose voice is a different KIND of document — ruled tables, no
-   *  cards, a printed rather than an assembled page — needs to restate some rules. Kept
+   *  palette; a product whose voice is a different KIND of document - ruled tables, no
+   *  cards, a printed rather than an assembled page - needs to restate some rules. Kept
    *  in the profile so the shared stylesheet stays identical between builds. */
   styles?: string;
 }

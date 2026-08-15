@@ -6,7 +6,7 @@
 // nothing fails, and the value simply never appears in the picker.
 //
 // This is the same reading the catalogue import performs, put where the taxonomy is
-// looked at rather than inside a dialogue about importing requirements — the two are
+// looked at rather than inside a dialogue about importing requirements - the two are
 // different errands, and one of them is the reason someone opens this page.
 import { useState } from "react";
 import type { Taxonomy } from "../domain/types";
@@ -71,7 +71,7 @@ export function VocabularySync({ tax }: { tax: Taxonomy }) {
       </div>
       <div className="panel-body" style={{ padding: "10px 0 4px" }}>
         <div className="guide">
-          The lists this taxonomy offers — the classes, the levels, the modal verbs — belong to
+          The lists this taxonomy offers - the classes, the levels, the modal verbs - belong to
           the publisher. This build carries them as they stood when it was made
           {src ? <>: <b>{src.name}</b>{src.version ? `, version ${src.version}` : ""}, taken {src.at.slice(0, 10)}</> : null}.
           Checking asks the publisher what they are now. Nothing is fetched until you press,

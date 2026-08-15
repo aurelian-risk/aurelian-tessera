@@ -2,7 +2,7 @@
 // Extraction view: load a document's text (transiently) and run the embedding
 // model that is already loaded (managed entirely in the Model section) to propose
 // candidate entities grouped by the taxonomy. This view never downloads or loads
-// models — if none is loaded there is nothing to run.
+// models - if none is loaded there is nothing to run.
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useActiveStudy, useStore } from "../domain/store";
@@ -42,7 +42,7 @@ export function ExtractionDialog({ onClose, initialName, docId }: { onClose: () 
   };
   const run = async () => {
     if (!embLoaded) return;
-    if (!text.trim()) { setStatus("Add document text first — paste it or use “Open file”."); return; }
+    if (!text.trim()) { setStatus("Add document text first - paste it or use “Open file”."); return; }
     setBusy(true); setGroups(null); setSel(new Set());
     try {
       setStatus("Extracting …");
@@ -52,7 +52,7 @@ export function ExtractionDialog({ onClose, initialName, docId }: { onClose: () 
       const pre = new Set<string>();
       g.forEach((grp) => grp.candidates.forEach((c, i) => { if (!c.uncertain) pre.add(grp.typeKey + ":" + i); }));
       setGroups(g); setSel(pre);
-      setStatus(`Found candidates in ${g.length} type(s) — ${pre.size} pre-selected.`);
+      setStatus(`Found candidates in ${g.length} type(s) - ${pre.size} pre-selected.`);
     } catch (e) { setStatus("Extraction failed: " + (e instanceof Error ? e.message : String(e))); }
     setBusy(false);
   };
@@ -109,7 +109,7 @@ export function ExtractionDialog({ onClose, initialName, docId }: { onClose: () 
       <div className="modal-lg" onMouseDown={(e) => e.stopPropagation()}>
         <header className="modal-lg-head">
           <div style={{ flex: 1 }}>
-            <div className="dialog-sub" style={{ margin: 0 }}>Extract into {active ? `“${active.name}”` : "— no active study —"}</div>
+            <div className="dialog-sub" style={{ margin: 0 }}>Extract into {active ? `“${active.name}”` : " - no active study - "}</div>
             <h2 style={{ fontSize: 19 }}>Extract entities</h2>
           </div>
           <button className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon.close /></button>
@@ -128,7 +128,7 @@ export function ExtractionDialog({ onClose, initialName, docId }: { onClose: () 
 
           <div className="guide" style={{ marginTop: 4 }}>
             {embLoaded
-              ? <span><strong>Embedding extraction.</strong> The model classifies sentences into the taxonomy — best for structured / list-like documents.</span>
+              ? <span><strong>Embedding extraction.</strong> The model classifies sentences into the taxonomy - best for structured / list-like documents.</span>
               : <span><strong>No extraction model is loaded.</strong> The embedding model is managed in the <strong>Model</strong> section (sidebar): open it, download &amp; load the model, then come back here to extract.</span>}
 
             <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
@@ -183,7 +183,7 @@ export function ExtractionDialog({ onClose, initialName, docId }: { onClose: () 
                               {moved[id] && moved[id] !== from && (
                                 <span className="badge" title={`Found as ${getType(tax, from)?.label ?? from}`}>re-classified</span>
                               )}
-                              {c.uncertain && <span className="badge" title="Best and second-best type were close — please review" style={{ color: "var(--color-state-warning, var(--fg-muted))" }}>uncertain</span>}
+                              {c.uncertain && <span className="badge" title="Best and second-best type were close - please review" style={{ color: "var(--color-state-warning, var(--fg-muted))" }}>uncertain</span>}
                               <span className="badge">{Math.round(c.score * 100)}%</span>
                               <button type="button" className="btn ghost sm" aria-expanded={isOpen}
                                 title={isOpen ? "Hide the passage it came from" : "Show the passage it came from"}
@@ -200,7 +200,7 @@ export function ExtractionDialog({ onClose, initialName, docId }: { onClose: () 
                                     <mark>{ctx.hit}</mark>
                                     <span className="ex-ctx-side">{ctx.after}…</span>
                                   </p>
-                                : <p className="hint" style={{ margin: 0 }}>The passage could not be located in the current text — it may have been edited since the extraction ran.</p>}
+                                : <p className="hint" style={{ margin: 0 }}>The passage could not be located in the current text - it may have been edited since the extraction ran.</p>}
                             </div>
                           )}
                         </div>

@@ -84,7 +84,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
       if (!target) continue;
       assetNode(target, chainOf(s), "asset");
       edges.push({ from: s.id, to: target.id, kind: "asset" });
-      // the supporting asset feeds the business asset(s) it supports — the ultimate target
+      // the supporting asset feeds the business asset(s) it supports - the ultimate target
       const tt = getType(tax, target.type);
       const supF = tt?.fields.find((f) => f.type === "multiref");
       const bizIds = supF && Array.isArray(target.values[supF.key]) ? (target.values[supF.key] as string[]) : [];
@@ -98,7 +98,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
     return { nodes, edges, ops, chainColor, chainName, stepType };
   }, [tax, study]);
 
-  if (!model) return <div className="empty" style={{ padding: "60px 24px" }}>No kill-chain steps yet — model an operational scenario's kill chain to see its attack paths.</div>;
+  if (!model) return <div className="empty" style={{ padding: "60px 24px" }}>No kill-chain steps yet - model an operational scenario's kill chain to see its attack paths.</div>;
 
   const { nodes, edges, ops, chainColor, chainName } = model;
   const visibleChain = (id: string) => shown.has(id);
@@ -120,7 +120,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
     memo.set(id, d); return d;
   };
   // Steps layer on the left by depth (step→step edges only); ALL assets go into a
-  // dedicated target zone on the right — supporting assets, then business assets — so
+  // dedicated target zone on the right - supporting assets, then business assets - so
   // they never interleave with the step columns.
   const stepCols: Node[][] = [];
   for (const n of vis) if (n.kind === "step") { const d = depth(n.id); (stepCols[d] ||= []).push(n); }
@@ -238,7 +238,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.5v.01" /></svg>
         <div>
           <strong>Choke points</strong> are assets that more than one kill chain has to pass through to reach its target.
-          Because several attack paths converge on them, a single control placed there mitigates multiple scenarios at once —
+          Because several attack paths converge on them, a single control placed there mitigates multiple scenarios at once -
           making them the highest-leverage place to invest. Toggle scenarios on one at a time to build up the picture; click any node to open the underlying step or asset.
         </div>
       </div>

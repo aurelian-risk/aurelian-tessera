@@ -204,7 +204,7 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
         <div className="d-sub" style={{ marginTop: 0 }}>Defense in depth - per kill-chain step</div>
         <div className="hint" style={{ marginBottom: 8 }}>
           The bar counts only measures that stop an attacker <b>at this step</b>: preventive ones block him, detective
-          ones catch him. The others get no bar because they act on a different factor — <b>corrective measures act on
+          ones catch him. The others get no bar because they act on a different factor - <b>corrective measures act on
           the loss</b> (damage control: what the attack costs once it succeeds), <b>deterrent and avoidance measures act
           on the number of attacks</b>. Both move the risk figures; neither changes whether this step is reached.
         </div>
@@ -234,7 +234,7 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
                         <div className="dd-bar" title={`${Math.round(st.prevention * 100)}% resisted, ${Math.round(st.detection * 100)}% watched, ${Math.round(gap * 100)}% open`}>
                           {segs.filter((s) => s.contrib > 0).map((s, j) => (
                             <span key={j} className="dd-seg" style={{ width: `${s.contrib * 100}%`, background: `color-mix(in oklch, ${hue(s.cls)} ${88 - j * 16}%, var(--bg-raised))` }}
-                              title={`${mName(s.m)} — ${s.cls.toLowerCase()} · ${s.status || "status unset"} · implementation ${Math.round(s.impl * 100)}% · contributes ${Math.round(s.contrib * 100)}%`} />
+                              title={`${mName(s.m)} - ${s.cls.toLowerCase()} · ${s.status || "status unset"} · implementation ${Math.round(s.impl * 100)}% · contributes ${Math.round(s.contrib * 100)}%`} />
                           ))}
                           {gap > 0.001 && <span className="dd-seg gap" style={{ width: `${gap * 100}%` }} title="open - nothing here blocks or detects an attacker" />}
                         </div>
@@ -326,13 +326,13 @@ function TacticExplain({ heat, stepType, measureType, onOpen, onClose }: {
             implemented and where it stands in its lifecycle.
           </p>
           <p className="tx-note">
-            <b>Corrective, deterrent and avoidance measures are not counted here</b> — they act on a different factor.
+            <b>Corrective, deterrent and avoidance measures are not counted here</b> - they act on a different factor.
             Corrective ones act on <b>the loss</b> (damage control: what the attack costs once it succeeds), deterrent
             and avoidance ones on <b>the number of attacks</b>. Both move the risk figures; neither changes whether a
             step is reached.
           </p>
           <p className="tx-note">
-            This measures how consistently the tactic's steps are defended, not how likely an attack is to fail — that
+            This measures how consistently the tactic's steps are defended, not how likely an attack is to fail - that
             also depends on where those steps sit in the chain. See the ring.
           </p>
         </div>

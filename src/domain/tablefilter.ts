@@ -53,7 +53,7 @@ export function facetsOf(type: EntityTypeDef, items: EntityRecord[], display: Di
         .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value)),
     });
   }
-  // A field the table sets rows back by is the one a reader filters on first — it decides
+  // A field the table sets rows back by is the one a reader filters on first - it decides
   // what the register is FOR, where the others only describe what is in it.
   return out.sort((a, b) => Number(!!b.field.toggle) - Number(!!a.field.toggle));
 }

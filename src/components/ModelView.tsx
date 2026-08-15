@@ -48,7 +48,7 @@ export function ModelView() {
 
   useEffect(() => { isModelCached().then(setCached); }, [status]);
   // Best-effort auto-detect: if a model file sits next to the HTML and the
-  // browser allows reading it, load it automatically — no click needed.
+  // browser allows reading it, load it automatically - no click needed.
   useEffect(() => {
     if (isLoaded()) return;
     (async () => {
@@ -56,15 +56,15 @@ export function ModelView() {
       const r = await tryLoadLocalPack();
       if (!r) return;
       if (r.modelId) { setModelId(r.modelId); setSelected(r.modelId); }
-      setStatus(`Detected ${MODEL_FILE} in this folder — activating …`);
-      try { await loadEmbedder(); setReady(true); setStatus(`Model ready — auto-loaded from ${MODEL_FILE}.`); }
+      setStatus(`Detected ${MODEL_FILE} in this folder - activating …`);
+      try { await loadEmbedder(); setReady(true); setStatus(`Model ready - auto-loaded from ${MODEL_FILE}.`); }
       catch (e) { setStatus("Auto-load failed: " + (e instanceof Error ? e.message : String(e))); }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (id: string) => { setModelId(id); setSelected(id); setReady(isLoaded()); };
   const loadProgress = (p: { status?: string; file?: string; progress?: number }, verb: string) =>
-    setStatus(p.status === "progress" && p.file ? `${verb} ${p.file} — ${Math.round(p.progress ?? 0)}%` : String(p.status ?? verb));
+    setStatus(p.status === "progress" && p.file ? `${verb} ${p.file} - ${Math.round(p.progress ?? 0)}%` : String(p.status ?? verb));
 
   // Save-as: open the browser's save dialog for the packed model file. The user
   // saves it next to the HTML; where allowed it is then reused with no download.
@@ -83,16 +83,16 @@ export function ModelView() {
     setBusy(false);
   };
 
-  // Use an existing model file the user picks — works everywhere (incl. Chrome
+  // Use an existing model file the user picks - works everywhere (incl. Chrome
   // file://), because a file the user selects is readable.
   const useFile = async (file: File) => {
     setBusy(true); setStatus("Reading the selected model file …");
     try {
       const { modelId, count } = await importModelPack(file);
       if (modelId) { setModelId(modelId); setSelected(modelId); }
-      setStatus(`Restored ${count} files — activating …`);
+      setStatus(`Restored ${count} files - activating …`);
       await loadEmbedder((p) => loadProgress(p, "Loading"));
-      setReady(true); setCached(true); setStatus("Model ready — used the selected file, no download.");
+      setReady(true); setCached(true); setStatus("Model ready - used the selected file, no download.");
     } catch (e) { setStatus("Not a usable model file: " + (e instanceof Error ? e.message : String(e))); }
     setBusy(false);
   };
@@ -103,13 +103,13 @@ export function ModelView() {
     try {
       let reused = isLoaded() || (await isModelCached());
       if (!reused) { const r = await tryLoadLocalPack(); if (r) { reused = true; if (r.modelId) { setModelId(r.modelId); setSelected(r.modelId); } } }
-      setStatus(reused ? "Loading (reusing local copy — no download) …" : "Downloading model … (first time, ~25 MB, needs internet)");
+      setStatus(reused ? "Loading (reusing local copy - no download) …" : "Downloading model … (first time, ~25 MB, needs internet)");
       await loadEmbedder((p) => loadProgress(p, reused ? "Loading" : "Downloading"));
       setReady(true); setCached(true);
-      setStatus(reused ? "Model ready — reused local copy, no download."
+      setStatus(reused ? "Model ready - reused local copy, no download."
         : `Model ready. Tip: click “Save file” to keep ${MODEL_FILE} next to the app and skip the download next time.`);
     } catch (e) {
-      setStatus("Failed: " + (e instanceof Error ? e.message : String(e)) + " — needs internet on first download; on file:// try http://localhost.");
+      setStatus("Failed: " + (e instanceof Error ? e.message : String(e)) + " - needs internet on first download; on file:// try http://localhost.");
     }
     setBusy(false);
   };
@@ -136,7 +136,7 @@ export function ModelView() {
         <div className="panel-head"><h3>Embedding model</h3><Badge s={embState} /></div>
         <div className="panel-body" style={{ padding: "10px 14px 14px" }}>
           <div className="meta" style={{ color: "var(--fg-subtle)", marginBottom: 10 }}>
-            Classifies sentences into the taxonomy — best for structured / list-like documents. Small (~25–34 MB).
+            Classifies sentences into the taxonomy - best for structured / list-like documents. Small (~25–34 MB).
           </div>
           {embedModelList().map((m) => (
             <label key={m.id} className={"model-row" + (selected === m.id ? " on" : "")}>
@@ -149,7 +149,7 @@ export function ModelView() {
           <AddModel onAdd={bump} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
             <button className="btn primary" disabled={busy} onClick={download}><Icon.download /> {busy ? "Working…" : ready ? "Reload" : "Download & load"}</button>
-            <button className="btn" disabled={busy} onClick={() => fileRef.current?.click()} title="Pick an existing aurelian-model.bin — reused with no download (works on file:// too)"><Icon.upload /> Use file…</button>
+            <button className="btn" disabled={busy} onClick={() => fileRef.current?.click()} title="Pick an existing aurelian-model.bin - reused with no download (works on file:// too)"><Icon.upload /> Use file…</button>
             <button className="btn" disabled={busy || !(cached || ready)} onClick={saveFile} title={cached || ready ? "Save as a file next to the app" : "Load the model first"}><Icon.download /> Save file</button>
             <button className="btn ghost danger" disabled={busy} onClick={clear}><Icon.trash /> Clear</button>
             <input ref={fileRef} type="file" accept=".bin" style={{ display: "none" }}

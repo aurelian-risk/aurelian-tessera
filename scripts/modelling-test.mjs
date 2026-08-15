@@ -54,8 +54,8 @@ ok("the classification is found from the two declarations", () => {
   assert.equal(l.itemType, "requirement");
 });
 
-// The failure this guards against: a catalogue item also carries a class of its own —
-// which chapter it belongs to — and some other type carries that same class. Pairing those
+// The failure this guards against: a catalogue item also carries a class of its own -
+// which chapter it belongs to - and some other type carries that same class. Pairing those
 // would derive from whichever type was declared first.
 ok("an item's OWN class is not mistaken for the classes it applies to", () => {
   const withChapter = {
@@ -131,8 +131,8 @@ ok("a taxonomy that declares no such list still derives, it just writes no relat
 
 ok("the route is named, and an inherited one is marked as inherited", () => {
   const p = requirementPackage(tax, study([rec("1", "place", { name: "Rose Cottage", kind: "Cottage" })]), fw);
-  assert.equal(p.items.find((i) => i.item.ref_id === "C.1").reasons[0], "Rose Cottage — Cottage");
-  assert.equal(p.items.find((i) => i.item.ref_id === "B.1").reasons[0], "Rose Cottage — Building (inherited)");
+  assert.equal(p.items.find((i) => i.item.ref_id === "C.1").reasons[0], "Rose Cottage - Cottage");
+  assert.equal(p.items.find((i) => i.item.ref_id === "B.1").reasons[0], "Rose Cottage - Building (inherited)");
 });
 
 ok("an object with no class derives nothing, and is reported", () => {

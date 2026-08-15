@@ -159,8 +159,8 @@ export function CalibrationView({ study, color, scope = "all" }: {
       <span className="spacer" />
       <span className="hint">
         {all
-          ? "parameter adjustment — the settings the figures are computed from"
-          : "parameter adjustment — what a measure is worth, and what layers of them add"}
+          ? "parameter adjustment - the settings the figures are computed from"
+          : "parameter adjustment - what a measure is worth, and what layers of them add"}
       </span>
       <span className={"badge" + (changedInScope ? "" : " off")}>changed</span>
       <button className="btn sm" onClick={() => setOpen(!open)}>{open ? "Close" : "Adjust"}</button>

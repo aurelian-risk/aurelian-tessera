@@ -123,3 +123,23 @@ export function reconcileTaxonomy(tax: Taxonomy): Taxonomy {
   });
   return { ...tax, schemaVersion: TAXONOMY_SCHEMA_VERSION, entityTypes };
 }
+
+/** Is this record present but not in play? Declared by the taxonomy (dimWhen), not decided
+ *  here: which states are dormant is a property of the method. Read wherever a record's
+ *  presence would otherwise be taken for participation - a measure recorded from a
+ *  publisher's library but not adopted must not defend anything, and a register that shows
+ *  it must not count it. */
+export function isSetBack(tax: Taxonomy, r: EntityRecord): boolean {
+  return (tax.dimWhen ?? []).some((d) => d.type === r.type && d.values.includes(String(r.values[d.field] ?? "")));
+}
+
+/** The field a taxonomy uses to set records of this type back, if it declares one, with
+ *  the value that means "in play" - the SECOND option, as the toggle contract says. */
+export function inPlayField(tax: Taxonomy, typeKey: string): { field: FieldDef; on: string } | null {
+  const d = (tax.dimWhen ?? []).find((x) => x.type === typeKey);
+  if (!d) return null;
+  const t = tax.entityTypes.find((x) => x.key === typeKey);
+  const field = t?.fields.find((f) => f.key === d.field);
+  const on = field?.options?.[1];
+  return field && on ? { field, on } : null;
+}

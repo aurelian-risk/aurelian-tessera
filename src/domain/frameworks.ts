@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 // Bundled framework catalogs for the compliance / requirements mapping:
-//   • NIS2  — EU legislation (Directive (EU) 2022/2555), reusable per Decision 2011/833/EU.
-//   • NIST CSF 2.0 — a work of the U.S. Government, public domain.
+//   • NIS2  - EU legislation (Directive (EU) 2022/2555), reusable per Decision 2011/833/EU.
+//   • NIST CSF 2.0 - a work of the U.S. Government, public domain.
 // Users can add further catalogs by importing them (see parseCatalog).
 import type { FieldValue } from "./types";
 import { EFFECT_CLASSES, type EffectClass } from "./controls";
@@ -26,7 +26,7 @@ export interface FrameworkItem {
 }
 export interface Framework { key: string; name: string; source: string; items: FrameworkItem[] }
 
-// NIS2 — Directive (EU) 2022/2555, Article 21(2) risk-management measures.
+// NIS2 - Directive (EU) 2022/2555, Article 21(2) risk-management measures.
 export const NIS2: Framework = {
   key: "nis2",
   name: "NIS2",
@@ -45,7 +45,7 @@ export const NIS2: Framework = {
   ],
 };
 
-// NIST Cybersecurity Framework 2.0 — Functions and Categories (public domain).
+// NIST Cybersecurity Framework 2.0 - Functions and Categories (public domain).
 export const NIST_CSF: Framework = {
   key: "nist-csf",
   name: "NIST CSF",
@@ -160,13 +160,15 @@ export function requirementValues(fw: Framework, it: FrameworkItem): Record<stri
   return { name: it.title, ref_id: it.ref_id, framework: fw.name, category: it.category ?? "", description: it.description ?? "" };
 }
 
-/** Convert a catalog item to `security_measure` entity values. Measures carry no
- *  framework/ref_id fields, so provenance goes into the description; seeded measures
+/** Convert a catalog item to `security_measure` entity values. Where a measure carries
+ *  `framework` and `ref_id` fields the provenance goes there, as it does for a
+ *  requirement - a control taken from a publisher's library has to say whose it is, and a
+ *  sentence tacked onto the description says it once and unsearchably. Seeded measures
  *  start as "Recommended" for the user to adopt and refine. */
 export function measureValues(fw: Framework, it: FrameworkItem): Record<string, FieldValue> {
-  const prov = fw.key === "measure-library" ? "" : ` (${fw.name} ${it.ref_id})`;
   return {
-    name: it.title, description: (it.description ?? "") + prov, status: "Recommended",
+    name: it.title, description: it.description ?? "", status: "Recommended",
+    framework: fw.name, ref_id: it.ref_id, category: it.category ?? "",
     // Carried only when the catalog states it; otherwise the measure stays unclassified
     // and the linter asks for a decision rather than a default being seeded silently.
     ...(it.effect ? { measure_type: it.effect } : {}),
@@ -199,7 +201,7 @@ function normItem(o: any): FrameworkItem | null {
 /** A catalogue that is published rather than shipped, offered for download on demand.
  *
  *  The engine holds the mechanism, the profile the list: which rulesets a product works
- *  to is what makes it that product. Nothing is fetched on its own — a download happens
+ *  to is what makes it that product. Nothing is fetched on its own - a download happens
  *  when the user asks for it, and the application works without ever asking. */
 export interface PublishedCatalog {
   key: string;

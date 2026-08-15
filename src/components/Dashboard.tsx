@@ -67,7 +67,7 @@ export function Dashboard({ onOpen }: { onOpen: () => void }) {
               <div style={{ display: "flex", alignItems: "start" }}>
                 <div style={{ flex: 1 }}>
                   <h3>{s.name}</h3>
-                  <div className="meta">{s.organization || "—"}</div>
+                  <div className="meta">{s.organization || " - "}</div>
                 </div>
                 <button className="btn ghost sm danger" title="Delete"
                   onClick={(e) => { e.stopPropagation(); if (confirm(`Delete study "${s.name}"?`)) { deleteStudy(s.id); void deleteDocsForStudy(s.id); } }}>
@@ -88,14 +88,14 @@ export function Dashboard({ onOpen }: { onOpen: () => void }) {
         <Dialog title="New study" subtitle="Define the analysis scope and perimeter" onClose={() => setCreating(false)}>
           <div className="field"><label>Study name</label>
             <input autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. Riverside General Hospital — Core Systems"
+              placeholder="e.g. Riverside General Hospital - Core Systems"
               onKeyDown={(e) => e.key === "Enter" && submit()} /></div>
           <div className="field"><label>Organization</label>
             <input value={form.organization} onChange={(e) => setForm({ ...form, organization: e.target.value })}
               placeholder="e.g. Riverside General Hospital Trust" /></div>
           <div className="field"><label>Sector</label>
             <select value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })}>
-              <option value="">Not set — no sector adjustment</option>
+              <option value="">Not set - no sector adjustment</option>
               {SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <span className="hint">Some kinds of attacker go after some sectors far more than others. Used for the base rates of the risk model; changeable later in Calibration.</span></div>

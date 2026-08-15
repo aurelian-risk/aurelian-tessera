@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-// Semi-deterministic framework / catalog import — part of the Documents system.
+// Semi-deterministic framework / catalog import - part of the Documents system.
 // Its OWN import logic (not the embedding entity-extraction): a structured table
 // (CSV/TSV/JSON, or pasted) is parsed VERBATIM; the embedding model only *assists*
 // header→field mapping. Imports as requirements OR security measures (user choice).
@@ -196,7 +196,7 @@ export function CatalogImport({ tax, study, onClose }: { tax: Taxonomy; study: S
   const doImport = () => {
     if (!target || chosen.length === 0) return;
     for (const it of chosen) addEntity(target.type.key, target.toValues(fw, it));
-    setMsg(`Added ${chosen.length} ${kind}${chosen.length === 1 ? "" : "s"} to the study — the rest stay unselected.`);
+    setMsg(`Added ${chosen.length} ${kind}${chosen.length === 1 ? "" : "s"} to the study - the rest stay unselected.`);
     // keep the list visible: added items now re-render as "in study".
   };
 
@@ -224,7 +224,7 @@ export function CatalogImport({ tax, study, onClose }: { tax: Taxonomy; study: S
           )}
 
           <div className="guide" style={{ marginBottom: 12 }}>
-            Paste a table (CSV/TSV) or JSON, or choose a file — CSV, JSON, text, or a PDF or Word
+            Paste a table (CSV/TSV) or JSON, or choose a file - CSV, JSON, text, or a PDF or Word
             document, whose text is extracted first. Values are read <b>verbatim</b>; for a table
             you map columns to fields below. A document that is not a table is read as a list, one
             entry per identifier. JSON format:
@@ -235,7 +235,7 @@ export function CatalogImport({ tax, study, onClose }: { tax: Taxonomy; study: S
           {PUBLISHED_CATALOGS.length > 0 && (
             <div className="guide" style={{ marginBottom: 12 }}>
               <b>From the publisher.</b> The catalogue is fetched when you press this and not
-              otherwise — the application asks for nothing on its own, and works without ever
+              otherwise - the application asks for nothing on its own, and works without ever
               asking. On a machine with no network, import the published file from disk below.
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                 {PUBLISHED_CATALOGS.map((pc) => (
@@ -245,7 +245,7 @@ export function CatalogImport({ tax, study, onClose }: { tax: Taxonomy; study: S
                 ))}
               </div>
               <div className="hint" style={{ marginTop: 6 }}>
-                {PUBLISHED_CATALOGS.map((p) => `${p.name} — ${p.source}`).join(" · ")}
+                {PUBLISHED_CATALOGS.map((p) => `${p.name} - ${p.source}`).join(" · ")}
               </div>
             </div>
           )}
@@ -337,7 +337,7 @@ export function CatalogImport({ tax, study, onClose }: { tax: Taxonomy; study: S
                     <label key={f} className="field" style={{ margin: 0 }}>
                       <span className="hint">{FIELD_LABEL[f]}{f === "title" ? " *" : ""}</span>
                       <select value={one} onChange={(e) => setMap((m) => ({ ...m, [f]: Number(e.target.value) }))}>
-                        <option value={-1}>— none —</option>
+                        <option value={-1}> - none - </option>
                         {table.headers.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
                       </select>
                     </label>
@@ -355,7 +355,7 @@ export function CatalogImport({ tax, study, onClose }: { tax: Taxonomy; study: S
               from a check that never ran. */}
           {items.length > 0 && vocabShown.length === 0 && vocabDefined && (
             <div className="guide vocab-current" style={{ marginTop: 14 }}>
-              The vocabularies this catalogue defines are already the ones this build offers —
+              The vocabularies this catalogue defines are already the ones this build offers -
               nothing to bring up to date.
             </div>
           )}
@@ -367,7 +367,7 @@ export function CatalogImport({ tax, study, onClose }: { tax: Taxonomy; study: S
               <div className="panel-body" style={{ padding: "6px 14px 12px" }}>
                 <div className="guide" style={{ marginBottom: 8 }}>
                   <b>Extend</b> adds what this catalogue has and keeps the rest. <b>Replace</b> takes
-                  its list as the whole truth and drops what it does not name — right for the ruleset
+                  its list as the whole truth and drops what it does not name - right for the ruleset
                   the field belongs to, wrong for any other, because an unrelated catalogue lists none
                   of these terms without that meaning they were retired. Either way a value a record
                   still holds is kept, and records are not otherwise touched.
@@ -387,10 +387,10 @@ export function CatalogImport({ tax, study, onClose }: { tax: Taxonomy; study: S
                           <span className="hint">({c.current.length} → {(vocabMode === "replace" ? c.mergedReplacing : c.merged).length})</span></span>
                         <span className="ex-cand-snip">
                           {c.added.length > 0 && <>{c.added.length} new: {c.added.slice(0, 8).join(", ")}{c.added.length > 8 ? " …" : ""}</>}
-                          {c.added.length > 0 && c.removed.length > 0 && " — "}
+                          {c.added.length > 0 && c.removed.length > 0 && " - "}
                           {c.removed.length > 0 && <>{c.removed.length} not in this catalogue: {c.removed.slice(0, 8).join(", ")}{c.removed.length > 8 ? " …" : ""}
                             {vocabMode === "replace" ? " (dropped)" : " (kept)"}</>}
-                          {c.keptInUse.length > 0 && vocabMode === "replace" && <> — {c.keptInUse.length} of those kept anyway, records hold them</>}
+                          {c.keptInUse.length > 0 && vocabMode === "replace" && <> - {c.keptInUse.length} of those kept anyway, records hold them</>}
                         </span>
                       </span>
                       <span className="badge">{c.source}</span>
@@ -416,7 +416,7 @@ export function CatalogImport({ tax, study, onClose }: { tax: Taxonomy; study: S
                       <input type="checkbox" style={{ width: "auto", marginTop: 3 }} checked={exists || !excluded.has(i)} disabled={exists} onChange={() => toggle(i)} />
                       <span style={{ flex: 1 }}>
                         <span className="ex-cand-name">{it.ref_id ? it.ref_id + " · " : ""}{it.title}</span>
-                        {(it.category || it.description) && <span className="ex-cand-snip">{it.category}{it.category && it.description ? " — " : ""}{(it.description || "").slice(0, 140)}</span>}
+                        {(it.category || it.description) && <span className="ex-cand-snip">{it.category}{it.category && it.description ? " - " : ""}{(it.description || "").slice(0, 140)}</span>}
                       </span>
                       {exists && <span className="badge">in study</span>}
                     </label>

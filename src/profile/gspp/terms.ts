@@ -1,4 +1,4 @@
-// English for the BSI's German terms — for reading, not for recording.
+// English for the BSI's German terms - for reading, not for recording.
 //
 // The BSI publishes this ruleset in German only: 82 files in the library, none carrying a
 // language marker, no `lang` in the catalogue metadata. Checked 2026-08-14. So there is no
@@ -11,10 +11,10 @@
 // that: the value stays the BSI's, the label reads in the language of the interface, and
 // the original stays one hover away.
 //
-// A term that has arrived from a newer catalogue and is not listed here shows in German —
+// A term that has arrived from a newer catalogue and is not listed here shows in German -
 // visibly untranslated rather than silently wrong. `npm run test:gspp` reports any.
 
-/** documentation/namespaces/target_object_categories.csv — the 39 categories. */
+/** documentation/namespaces/target_object_categories.csv - the 39 categories. */
 export const CATEGORY_EN: Record<string, string> = {
   // Nutzende
   "Nutzende": "Users",
@@ -63,7 +63,7 @@ export const CATEGORY_EN: Record<string, string> = {
   "WLANs": "Wireless networks",
 };
 
-/** documentation/namespaces/practices.csv — the 20 practices, as "KEY Name". */
+/** documentation/namespaces/practices.csv - the 20 practices, as "KEY Name". */
 export const PRACTICE_EN: Record<string, string> = {
   "GC Governance und Compliance": "GC Governance and compliance",
   "STM Strukturmodellierung": "STM Structural modelling",

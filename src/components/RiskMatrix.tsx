@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-// Risk matrix — plots entities of a type on a likelihood × gravity heatmap
+// Risk matrix - plots entities of a type on a likelihood × gravity heatmap
 // (uses the type's first two scale fields). When a treatment type carries a
 // residual likelihood/gravity, an inherent↔residual toggle shows where the
 // controls move each risk. Chips open the entity editor.
@@ -55,10 +55,10 @@ export function RiskMatrix({ tax, study, type, color }: { tax: Taxonomy; study: 
   const chipTitle = (e: EntityRecord) => {
     if (mode !== "residual") return recordTitle(type, e);
     const t = treatOf.get(e.id); const inh = inherent(e);
-    if (!t) return `${recordTitle(type, e)} — untreated (stays at inherent)`;
+    if (!t) return `${recordTitle(type, e)} - untreated (stays at inherent)`;
     const dec = decisionF ? String(t.values[decisionF.key] ?? "") : "";
     const r = posOf(e);
-    return `${recordTitle(type, e)} — ${dec || "treated"}: ${scaleLabel(xF, inh.x)}·${scaleLabel(yF, inh.y)} → ${scaleLabel(xF, r.x)}·${scaleLabel(yF, r.y)}`;
+    return `${recordTitle(type, e)} - ${dec || "treated"}: ${scaleLabel(xF, inh.x)}·${scaleLabel(yF, inh.y)} → ${scaleLabel(xF, r.x)}·${scaleLabel(yF, r.y)}`;
   };
 
   return (

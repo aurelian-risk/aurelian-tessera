@@ -17,7 +17,7 @@ import { Icon } from "./ui";
 type Mode = "merge" | "replace";
 
 const short = (v: FieldValue): string => {
-  if (v == null || v === "") return "—";
+  if (v == null || v === "") return " - ";
   if (Array.isArray(v)) return `${v.length} link${v.length === 1 ? "" : "s"}`;
   const s = String(v);
   return s.length > 30 ? s.slice(0, 30) + "…" : s;
@@ -69,7 +69,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const previewDemo = () => {
     if (!active) return;
     preview({ kind: "ebios-data", version: 2, studies: [demoRevision(active)] },
-      "Demo: a colleague's revision of this study — a couple of entities changed, one added, one removed. Nothing is applied until you confirm.");
+      "Demo: a colleague's revision of this study - a couple of entities changed, one added, one removed. Nothing is applied until you confirm.");
   };
 
   const apply = async () => {
@@ -120,7 +120,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
             {pending.note && <div className="guide" style={{ marginBottom: 12 }}>{pending.note}</div>}
             {pending.audit?.map((a, i) => (
               <div key={i} className={"guide " + (a.verdict.ok ? "" : "warn")} style={{ marginBottom: 12 }}>
-                <strong>{a.name}</strong> — {a.verdict.ok
+                <strong>{a.name}</strong> - {a.verdict.ok
                   ? <>the file's own change log is <strong>complete and matches its data</strong>.</>
                   : <>this file's change log <strong>does not hold up: {verdictText(a.verdict)}</strong>. Its history is
                     taken over as it stands, and whatever it leaves unaccounted for is recorded as such.</>}

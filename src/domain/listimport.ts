@@ -185,9 +185,9 @@ export function readList(rawText: string): ListRead {
       // A hyphen that stood on a line of its own was its own text run, so it belongs to
       // the word - "Vier-Augen-Prinzip". A hyphen trailing a word is the printer breaking
       // that word at the column edge, so it goes - "authori-sation".
-      if (/^[-–—]$/.test(n)) { out = out.replace(/[-–—]\s*$/, "") + "-"; hyphenRun = true; continue; }
-      if (/[-–—]$/.test(out)) {
-        out = out.replace(/[-–—]\s*$/, "") + (hyphenRun ? "-" : "") + n;
+      if (/^[-– - ]$/.test(n)) { out = out.replace(/[-– - ]\s*$/, "") + "-"; hyphenRun = true; continue; }
+      if (/[-– - ]$/.test(out)) {
+        out = out.replace(/[-– - ]\s*$/, "") + (hyphenRun ? "-" : "") + n;
         hyphenRun = false; continue;
       }
       if (/\($/.test(out)) { out = out + n; }                   // bracket split across the break

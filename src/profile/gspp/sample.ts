@@ -17,7 +17,7 @@
 // texts are the BSI's, as published.
 import type { EntityRecord, FieldValue, Study } from "../../domain/types";
 import { hashValues, sealLog, type LogInput } from "../../domain/audit";
-import { targetByKind } from "../../domain/catalog";
+import { refsFromProps, targetByKind } from "../../domain/catalog";
 import { DEFAULT_TAXONOMY } from "./taxonomy";
 import { GRUNDSCHUTZ_PP } from "./catalog.generated";
 import { GSPP_COMPONENTS } from "./components.generated";
@@ -33,7 +33,7 @@ function uid(): string {
 const ISMS_PRACTICES = ["GC", "STM", "UMS", "VRB", "PERF"];
 
 /** A category plus every category above it, up to the root (STM.2.1.4.1). Deterministic,
- *  because the hierarchy is fixed — which is why the method says it can be automated. */
+ *  because the hierarchy is fixed - which is why the method says it can be automated. */
 function withAncestors(categories: string[]): Set<string> {
   const out = new Set<string>();
   for (const start of categories) {
@@ -93,7 +93,7 @@ export function makeSampleStudy(): Study {
   // ── The requirement package (STM.2.1) ──────────────────────────────────
   // Built here rather than typed out. The values are produced by the very function the
   // catalogue import uses, so a sample requirement and an imported one are the same
-  // record — a difference between them would be a bug in one of the two paths.
+  // record - a difference between them would be a bug in one of the two paths.
   const target = targetByKind(DEFAULT_TAXONOMY, "requirement");
   const byRefId = new Map<string, string>();          // catalogue identifier → entity id
   if (target) {
@@ -115,12 +115,12 @@ export function makeSampleStudy(): Study {
       for (const item of GRUNDSCHUTZ_PP.items) {
         const hit = categoriesOf(item.props).find((c) => cats.has(c));
         if (!hit) continue;
-        put(item, `${a.name} — category ${hit}${inherited.includes(hit) ? " (inherited)" : ""}`, a.id);
+        put(item, `${a.name} - category ${hit}${inherited.includes(hit) ? " (inherited)" : ""}`, a.id);
       }
     }
     for (const item of GRUNDSCHUTZ_PP.items) {
       if (ISMS_PRACTICES.includes(item.ref_id.split(".")[0])) {
-        put(item, "ISMS practice — applies to the whole information domain, without selection (STM.2.1.1)");
+        put(item, "ISMS practice - applies to the whole information domain, without selection (STM.2.1.1)");
       }
     }
 
@@ -147,7 +147,7 @@ export function makeSampleStudy(): Study {
   const met = (refId: string) => { const id = byRefId.get(refId); if (id) entities.find((e) => e.id === id)!.values.umsetzung = "ja"; };
 
   // ── The risk consideration (GC.7.2 / STM.4.1) ──────────────────────────
-  // Entered because the grid-control process was rated "hoch" — the first of the four
+  // Entered because the grid-control process was rated "hoch" - the first of the four
   // triggers. GS++ leaves the method open; this one models the attack chain.
   const rCrime = add("risk_origin", { name: "Organised cybercrime", description: "An extortion group working against operators of critical supply.", category: "Cybercriminals", motivation: "Ransom", capability: 3, resources: 3, activity: 4, relevance: 4 });
   const rState = add("risk_origin", { name: "State actor", description: "Directed at sabotaging supply infrastructure.", category: "State actor", motivation: "Sabotage", capability: 4, resources: 4, activity: 2, relevance: 3 });
@@ -225,18 +225,18 @@ export function makeSampleStudy(): Study {
   // applies to, because nothing in the catalogue can supply either.
   add("requirement", {
     name: "Report a disturbance of the grid control systems to the Bundesnetzagentur without delay",
-    ref_id: "EIGEN.1", herkunft: "Own — compliance obligation",
-    compliance_basis: "§ 11 (1c) EnWG together with the security catalogue for grid operators — example, not legal advice",
+    ref_id: "EIGEN.1", herkunft: "Own - compliance obligation",
+    compliance_basis: "§ 11 (1c) EnWG together with the security catalogue for grid operators - example, not legal advice",
     modal_verb: "MUSS", praktik: "Governance und Compliance",
     applies_to_process: [pGrid], verantwortlich: "Head of Network Operations",
-    scope: "in scope", umsetzung: "nein", prioritaet: "1 — first", faellig: "2026-12-31",
+    scope: "in scope", umsetzung: "nein", prioritaet: "1 - first", faellig: "2026-12-31",
     description: "A disturbance of the systems operating the grid is reported to the regulator without delay, in the form the security catalogue prescribes.",
     begruendung: "Taken on under STM.2.1.7: the obligation applies to the institution as a grid operator and is not covered by any requirement of the catalogue.",
     residual_risk: "A late report is a breach of the obligation itself, independently of the disturbance.",
   });
 
   // STM.3.1: the initial security level is reviewed and, where the context of the
-  // institution differs, changed — here for one asset rather than everywhere. Lowering it
+  // institution differs, changed - here for one asset rather than everywhere. Lowering it
   // from erhöht to normal-SdT is the fourth trigger for a risk consideration (STM.4.1),
   // so the review carries the consideration and the reason.
   const redundancy = byRefId.get("ARCH.8.2") ?? "";
@@ -249,7 +249,7 @@ export function makeSampleStudy(): Study {
   });
 
   // UMS.5: the method knows two implementation states and no third. What would elsewhere
-  // be recorded as "partly" is a decision here — authorised, reasoned, and dated, with the
+  // be recorded as "partly" is a decision here - authorised, reasoned, and dated, with the
   // risk consideration that not implementing it triggers (STM.4.1).
   const anyReq = [...byRefId.entries()].find(([id]) => id.startsWith("GEB"))?.[1] ?? "";
   if (anyReq) add("exception", { name: "No separate fire compartment in the substation", requirement: anyReq,
@@ -266,6 +266,10 @@ export function makeSampleStudy(): Study {
     for (const item of GSPP_COMPONENTS.items) {
       add(measureTarget.type.key, {
         ...measureTarget.toValues(GSPP_COMPONENTS, item),
+        // The publisher states, by identifier, which requirements each implementation
+        // answers. Resolved onto the requirement records already recorded above, so the
+        // mapping is a relation rather than a string nobody can follow.
+        ...refsFromProps(entities, measureTarget.type, item),
         scope: "not in use",
         status: "Recommended",
       });
@@ -298,7 +302,7 @@ export function makeSampleStudy(): Study {
   };
   edit(pGrid, day(9), "S. Brandt", "Raised to hoch after the site visit: a mis-operation reaches supply directly. This is what opened the risk consideration.",
     [{ field: "protection_need", from: "normal", to: "hoch" }]);
-  edit(aLegacy, day(6), "M. Adler", "Found during the asset survey — six stations still answer on the old dial-up line.",
+  edit(aLegacy, day(6), "M. Adler", "Found during the asset survey - six stations still answer on the old dial-up line.",
     [{ field: "description", from: "Decommissioned with the telecontrol rollout.", to: "A dial-up line from before the telecontrol network, still connected at six stations." }]);
   // UMS.1.1 in the log: the implementation status is a finding, and a finding is
   // recorded with who established it and on what basis.
@@ -319,7 +323,7 @@ export function makeSampleStudy(): Study {
 
   return {
     id: uid(),
-    name: "Riverbend Municipal Utilities — grid control (example)",
+    name: "Riverbend Municipal Utilities - grid control (example)",
     organization: "Riverbend Municipal Utilities",
     // One of the sectors declared in calibration.ts. The value is matched literally
     // against the rate exceptions there; this one triples the state-actor rate.

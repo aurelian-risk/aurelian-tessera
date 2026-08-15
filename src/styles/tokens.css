@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk */
 /* ═══════════════════════════════════════════════════════════════════
-   Design tokens — oklch. Dark-first, "security-intelligence" aesthetic:
+   Design tokens - oklch. Dark-first, "security-intelligence" aesthetic:
    deep slate base, glass panels with light edges, teal accent.
    ═══════════════════════════════════════════════════════════════════ */
 :root {
@@ -23,7 +23,7 @@
   --color-state-info: oklch(0.72 0.1 235);
 
   --radius: 14px;
-  /* Labelling pills — badges, chips, counters. A product whose voice is a printed
+  /* Labelling pills - badges, chips, counters. A product whose voice is a printed
      document squares these off; sliders and tracks stay capsules regardless. */
   --radius-pill: 999px;
   --radius-sm: 9px;

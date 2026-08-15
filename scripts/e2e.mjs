@@ -69,7 +69,7 @@ function makePdf(lines) {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 // The model-file auto-detect fetch is expected to fail on Chromium file:// (it
-// blocks local fetches) — tryLoadLocalPack catches it and falls back. Benign.
+// blocks local fetches) - tryLoadLocalPack catches it and falls back. Benign.
 const benign = (t) => /aurelian-model\.bin/.test(t) || /scheme "file" is not supported/.test(t);
 page.on("console", (m) => { if (m.type() === "error" && !benign(m.text())) errors.push(m.text()); });
 page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
@@ -144,6 +144,11 @@ try {
   await page.locator(".tbl tbody tr.row-clickable").first().locator(".name").click();
   await page.waitForTimeout(200);
   ok("row expands inline detail", await page.locator(".detail").count() > 0);
+  // What points at a record is grouped by who points and through which relation, so a
+  // record a hundred others name reads as a sentence with a count, not a wall of chips.
+  ok("what points at the record is grouped by kind and relation",
+    (await page.locator(".detail .d-rel-group").count()) >= 1
+    && (await page.locator(".detail .d-rel-head .badge").count()) >= 1);
   await page.screenshot({ path: `${shots}/RowDetail.png` });
   const link = page.locator(".detail .chip.link").first();
   ok("the detail lists what points at this record", (await page.locator(".detail .chip.link").count()) >= 3);
@@ -187,7 +192,7 @@ try {
   // ISMS practices added whole, every requirement carrying the rule that put it there.
   const reqCount = Number((await section("Requirements").locator(".panel-head .badge").first().innerText()).trim());
   ok(`the requirement package is modelled, not typed (${reqCount} requirements)`, reqCount > 300);
-  // STM.2.1.5: what the catalogue classifies nowhere is not derived and not dropped — it
+  // STM.2.1.5: what the catalogue classifies nowhere is not derived and not dropped - it
   // is put up for a decision, by the chapter it sits in.
   {
     const m = page.locator(".panel", { has: page.locator(".panel-head h3", { hasText: "Derived from the catalogue" }) });
@@ -205,15 +210,24 @@ try {
     const rows = await sec.locator("tbody tr.row-clickable").count();
     const dim = await sec.locator("tbody tr.row-dim").count();
     // 1000 published requirements plus the one this institution took on out of its own
-    // compliance obligations (STM.2.1.7) — an own requirement is a member of the package,
+    // compliance obligations (STM.2.1.7) - an own requirement is a member of the package,
     // not a note beside it.
     ok(`the whole ruleset is recorded, plus what the institution added (${rows})`, rows === 1001);
     ok(`...with what no rule reached set back (${dim} of ${rows})`, dim === 609);
     // Bringing one in by hand is one press, and the press is what an audit sees: it goes
     // through the change record like any other edit.
-    ok("scope is the first filter offered, with both counts",
-      /In scope/.test(await sec.locator(".facet").first().innerText())
-      && /out of scope/.test(await sec.locator(".facet").first().innerText()));
+    // The filter is a row of menus, not a wall of chips - a register of a thousand rows
+    // would otherwise carry more filter than table.
+    ok("the filter is one line of menus", (await sec.locator(".tbl-tools").count()) === 1
+      && (await sec.locator(".tbl-tools .facet-menu").count()) >= 3);
+    const scopeMenu = sec.locator(".facet-menu", { hasText: "In scope" }).first();
+    await scopeMenu.locator(".facet-btn").click();
+    await page.waitForTimeout(250);
+    const opts = await scopeMenu.locator(".facet-opt").allInnerTexts();
+    ok("scope is offered as a filter, with both counts",
+      opts.some((o) => /in scope/i.test(o)) && opts.some((o) => /out of scope/i.test(o)));
+    await page.mouse.click(4, 4);
+    await page.waitForTimeout(150);
     ok("every row carries the switch, engaged where the reading reached it",
       (await sec.locator(".cell-toggle").count()) === 1001
       && (await sec.locator(".cell-toggle.on").count()) === 392);
@@ -223,8 +237,15 @@ try {
     ok("...and one press brings a requirement into scope",
       (await sec.locator("tbody tr.row-dim").count()) === dim - 1
       && (await sec.locator(".cell-toggle.on").count()) === 393);
+    // The question the register is read with: which asset put this requirement here.
+    // It is a column, and it is empty exactly where the method says it should be.
+    ok("the register shows which asset brought a requirement in",
+      /Applies to assets/i.test(await sec.locator("thead").innerText()));
+    const assetCells = await sec.locator("tbody tr.row-clickable td:nth-last-child(2)").allInnerTexts().catch(() => []);
+    ok("...filled for what an asset reached, empty for the practices that reach the whole domain",
+      assetCells.some((c) => /SCADA|network|provider|Directory|Billing|Dial-up/i.test(c)));
     ok("...what the reading reached is in scope, saying through which asset",
-      /In scope: Control system \(SCADA\) — IT-Systeme/.test(
+      /In scope: Control system \(SCADA\) - IT-Systeme/.test(
         await sec.locator("tbody tr", { hasText: "BER.1.1" }).first().innerText().catch(() => "")) || dim < rows);
   }
   // The migration path: the BSI's own mapping travels with the ruleset, so an institution
@@ -240,6 +261,46 @@ try {
       /(equal-to|subset-of|superset-of|intersects-with|equivalent-to)/.test(d));
     await sec.locator("tbody tr", { hasText: "ARCH.1.1" }).first().locator(".name").click();
     await page.waitForTimeout(150);
+  }
+  // A workshop with several registers of a thousand rows is unreadable laid out in full.
+  {
+    const sec = section("Requirements");
+    const before = await sec.locator("tbody tr").count();
+    await sec.locator(".panel-fold").click();
+    await page.waitForTimeout(200);
+    ok("a register folds away by its own heading",
+      (await sec.locator("tbody tr").count()) === 0 && before > 100);
+    ok("...and the head still says how many are in it",
+      /1001/.test(await sec.locator(".panel-head").innerText()));
+    await sec.locator(".panel-fold").click();
+    await page.waitForTimeout(300);
+    ok("...and comes back with its rows", (await sec.locator("tbody tr").count()) === before);
+  }
+  // A published implementation names the requirements it answers, and that arrives as a
+  // relation - but only what is actually in use counts as fulfilling one. The sample
+  // records 35 published components set back, so the coverage must NOT show their 291.
+  {
+    const fw = section("Framework coverage");
+    const txt = await fw.innerText();
+    const covered = Number((/(\d+)\/\d+/.exec(txt.replace(/\s+/g, " ")) ?? [0, "999"])[1]);
+    ok("coverage counts only the measures actually in use", covered <= 10,
+      `${covered} covered - the 35 published components are set back and must not count`);
+  }
+
+  // The coverage matrix carries the same filter, and the question it exists to answer -
+  // what nothing fulfils - is one press. Against a package of a thousand it is the only
+  // way the view says anything at all.
+  {
+    const cov = section("Coverage & traceability");
+    ok("the coverage matrix carries the same filter as a table", (await cov.locator(".tbl-tools").count()) === 1);
+    const before = await cov.locator(".panel-head .badge").innerText();
+    await cov.locator(".facet-btn", { hasText: "Gaps only" }).click();
+    await page.waitForTimeout(400);
+    const after = await cov.locator(".panel-head .badge").innerText();
+    ok("...and can show only what no measure fulfils",
+      /\d+ \/ \d+/.test(after) && Number(after.split("/")[0]) < Number(before), `${before} -> ${after}`);
+    await cov.locator(".facet-btn", { hasText: "Gaps only" }).click();
+    await page.waitForTimeout(300);
   }
   ok("coverage and traceability are shown for the requirement side",
     (await section("Coverage & traceability").count()) === 1 && (await section("Framework coverage").count()) === 1);
@@ -399,6 +460,31 @@ try {
   await page.locator('.modal-lg .btn.ghost[aria-label="Close"]').click().catch(() => {});
   await page.waitForTimeout(150);
 
+  // A control is chosen where it is missing: the catalogue is one press away at the step
+  // itself, and what is chosen arrives already covering that step.
+  {
+    const row = page.locator(".tbl .row-clickable").filter({ hasText: /\d+\/\d+ defended/ }).first();
+    if (await row.count()) {
+      await row.click();
+      await page.waitForTimeout(350);
+      // The catalogue is an entry in the list itself: that is where someone looks for a
+      // measure, so that is where "not there? get one" has to be.
+      const sel = page.locator(".kcc-card .multi select").first();
+      const opts = await sel.locator("option").allInnerTexts();
+      ok("the measure list carries the catalogue as its last entry",
+        opts.some((o) => /From a catalogue/i.test(o)));
+      await sel.selectOption({ label: "From a catalogue…" });
+      await page.waitForTimeout(400);
+      const dlg = await page.locator(".modal-lg").innerText();
+      ok("...opening the measure catalogue, with a custom one still possible",
+        /Choose from a catalog/i.test(dlg) && /Create custom/i.test(dlg));
+      await page.locator('.modal-lg .btn.ghost[aria-label="Close"]').click().catch(() => {});
+      await page.waitForTimeout(200);
+      await row.click();
+      await page.waitForTimeout(200);
+    }
+  }
+
   // No quantification. The method leaves the risk method open (STM.4.1) and this
   // product answers it qualitatively; the monetary loss expectation stays in Aurelian
   // Lite. Absence is checked, not assumed - the engine still carries the code.
@@ -520,17 +606,22 @@ try {
   ok("monitored chains with nothing to respond with are flagged",
     (await page.locator(".lint-card .lint-title", { hasText: "Monitored chains with no way to respond" }).count()) === 1);
   // STM.2.1.4.2: the package is a relation, not a sentence, so an asset can be asked what
-  // it carries. Read from the asset's end — the end an auditor reads it from.
+  // it carries. Read from the asset's end - the end an auditor reads it from.
   await openWs(WS.STM, 350);
   const scada = section("Assets").locator("tbody tr")
     .filter({ has: page.locator(".name", { hasText: "Control system (SCADA)" }) });
   await scada.locator(".name").click();
   await page.waitForTimeout(400);
   const scadaDetail = section("Assets").locator(".detail").first();
-  const backlinks = await scadaDetail.locator(".chip.link").count();
-  ok("an asset says which requirements it carries", backlinks > 20, `${backlinks} records point at it`);
-  ok("...and the relation is named as the method names it",
-    /applies to/i.test(await scadaDetail.innerText()));
+  // Grouped: the count is on the group head, the first twelve are shown and the rest are
+  // one press away - ninety-three chips in a row said nothing.
+  const group = scadaDetail.locator(".d-rel-group").filter({ hasText: "Requirements" }).first();
+  const carried = Number((await group.locator(".badge").innerText()).replace(/\D/g, ""));
+  ok("an asset says how many requirements it carries", carried > 20, `${carried} requirements point at it`);
+  ok("...naming the relation the method uses", /applies to/i.test(await group.innerText()));
+  ok("...showing the first of them and folding the rest away",
+    (await group.locator(".chip.link").count()) <= 12
+    && /\+\d+ more/.test(await group.innerText()));
   await scada.locator(".name").click();
   await page.waitForTimeout(200);
   await page.locator(".ws-tab", { hasText: "Checks" }).click();
@@ -633,7 +724,7 @@ try {
   ok("free multi-select works", await page.locator(".flow-node.selected").count() >= 2);
   await page.screenshot({ path: `${shots}/FlowOrphan.png` });
 
-  // Graph — focus / ego-network (a centred node + its direct neighbours)
+  // Graph - focus / ego-network (a centred node + its direct neighbours)
   await page.locator(".ws-tab", { hasText: "Graph" }).click();
   await page.waitForTimeout(700);
   ok('focus graph index lists all entities grouped', (await page.locator('.graph-index .gi-group').count()) > 1 && (await page.locator('.graph-index .gi-e').count()) > 5);
@@ -655,7 +746,7 @@ try {
   // clicking a NODE inspects it: the box appears, with a ring, WITHOUT moving the focus
   const legendBefore = (await page.locator('.graph-legend').first().innerText()).trim();
   // force: the node under the pointer may be overlapped by a neighbour once the study
-  // grows — what is being checked is the click handler, not the layout.
+  // grows - what is being checked is the click handler, not the layout.
   await page.locator('.graph-wrap svg g[transform^="translate"]').first().locator('circle,rect,path').first().click({ force: true });
   await page.waitForTimeout(200);
   ok('clicking a node opens the box (inspect) without re-centring',
@@ -870,7 +961,7 @@ try {
   await section("Assets").locator(".detail .btn", { hasText: "Edit" }).first().click();
   await page.waitForSelector(".modal-lg");
   const catOptions = await page.locator(".modal-lg select").first().locator("option").allInnerTexts();
-  // A term the build has no English wording for shows as the publisher wrote it — which
+  // A term the build has no English wording for shows as the publisher wrote it - which
   // is also how a newly arrived one is recognised as needing one.
   ok("a category taken from a catalogue is offered in the editor", catOptions.includes("Prüfkategorie"));
   ok("...alongside the ones this build was made with, read in English",
@@ -878,7 +969,7 @@ try {
   await page.keyboard.press("Escape");
   await page.waitForTimeout(150);
 
-  // Timeline (global change history) — left-nav view; the sample seeds history
+  // Timeline (global change history) - left-nav view; the sample seeds history
   await page.locator(".sidebar .nav-item", { hasText: "Timeline" }).click();
   await page.waitForTimeout(250);
   ok("timeline grouped by day with entries", (await page.locator(".tl-day-h").count()) > 0 && (await page.locator(".tl-item").count()) >= 5);
@@ -925,7 +1016,7 @@ try {
     && (await page.locator(".tl-warn").count()) === 0);
   await page.screenshot({ path: `${shots}/TimelineDelete.png` });
 
-  // Taxonomy view — the product's own vocabulary, and the engine keys behind it.
+  // Taxonomy view - the product's own vocabulary, and the engine keys behind it.
   await page.locator(".sidebar .nav-item", { hasText: "Taxonomy" }).click();
   await page.waitForTimeout(250);
   const taxBody = await page.locator(".content").innerText();
@@ -934,6 +1025,62 @@ try {
   ok("...including the types this product adds", taxBody.includes("Practice") && taxBody.includes("Metric") && taxBody.includes("Nonconformity"));
   await page.screenshot({ path: `${shots}/Taxonomy.png` });
 
+  // The model, seen rather than edited - a page of its own. Here the class reading has the
+  // BSI's own tree behind it, so it can say what a category costs once inheritance runs.
+  await page.locator(".sidebar .nav-item", { hasText: "Explore" }).click();
+  await page.waitForTimeout(300);
+  ok("the explorer is reachable from the navigation", (await page.locator(".tx-explorer").count()) === 1);
+  ok("the outline lists the five process steps and what each holds",
+    (await page.locator(".tx-row-g").count()) === 6);
+  await page.locator(".tx-row-t").filter({ hasText: "Requirements" }).first().click();
+  await page.waitForTimeout(200);
+  ok("a type opens onto its fields, with what each one is",
+    (await page.locator(".tx-row-f").count()) > 20
+    && /enum|text|list/.test(await page.locator(".tx-row-f .tx-spec").first().innerText()));
+
+  // The records themselves are one level below the fields, and a search reaches all three
+  // readings at once.
+  await page.locator(".tx-row-r-head").first().click();
+  await page.waitForTimeout(250);
+  ok("the outline opens onto the records themselves", (await page.locator(".tx-rec").count()) > 5);
+  await page.locator(".tx-explorer .tbl-search input").fill("telecontrol");
+  await page.waitForTimeout(350);
+  ok("a search reaches into the records", (await page.locator(".tx-rec").count()) > 0
+    && (await page.locator(".tx-rec").allInnerTexts()).every((t) => /telecontrol/i.test(t)));
+  await page.locator(".tx-explorer .tbl-search input").fill("");
+  await page.waitForTimeout(300);
+
+
+  await page.locator(".tx-seg .seg-btn", { hasText: "Classes" }).click();
+  await page.waitForTimeout(400);
+  const cls = page.locator(".tx-explorer");
+  // Not pinned to 39: a check above takes a category out of a published catalogue into the
+  // vocabulary, which is the point of that mechanism. The depth is the fixed part.
+  ok("the class reading shows the BSI's own hierarchy", (await page.locator(".tx-class").count()) >= 39);
+  ok("...over the four levels the catalogue defines", /\d+ classes over 4 levels/i.test(await cls.innerText()));
+  const netze = page.locator(".tx-class").filter({ hasText: "Networks" }).first();
+  ok("...saying what a class carries by itself and what it inherits",
+    (await netze.locator(".tx-num").count()) >= 4
+    && Number((await netze.locator(".tx-num").nth(0).innerText()).replace(/\D/g, "")) > 0);
+  ok("...and which classes this study actually uses",
+    (await page.locator(".tx-class.used").count()) >= 5);
+  await page.screenshot({ path: `${shots}/TaxonomyClasses.png` });
+
+  await page.locator(".tx-seg .seg-btn", { hasText: "Relations" }).click();
+  await page.waitForTimeout(300);
+  ok("the relations reading draws a node per type and an edge per relationship",
+    (await page.locator(".tx-graph .tx-node").count()) === 17
+    && (await page.locator(".tx-graph .tx-edge").count()) >= 20);
+  // A box in the graph opens onto what the model says about that type.
+  await page.locator(".tx-graph .tx-node-g").first().click();
+  await page.waitForSelector(".tx-detail", { timeout: 5000 });
+  const det = await page.locator(".tx-detail").innerText();
+  ok("a type opens onto its fields and both directions of its relationships",
+    /fields \(/i.test(det) && /points at \(/i.test(det) && /pointed at by \(/i.test(det));
+  await page.locator('.tx-detail .btn.ghost[aria-label="Close"]').click();
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${shots}/TaxonomyExplorer.png` });
+
   // Documents section
   await page.locator(".sidebar .nav-item", { hasText: "Documents" }).click();
   await page.waitForTimeout(200);
@@ -941,7 +1088,7 @@ try {
   ok("documents section renders", docBody.includes("Documents") && docBody.toLowerCase().includes("reference"));
   await page.screenshot({ path: `${shots}/Documents.png` });
 
-  // Extraction dialog (UI only — the model download needs network)
+  // Extraction dialog (UI only - the model download needs network)
   await page.locator(".page-head button", { hasText: "Extract" }).click();
   await page.waitForTimeout(200);
   ok("extraction dialog opens", (await page.locator(".overlay .modal-lg").count()) > 0);
