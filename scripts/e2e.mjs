@@ -429,6 +429,20 @@ try {
 
   // The parameters that decide what a measure is worth belong in the workshop where the
   // measures are, directly below the chart that shows their combined effect.
+  // A measure on an attack step is in use by that fact, so the switch that would set it
+  // back is refused and says why. Everything else stays switchable.
+  {
+    const sec = section("Measures");
+    const locked = sec.locator("tbody tr .cell-toggle.locked");
+    ok("a measure on the chain cannot be taken out of use", (await locked.count()) > 0,
+      `${await locked.count()} locked switches`);
+    // Naming what holds it, not counting it: "(1)" left the reader to go and find which one.
+  ok("...and the switch names what holds it",
+    /In use: acts on .+\. Take it off there first\./i.test(await locked.first().getAttribute("title") ?? ""),
+    await locked.first().getAttribute("title") ?? "");
+    ok("...while a measure on no step stays switchable",
+      (await sec.locator("tbody tr .cell-toggle:not(.locked)").count()) > 0);
+  }
   ok("realisation has a control-parameter panel", (await page.locator(".cal").count()) === 1);
   const order = await page.locator(".main .panel .panel-head h3").allInnerTexts();
   ok("...directly below Chain defence, where its effect is shown",
@@ -467,19 +481,20 @@ try {
     if (await row.count()) {
       await row.click();
       await page.waitForTimeout(350);
-      // The catalogue is an entry in the list itself: that is where someone looks for a
-      // measure, so that is where "not there? get one" has to be.
+      // Everything already recorded is in the list - the catalogue is imported into that
+      // same list - so the last entry writes the one that does not exist yet, as a full
+      // form with the step it acts on already filled in.
       const sel = page.locator(".kcc-card .multi select").first();
       const opts = await sel.locator("option").allInnerTexts();
-      ok("the measure list carries the catalogue as its last entry",
-        opts.some((o) => /From a catalogue/i.test(o)));
-      await sel.selectOption({ label: "From a catalogue…" });
+      ok("the measure list ends with making a new one",
+        opts.some((o) => /Create a measure/i.test(o)));
+      await sel.selectOption({ label: "Create a measure…" });
       await page.waitForTimeout(400);
-      const dlg = await page.locator(".modal-lg").innerText();
-      ok("...opening the measure catalogue, with a custom one still possible",
-        /Choose from a catalog/i.test(dlg) && /Create custom/i.test(dlg));
-      await page.locator('.modal-lg .btn.ghost[aria-label="Close"]').click().catch(() => {});
-      await page.waitForTimeout(200);
+      ok("...opening the full form, with the step it acts on already filled in",
+        (await page.locator(".modal-lg .form-grid input").count()) > 0
+        && (await page.locator(".modal-lg .chip").count()) > 0);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(250);
       await row.click();
       await page.waitForTimeout(200);
     }
@@ -946,6 +961,41 @@ try {
   ok("added rows re-render as 'in study' in the preview", (await page.locator(".modal-lg .ex-cand .badge", { hasText: "in study" }).count()) >= 1);
   await page.locator('.modal-lg .btn.ghost[aria-label="Close"]').click().catch(() => {});
   await page.waitForTimeout(150);
+
+  // A record taken from a catalogue is present, not adopted, and that state is WRITTEN on
+  // it rather than left as an empty field. An empty field is silence, and an engine that
+  // reads silence as "in use" would count everything ever imported in the coverage matrix,
+  // the radar and the checks from the moment it arrived, with nobody having adopted it.
+  // The cell cannot show the difference, rendering the first option either way, so the
+  // stored value is read instead.
+  await page.locator(".sidebar .nav-item", { hasText: "Studies" }).click();
+  await page.waitForTimeout(150);
+  if (!(await page.locator(".ws-tabs").count())) {
+    await page.getByText("Riverbend Municipal Utilities").first().click();
+    await page.waitForSelector(".ws-tabs", { timeout: 10000 });
+  }
+  await openWs(WS.UMS, 350);
+  {
+    const sec = section("Measures");
+    const row = sec.locator("tbody tr", { hasText: "Just-in-time admin" }).first();
+    ok("a measure imported from a catalogue reaches the register", (await row.count()) === 1);
+    ok("...showing as not in use", (await row.locator(".cell-toggle").first().innerText()).trim() === "not in use");
+    await row.locator(".name").click();
+    await page.waitForTimeout(250);
+    await sec.locator(".detail .btn", { hasText: "Edit" }).first().click();
+    await page.waitForSelector(".modal-lg");
+    const written = await page.evaluate(() => {
+      for (const s of document.querySelectorAll(".modal-lg select")) {
+        const vals = [...s.querySelectorAll("option")].map((o) => o.value);
+        if (vals.includes("not in use") && vals.includes("in use")) return s.value;
+      }
+      return null;
+    });
+    ok("...because the state stands on the record, not left to silence", written === "not in use",
+      `the switch reads ${JSON.stringify(written)}`);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+  }
 
   // The refreshed vocabulary has to reach the picker the analyst actually uses, not just
   // the taxonomy behind it - that is the whole point of refreshing it.

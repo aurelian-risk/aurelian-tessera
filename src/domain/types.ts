@@ -158,7 +158,14 @@ export interface Taxonomy {
   /** Records that are present but not in play, and how to tell. A register that only holds
    *  what applies cannot be extended by hand; one that holds everything is unreadable
    *  unless what does not apply is visibly set back. Named by state, like followUps. */
-  dimWhen?: { type: string; field: string; values: string[] }[];
+  dimWhen?: {
+    type: string; field: string; values: string[];
+    /** Fields that hold the record IN play while they say anything. A measure put on an
+     *  attack step is in use by that very fact, so setting it back would leave the study
+     *  saying two things at once: the switch is refused while the field is filled, and
+     *  says why. Empty or absent means the state can always be flipped. */
+    lockedWhile?: string[];
+  }[];
   /** Records a generated document leaves out. A register that prints what was decided not
    *  to apply is longer and says less; the decision itself belongs in the study, not in the
    *  concept handed over. Named by state, like followUps. */

@@ -3,7 +3,7 @@
 // taxonomy - independent of WHICH taxonomy. The taxonomy itself is a product
 // decision and lives in src/profile.
 import type {
-  EntityRecord, EntityTypeDef, FieldDef, FieldValue, Taxonomy,
+  EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy,
 } from "./types";
 import { DEFAULT_TAXONOMY, TAXONOMY_SCHEMA_VERSION } from "../profile";
 
@@ -131,6 +131,38 @@ export function reconcileTaxonomy(tax: Taxonomy): Taxonomy {
  *  it must not count it. */
 export function isSetBack(tax: Taxonomy, r: EntityRecord): boolean {
   return (tax.dimWhen ?? []).some((d) => d.type === r.type && d.values.includes(String(r.values[d.field] ?? "")));
+}
+
+/** Why this record cannot be set back right now, or null. Declared through
+ *  dimWhen.lockedWhile: a record whose named field says something is in play by that fact,
+ *  and flipping the switch would leave the study saying two things at once.
+ *
+ *  The message NAMES what holds it. A count alone ("(1)") leaves the reader to go and find
+ *  which one, which is the work the message was supposed to save. */
+export function setBackBlocked(tax: Taxonomy, study: Study, r: EntityRecord): string | null {
+  for (const d of tax.dimWhen ?? []) {
+    if (d.type !== r.type || !d.lockedWhile?.length) continue;
+    const t = tax.entityTypes.find((x) => x.key === r.type);
+    for (const key of d.lockedWhile) {
+      const f = t?.fields.find((x) => x.key === key);
+      const v = r.values[key];
+      const held = Array.isArray(v) ? v.map(String).filter(Boolean)
+        : v == null || v === "" ? [] : [String(v)];
+      if (!held.length) continue;
+      const named = (f?.type === "ref" || f?.type === "multiref")
+        ? held.map((id) => {
+          const ref = study.entities.find((e) => e.id === id);
+          const rt = ref && getType(tax, ref.type);
+          return ref && rt ? recordTitle(rt, ref) : null;
+        }).filter((x): x is string => !!x)
+        : held;
+      const shown = named.slice(0, 2).join(", ");
+      const rest = named.length - Math.min(2, named.length);
+      const what = shown ? `${shown}${rest > 0 ? ` and ${rest} more` : ""}` : `${held.length}`;
+      return `In use: ${(f?.relation ?? f?.label ?? key).toLowerCase()} ${what}. Take it off there first.`;
+    }
+  }
+  return null;
 }
 
 /** The field a taxonomy uses to set records of this type back, if it declares one, with

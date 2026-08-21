@@ -1613,3 +1613,6 @@ button.tx-row:hover { background: var(--bg-hover, rgba(127,127,127,0.07)); }
 /* The derivation, said as the steps it performs. */
 .mod-steps { margin: 6px 0 7px; padding-left: 20px; display: grid; gap: 2px; }
 .mod-steps li { padding-left: 2px; }
+/* A switch that would contradict something else in the study is refused, and says why. */
+.cell-toggle.locked { cursor: not-allowed; opacity: 0.72; }
+.cell-toggle.locked:hover { border-color: var(--border); }

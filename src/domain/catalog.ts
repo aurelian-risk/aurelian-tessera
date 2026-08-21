@@ -6,6 +6,7 @@
 import type { EntityRecord, EntityTypeDef, FieldValue, Taxonomy } from "./types";
 import type { Framework, FrameworkItem } from "./frameworks";
 import { requirementValues, measureValues } from "./frameworks";
+import { inPlayField } from "./taxonomy";
 import { GROUPS_VOCABULARY, PARAMS_VOCABULARY, topGroupOf } from "./vocabulary";
 import { BUNDLED_FRAMEWORKS, BUNDLED_MEASURE_CATALOGS } from "../profile";
 
@@ -86,13 +87,28 @@ export interface CatalogTarget {
 // Taxonomy-driven detection (no hard-coded type keys):
 //  · requirement = a type carrying both `framework` and `ref_id` fields;
 //  · measure     = a type with a multiref back to the kill-chain step type (`covers`).
+/** The state a record taken from a catalogue starts in: present, not adopted. Nobody has
+ *  said yet that it applies here, and that is written as a value rather than left as an
+ *  empty field, because an empty field is silence and an engine is free to read silence
+ *  either way. Read as "in play", every entry ever taken from a catalogue would count in
+ *  the coverage matrix, the radar and the checks from the moment it was taken.
+ *
+ *  It sits on the target rather than at the pickers, so the picker, the import and the
+ *  derivation cannot drift apart. A caller that knows the record goes straight to work
+ *  overrides it: its own values are spread after these. */
+function seedState(tax: Taxonomy, typeKey: string): Record<string, FieldValue> {
+  const inPlay = inPlayField(tax, typeKey);
+  const off = inPlay?.field.options?.[0];
+  return inPlay && off ? { [inPlay.field.key]: off } : {};
+}
+
 export function catalogTargets(tax: Taxonomy): CatalogTarget[] {
   const out: CatalogTarget[] = [];
 
   const reqType = tax.entityTypes.find((t) => t.fields.some((f) => f.key === "framework") && t.fields.some((f) => f.key === "ref_id"));
   if (reqType) out.push({
     kind: "requirement", type: reqType, bundled: BUNDLED_FRAMEWORKS,
-    toValues: (fw, it) => withProps(reqType, requirementValues(fw, it), it),
+    toValues: (fw, it) => withProps(reqType, { ...seedState(tax, reqType.key), ...requirementValues(fw, it) }, it),
     exists: (ex, fw, it) => ex.some((r) => String(r.values.framework ?? "") === fw.name && String(r.values.ref_id ?? "") === it.ref_id),
   });
 
@@ -100,7 +116,7 @@ export function catalogTargets(tax: Taxonomy): CatalogTarget[] {
   const measureType = tax.entityTypes.find((t) => t.key !== stepType?.key && t.fields.some((f) => f.type === "multiref" && f.refType === stepType?.key));
   if (measureType) out.push({
     kind: "measure", type: measureType, bundled: BUNDLED_MEASURE_CATALOGS,
-    toValues: (fw, it) => withProps(measureType, measureValues(fw, it), it),
+    toValues: (fw, it) => withProps(measureType, { ...seedState(tax, measureType.key), ...measureValues(fw, it) }, it),
     // measures carry no ref_id/framework, so de-dup on the (case-insensitive) name.
     exists: (ex, _fw, it) => ex.some((m) => String(m.values.name ?? "").trim().toLowerCase() === it.title.trim().toLowerCase()),
   });

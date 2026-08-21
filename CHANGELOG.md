@@ -6,6 +6,21 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.4.0] - 2026-08-21
+
+### Added
+
+- On a kill-chain step, the last entry of the measure list writes the measure that does not
+  exist yet, as a full form with the step it acts on already filled in. Everything recorded
+  is in that list already, the catalogue being imported into it, so offering the recorded
+  ones again there offered the same thing twice.
+
+### Changed
+
+- A measure sitting on an attack step is in use by that fact, so the switch that would take
+  it out of use is refused in that direction. The refusal names what holds it, two records
+  and a count beyond that, rather than a field label and a number.
+
 ## [0.3.0] - 2026-08-15
 
 ### Added

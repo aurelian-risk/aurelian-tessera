@@ -94,7 +94,11 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
   // is set back rather than hidden - a register you cannot see cannot be extended.
   dimWhen: [
     { type: "requirement", field: "scope", values: ["out of scope", ""] },
-    { type: "security_measure", field: "scope", values: ["not in use", ""] },
+    // A measure that acts on an attack step is in use by that very fact - the chain view
+    // switches it on when it is put there. Letting it be switched off again while it still
+    // sits on a step would leave the study saying two things at once, so the switch is
+    // refused until the measure is taken off the chain.
+    { type: "security_measure", field: "scope", values: ["not in use", ""], lockedWhile: ["covers"] },
   ],
   // GC.7.2 and STM.4.1 name the points at which the method leaves the catalogue and enters
   // a risk consideration. Three of the four are states of a record, so they are checked

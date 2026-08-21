@@ -13,7 +13,7 @@ import { packageRelationField, requirementPackage } from "../domain/modelling";
 import { catalogTargets } from "../domain/catalog";
 import { BUNDLED_FRAMEWORKS } from "../profile";
 import { useStore } from "../domain/store";
-import { getType, optionLabel } from "../domain/taxonomy";
+import { getType, inPlayField, optionLabel } from "../domain/taxonomy";
 import { Icon } from "./ui";
 
 export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: Study; color: string }) {
@@ -28,7 +28,6 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
   if (!fw || !pkg) return null;
 
   const objectType = getType(tax, pkg.link.objectType);
-  const itemType = getType(tax, pkg.link.itemType);
   const target = catalogTargets(tax).find((t) => t.type.key === pkg.link.itemType);
   const missing = pkg.items.filter((i) => !i.present);
   // What the catalogue classifies nowhere cannot be derived - it has to be decided. Shown
@@ -36,9 +35,14 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
   // rather than per record over hundreds of them.
   const already = new Set(study.entities.filter((e) => e.type === pkg.link.itemType)
     .map((e) => String(e.values.ref_id ?? "")).filter(Boolean));
-  // The field that says whether a record is in play. Its first option is "out", its second
-  // "in" - the taxonomy names them; this only needs to know which is which.
-  const scopeField = itemType?.fields.find((f) => (tax.dimWhen ?? []).some((d) => d.type === pkg.link.itemType && d.field === f.key));
+  // Whether a record is in play, asked through the accessor that owns the question rather
+  // than read off the taxonomy's own declaration here. A second reader of that declaration
+  // fails silently when it moves: without the field, applying returns early and not one
+  // requirement is written, with no error to say so.
+  const inPlay = inPlayField(tax, pkg.link.itemType);
+  const scopeField = inPlay?.field;
+  const scopeIn = inPlay?.on ?? "";
+  const scopeOut = scopeField?.options?.[0] ?? "";
   // Where the package is written as a relation rather than only as a sentence: the
   // requirement records which objects it applies to, so it can be read from either end.
   const relField = packageRelationField(tax, pkg.link);
@@ -62,7 +66,7 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
   const stale = pkg.items.filter((i) => {
     const rec = byRefRecord.get(i.item.ref_id);
     if (!rec) return false;
-    const scopeOff = !!scopeField && String(rec.values[scopeField.key] ?? "") !== (scopeField.options?.[1] ?? "");
+    const scopeOff = !!scopeField && String(rec.values[scopeField.key] ?? "") !== scopeIn;
     const relOff = !!relField && !sameSet(rec.values[relField.key], i.objects);
     return scopeOff || relOff;
   });
@@ -72,7 +76,7 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
       const d = derived.get(item.ref_id);
       addEntity(target.type.key, {
         ...target.toValues(fw, item),
-        [scopeField.key]: d ? scopeField.options?.[1] ?? "" : scopeField.options?.[0] ?? "",
+        [scopeField.key]: d ? scopeIn : scopeOut,
         // The account of why a requirement is in scope travels with the record. Without it
         // the package is a list somebody has to take on trust.
         ...(d ? { begruendung: `In scope: ${d.reasons.join("; ")}.` } : {}),
@@ -87,7 +91,7 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
       const rec = byRefRecord.get(i.item.ref_id);
       if (!rec) continue;
       updateEntity(rec.id, {
-        [scopeField.key]: scopeField.options?.[1] ?? "",
+        [scopeField.key]: scopeIn,
         ...(relField ? { [relField.key]: i.objects } : {}),
       });
     }

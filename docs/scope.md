@@ -178,8 +178,12 @@ Done, in this order:
 Next:
 
 9. **The annual review of the package** (PERF.1.3) as a scheduled and recorded step.
-10. **The improvement plan** (VRB.5) as a plan rather than as individual corrections.
-11. **Reference documents** for certification, if the certification scheme for GS++ settles
+10. **The progress procedure** (UMS.6.1). Progress stands per requirement; the reporting,
+    the target against actual and the measurement around it are not modelled as one.
+11. **The improvement plan** (VRB.5) as a plan rather than as individual corrections.
+12. **Own requirements delivered to the BSI** (STM.2.1.6), as an export in the form the BSI
+    reads. The OSCAL reader exists; this is the writer.
+13. **Reference documents** for certification, if the certification scheme for GS++ settles
     on a set.
 
 **Settled: the ruleset ships in the build.** Parsed rather than raw - 1.59 MB from 5.38 MB

@@ -11,16 +11,14 @@ import { effectClassOf, EFFECT_CHANNEL } from "../domain/controls";
 import { statusColor } from "../domain/viz";
 import { EntityModal } from "./EntityModal";
 import { MultiSelect, Icon } from "./ui";
-import { CatalogAdd } from "./CatalogAdd";
-import { targetByKind } from "../domain/catalog";
 import { inPlayField } from "../domain/taxonomy";
 
 export function KillChainMitigation({ tax, study, color }: { tax: Taxonomy; study: Study; color: string }) {
-  // Where a measure is missing is exactly where someone wants to add one. The catalogue is
-  // one press away at the step itself, and what is chosen arrives already covering it.
-  const measureTarget = targetByKind(tax, "measure");
-  // Which step the catalogue was opened from, so what is chosen lands on it.
-  const [pickFor, setPickFor] = useState<string | null>(null);
+  // Where a measure is missing is exactly where someone wants to write one. The list holds
+  // everything already recorded - a catalogue is imported into that same list, so offering
+  // the catalogue again here would only show what is in the list anyway. What is missing
+  // is the one that does not exist yet, so that is what the list's last entry makes.
+  const [newFor, setNewFor] = useState<string | null>(null);
   const updateEntity = useStore((s) => s.updateEntity);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [rec, setRec] = useState<EntityRecord | null>(null);
@@ -107,9 +105,10 @@ export function KillChainMitigation({ tax, study, color }: { tax: Taxonomy; stud
 
   return (
     <>
-    {measureTarget && pickFor && (
-      <CatalogAdd tax={tax} study={study} target={measureTarget} open onClose={() => setPickFor(null)}
-        preset={{ [coversF.key]: [pickFor], ...(inPlay ? { [inPlay.field.key]: inPlay.on } : {}) }} />
+    {newFor && (
+      <EntityModal type={measureType} tax={tax} study={study} record={null}
+        initialValues={{ [coversF.key]: [newFor], ...(inPlay ? { [inPlay.field.key]: inPlay.on } : {}) }}
+        onClose={() => setNewFor(null)} />
     )}
     <div className="panel ws-accent" style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
       <div className="panel-head">
@@ -174,7 +173,7 @@ export function KillChainMitigation({ tax, study, color }: { tax: Taxonomy; stud
                                               placeholder="+ measure" emptyHint="no security measures yet"
                                               onClickChip={(id) => { const m = measures.find((x) => x.id === id); if (m) setRec(m); }}
                                               renderChipExtra={chipExtra}
-                                              action={measureTarget ? { label: "From a catalogue…", onPick: () => setPickFor(s.id) } : undefined} />
+                                              action={{ label: "Create a measure…", onPick: () => setNewFor(s.id) }} />
                                           </div>
                                         </div>
                                         {i < steps.length - 1 && <span className="kcc-arrow" aria-hidden>→</span>}

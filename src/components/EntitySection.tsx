@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy } from "../domain/types";
-import { columnFields, getType, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, titleField } from "../domain/taxonomy";
+import { columnFields, getType, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, setBackBlocked, titleField } from "../domain/taxonomy";
 import { TOOLBAR_MIN_ROWS } from "../domain/tablefilter";
 import { TableTools, useTableFilter } from "./TableTools";
 import { useStore } from "../domain/store";
@@ -22,9 +22,11 @@ const NAME_PCT = 44;
 const NAME_MIN = 320;
 const VALUE_COL = 150;
 
-function FieldValueView({ field, value, tax, study, onOpen, onToggle }:
+function FieldValueView({ field, value, tax, study, onOpen, onToggle, toggleBlocked }:
   { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study; onOpen?: (id: string) => void;
-    onToggle?: (field: FieldDef, next: string) => void }) {
+    onToggle?: (field: FieldDef, next: string) => void;
+    /** Why the switch may not be flipped right now, if it may not - see setBackBlocked. */
+    toggleBlocked?: string | null }) {
   const nameOf = (id: string) => {
     const r = study.entities.find((e) => e.id === id);
     const t = r && getType(tax, r.type);
@@ -38,9 +40,14 @@ function FieldValueView({ field, value, tax, study, onOpen, onToggle }:
       // A two-state field that is flipped often is a switch, not a label to open a form for.
       if (field.toggle && field.options?.length === 2 && onToggle) {
         const on = String(value ?? "") === field.options[1];
+        // Blocked only in the direction that would take the record out of play: putting
+        // one IN is never in conflict with anything.
+        const blocked = on ? toggleBlocked ?? null : null;
         return (
-          <button className={"cell-toggle" + (on ? " on" : "")} title={`${optionLabel(field, field.options[on ? 0 : 1])} instead`}
-            onClick={(e) => { e.stopPropagation(); onToggle(field, field.options![on ? 0 : 1]); }}>
+          <button className={"cell-toggle" + (on ? " on" : "") + (blocked ? " locked" : "")}
+            disabled={!!blocked}
+            title={blocked ?? `${optionLabel(field, field.options[on ? 0 : 1])} instead`}
+            onClick={(e) => { e.stopPropagation(); if (!blocked) onToggle(field, field.options![on ? 0 : 1]); }}>
             {optionLabel(field, field.options[on ? 1 : 0])}
           </button>
         );
@@ -196,6 +203,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                         )}
                       </td>
                       {cols.map((c) => <td key={c.key}><FieldValueView field={c} value={r.values[c.key] ?? null} tax={tax} study={study}
+                        toggleBlocked={setBackBlocked(tax, study, r)}
                         onOpen={openEntity} onToggle={(f, next) => updateEntity(r.id, { ...r.values, [f.key]: next },
                           `${f.label}: ${optionLabel(f, next)}`)} /></td>)}
                       <td />
