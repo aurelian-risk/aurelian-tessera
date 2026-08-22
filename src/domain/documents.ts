@@ -50,7 +50,7 @@ export async function listDocs(studyId: string): Promise<RefDoc[]> {
       req.onsuccess = () => resolve((req.result as StoredDoc[]) ?? []);
       req.onerror = () => reject(req.error);
     });
-    // Strip the (potentially large) cached text - the list only needs metadata.
+    // Strip the (potentially large) cached text — the list only needs metadata.
     return docs
       .filter((d) => d.studyId === studyId)
       .map(({ text, ...meta }) => ({ ...meta, hasText: !!text }))
@@ -100,7 +100,7 @@ export async function deleteDocsForStudy(studyId: string): Promise<void> {
   } catch { /* ignore */ }
 }
 
-/** All stored documents (with cached text) - for a fully portable export. */
+/** All stored documents (with cached text) — for a fully portable export. */
 export async function exportDocs(studyIds?: string[]): Promise<StoredDoc[]> {
   try {
     const db = await open();
@@ -166,7 +166,7 @@ export function pickFileForRef(): Promise<{ name: string; mime: string; size: nu
   });
 }
 
-/** Open a document transiently for viewing/extraction - content returned, not stored. */
+/** Open a document transiently for viewing/extraction — content returned, not stored. */
 export function viewTextTransient(): Promise<{ name: string; text: string } | null> {
   return new Promise((resolve, reject) => {
     const input = document.createElement("input");

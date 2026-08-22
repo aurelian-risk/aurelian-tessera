@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-// Risk matrix - plots entities of a type on a likelihood × gravity heatmap
+// Risk matrix — plots entities of a type on a likelihood × gravity heatmap
 // (uses the type's first two scale fields). When a treatment type carries a
 // residual likelihood/gravity, an inherent↔residual toggle shows where the
 // controls move each risk. Chips open the entity editor.

@@ -4,13 +4,13 @@
 // A kill chain is a left-to-right escalation. `predecessors` turns it into a DAG,
 // but must not break that escalation, so we constrain which steps may be chosen:
 //   • within the SAME operational scenario: only steps with a strictly smaller
-//     step_order (forward-only - the order IS the escalation axis);
-//   • from ANOTHER scenario: any step is allowed - this models a CASCADE (one
+//     step_order (forward-only — the order IS the escalation axis);
+//   • from ANOTHER scenario: any step is allowed — this models a CASCADE (one
 //     scenario's step enables another's), where a per-phase rule would be wrong
 //     because each scenario has its own progression;
 //   • never a choice that would close a cycle (checked transitively).
 // These candidate rules apply only when AUTHORING; stored (possibly legacy) values
-// are always tolerated on read - see [[killchain-predecessors-design]].
+// are always tolerated on read — see [[killchain-predecessors-design]].
 import type { EntityTypeDef, Study, Taxonomy } from "./types";
 import { getType, recordTitle } from "./taxonomy";
 
@@ -44,7 +44,7 @@ export function predecessorCandidates(
     const preds = Array.isArray(s.values[predField.key]) ? (s.values[predField.key] as string[]) : [];
     for (const p of preds) (fwd.get(p) ?? fwd.set(p, []).get(p)!).push(s.id);
   }
-  // steps reachable FORWARD from self - picking any of them would close a cycle.
+  // steps reachable FORWARD from self — picking any of them would close a cycle.
   const reach = new Set<string>();
   if (self.id) {
     const stack = [self.id];

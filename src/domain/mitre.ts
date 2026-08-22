@@ -81,7 +81,7 @@ export const MITRE_TECHNIQUES: Technique[] = [
 /** Datalist label / stored value, e.g. "T1566 Phishing". */
 export const techniqueLabel = (t: Technique): string => `${t.id} ${t.name}`;
 
-/** Techniques for the typeahead - all, or (when given) those of one tactic first. */
+/** Techniques for the typeahead — all, or (when given) those of one tactic first. */
 export function suggestTechniques(tactic?: string): Technique[] {
   if (!tactic) return MITRE_TECHNIQUES;
   const inTactic = MITRE_TECHNIQUES.filter((t) => t.tactic === tactic);

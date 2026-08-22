@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 // Optional in-browser embeddings via Transformers.js, imported from a CDN at
-// RUNTIME (so the offline single-file build stays small - the library is not
+// RUNTIME (so the offline single-file build stays small — the library is not
 // bundled). The chosen model downloads on first use and is persisted in
 // IndexedDB (see modelCache.ts) so it is reused across sessions / offline.
 import { modelCache } from "./modelCache";

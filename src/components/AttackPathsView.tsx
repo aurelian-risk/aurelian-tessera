@@ -84,7 +84,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
       if (!target) continue;
       assetNode(target, chainOf(s), "asset");
       edges.push({ from: s.id, to: target.id, kind: "asset" });
-      // the supporting asset feeds the business asset(s) it supports - the ultimate target
+      // the supporting asset feeds the business asset(s) it supports — the ultimate target
       const tt = getType(tax, target.type);
       const supF = tt?.fields.find((f) => f.type === "multiref");
       const bizIds = supF && Array.isArray(target.values[supF.key]) ? (target.values[supF.key] as string[]) : [];
@@ -120,7 +120,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
     memo.set(id, d); return d;
   };
   // Steps layer on the left by depth (step→step edges only); ALL assets go into a
-  // dedicated target zone on the right - supporting assets, then business assets - so
+  // dedicated target zone on the right — supporting assets, then business assets — so
   // they never interleave with the step columns.
   const stepCols: Node[][] = [];
   for (const n of vis) if (n.kind === "step") { const d = depth(n.id); (stepCols[d] ||= []).push(n); }

@@ -50,7 +50,7 @@ export const diffTotals = (d: StudyDiff[]) => d.reduce(
   (a, s) => ({ added: a.added + s.added.length, changed: a.changed + s.changed.length, removed: a.removed + s.removed.length }),
   { added: 0, changed: 0, removed: 0 });
 
-/** A modified copy of a study - for demoing the import diff without hand-editing a
+/** A modified copy of a study — for demoing the import diff without hand-editing a
  *  file: it changes a couple of entities, adds one, and removes one. */
 export function demoRevision(study: Study): Study {
   const ts = new Date().toISOString();

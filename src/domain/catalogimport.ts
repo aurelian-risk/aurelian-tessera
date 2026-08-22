@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 // Deterministic import of a structured catalog table (CSV / TSV / delimited) into
-// catalog items - verbatim, no model. An embedding model can only *assist* header
+// catalog items — verbatim, no model. An embedding model can only *assist* header
 // mapping (see guessMapping's optional scorer); the values are always parsed, never
 // inferred. See [[killchain-predecessors-design]]-style rationale: for structured
 // input a deterministic parse is more complete and exact than any model.
 //
 // This module has NO app dependencies (only a type import, erased at build) so it can
-// be bundled and unit-tested in isolation - see scripts/catalog-test.mjs.
+// be bundled and unit-tested in isolation — see scripts/catalog-test.mjs.
 import type { FrameworkItem } from "./frameworks";
 
 export type FieldKey = "ref_id" | "title" | "category" | "description";
@@ -132,14 +132,14 @@ export function guessMapping(headers: string[], score?: (field: FieldKey, header
       if (best >= 0) { map[f] = best; used.add(best); }
     }
   }
-  // 3) title must exist - first unused column
+  // 3) title must exist — first unused column
   if (map.title == null) {
     for (let i = 0; i < headers.length; i++) if (!used.has(i)) { map.title = i; used.add(i); break; }
   }
   return map;
 }
 
-/** Apply a mapping to produce catalog items - verbatim, trimmed, blank rows skipped. */
+/** Apply a mapping to produce catalog items — verbatim, trimmed, blank rows skipped. */
 export function tableToItems(t: ParsedTable, map: Mapping): FrameworkItem[] {
   const cell = (row: string[], f: FieldKey) => {
     const m = map[f];

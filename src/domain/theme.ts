@@ -2,7 +2,7 @@
 // The product's own palette, applied over the shared tokens.
 //
 // src/styles/tokens.css is the engine's design system and is identical in every build.
-// What a product may differ in - its colours, its radii, its type - is declared in the
+// What a product may differ in — its colours, its radii, its type — is declared in the
 // profile (Product.theme) and written here as one stylesheet at startup. Keeping it out
 // of the token file is what lets two products look unlike each other without the shared
 // CSS diverging.

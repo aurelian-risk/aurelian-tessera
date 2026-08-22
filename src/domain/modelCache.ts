@@ -98,7 +98,7 @@ export async function exportModelPack(modelId: string): Promise<Blob> {
 }
 
 export async function importModelPack(file: Blob): Promise<{ modelId: string | null; count: number }> {
-  // Stream file-by-file via Blob.slice - never hold the whole pack in memory.
+  // Stream file-by-file via Blob.slice — never hold the whole pack in memory.
   const headBuf = await file.slice(0, MAGIC.length + 4).arrayBuffer();
   if (new TextDecoder().decode(new Uint8Array(headBuf).slice(0, MAGIC.length)) !== MAGIC) throw new Error("Not an Aurelian model file.");
   const manifestLen = new DataView(headBuf).getUint32(MAGIC.length, true);

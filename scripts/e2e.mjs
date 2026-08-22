@@ -717,27 +717,53 @@ try {
   await page.keyboard.press("Escape"); // Escape clears the selection
   await page.waitForTimeout(200);
   ok("Escape clears the flow selection", (await page.locator(".flow-node.selected").count()) === 0);
-  // Scrolling right is how a node off-screen is reached, so the FIRST selecting click must
-  // not take the swimlane back to the left. The click is dispatched in the page rather than
-  // driven, because driving it would scroll the node into view first and reset the position
-  // before the handler ever ran. The window is narrowed for this: at 1280 the lanes fit and
-  // there is nothing to lose.
+  // Where the reader is scrolled to survives a selecting click - the FIRST one too.
+  //
+  // Two things this has to get right, both found by measuring. The position is captured on
+  // POINTER-DOWN, so the click has to be a real one: a synthetic el.click() fires no
+  // pointerdown and the check would pass or fail for the wrong reason. And the node has to
+  // be one the reader can SEE from there - clicking one that is off-screen is a different
+  // case, where the browser scrolls it into view and rightly so.
+  //
+  // The window is narrowed for this: at 1280 the lanes fit and there is nothing to lose.
+  // 800, not less: below that the scroller is narrower than one lane and no card sits
+  // wholly inside it, so there is no node the reader could be said to see.
   {
-    await page.setViewportSize({ width: 620, height: 900 });
+    await page.setViewportSize({ width: 1000, height: 900 });
     await page.waitForTimeout(400);
-    const r = await page.evaluate(async () => {
+    const sc = page.locator(".flow-scroll");
+    const over = await sc.evaluate((el) => el.scrollWidth - el.clientWidth);
+    ok("the swimlane overflows, so there is a position to lose", over > 600, `overflow ${over}`);
+    await sc.evaluate((el) => { el.scrollLeft = 200; });
+    await page.waitForTimeout(250);
+    // A node the reader can SEE from there, AND whose selection leaves the swimlane still
+    // overflowing. Most selections narrow the tree to a single lane, and then 0 is the only
+    // position there is - the browser clamps for a good reason and the assertion would be
+    // about nothing. Try the visible ones until one keeps something to lose.
+    const seen = await page.evaluate(() => {
       const el = document.querySelector(".flow-scroll");
-      el.scrollLeft = 500;
-      await new Promise((x) => setTimeout(x, 250));
-      const before = Math.round(el.scrollLeft);
-      document.querySelectorAll(".flow-node")[10].click();
-      await new Promise((x) => setTimeout(x, 700));
-      return { before, after: Math.round(el.scrollLeft), sw: el.scrollWidth, cw: el.clientWidth };
+      const r = el.getBoundingClientRect();
+      return [...document.querySelectorAll(".flow-node")]
+        .filter((x) => { const b = x.getBoundingClientRect(); return b.left >= r.left && b.right <= r.right; })
+        .map((x) => x.getAttribute("data-nk"));
     });
-    ok("the first selecting click keeps the horizontal scroll",
-      r.sw > r.cw + 4 && r.before === 500 && r.after === 500,
-      `${r.before} -> ${r.after}, ${r.sw}/${r.cw}`);
+    ok("a node is visible from a scrolled position", seen.length > 0);
+    let left = null, kept = 0;
+    for (const nk of seen.reverse()) {
+      await sc.evaluate((el) => { el.scrollLeft = 200; });
+      await page.waitForTimeout(200);
+      await page.locator(`[data-nk="${nk}"]`).click();
+      await page.waitForTimeout(900);
+      const st = await sc.evaluate((el) => ({ left: el.scrollLeft, over: el.scrollWidth - el.clientWidth }));
+      if (st.over > 100) { left = st.left; kept = st.over; break; }
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(300);
+    }
+    ok("...a selection that leaves the swimlane overflowing", left !== null);
+    if (left !== null && left !== 200) console.log(`   left=${left} overflow-after=${kept}`);
+    ok("...and the first selecting click keeps the reader where they were", left === 200);
     await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.waitForTimeout(400);
   }

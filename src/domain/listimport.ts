@@ -185,9 +185,14 @@ export function readList(rawText: string): ListRead {
       // A hyphen that stood on a line of its own was its own text run, so it belongs to
       // the word - "Vier-Augen-Prinzip". A hyphen trailing a word is the printer breaking
       // that word at the column edge, so it goes - "authori-sation".
-      if (/^[-– - ]$/.test(n)) { out = out.replace(/[-– - ]\s*$/, "") + "-"; hyphenRun = true; continue; }
-      if (/[-– - ]$/.test(out)) {
-        out = out.replace(/[-– - ]\s*$/, "") + (hyphenRun ? "-" : "") + n;
+      //
+      // The three characters in the class are hyphen, en dash and EM DASH, and they are
+      // data, not prose: a publisher sets the break with whichever it uses. Replacing the
+      // em dash here with " - " - as a blanket typography pass once did - put a SPACE into
+      // the class and took the em dash out, so em-dash breaks stopped being repaired.
+      if (/^[-–—]$/.test(n)) { out = out.replace(/[-–—]\s*$/, "") + "-"; hyphenRun = true; continue; }
+      if (/[-–—]$/.test(out)) {
+        out = out.replace(/[-–—]\s*$/, "") + (hyphenRun ? "-" : "") + n;
         hyphenRun = false; continue;
       }
       if (/\($/.test(out)) { out = out + n; }                   // bracket split across the break
@@ -250,7 +255,7 @@ export function readList(rawText: string): ListRead {
 /** Decide what kind of input this is before anything tries to parse it. The point of
  *  this function is the `unknown` verdict: without it, arbitrary text gets read as a
  *  delimited table and produces hundreds of meaningless rows. */
-export function detectShape(text: string, tableRows: number, tableCols: number): ShapeVerdict {
+export function detectShape(text: string, table?: { headers: string[]; rows: string[][] }): ShapeVerdict {
   const t = text.trim();
   if (!t) return { shape: "unknown", reason: "empty" };
   if (/^[[{]/.test(t)) return { shape: "json", reason: "starts as JSON" };
@@ -266,13 +271,20 @@ export function detectShape(text: string, tableRows: number, tableCols: number):
     return { shape: "unknown", reason: `${Math.round(noiseRatio(clean) * 100)}% of the remaining characters are not text` };
   }
 
-  const lines = t.split("\n").filter((l) => l.trim());
-  // A real delimited table has a stable column count on most of its lines.
-  if (tableCols >= 2 && tableRows >= 2) {
-    const delim = [",", "\t", ";", "|"].map((d) => ({ d, n: lines.filter((l) => l.split(d).length === tableCols).length }))
-      .sort((a, b) => b.n - a.n)[0];
-    if (delim && delim.n / lines.length >= 0.6) {
-      return { shape: "table", reason: `${tableCols} columns on ${Math.round(delim.n / lines.length * 100)}% of lines` };
+  // A real delimited table has a stable column count on most of its ROWS - and a row is
+  // what the parser read, not what a newline separates. Judging this on the raw text asks
+  // a different question than the parser answers: a control text that runs over several
+  // lines, or simply carries a comma, breaks a raw split while the parser reads it
+  // correctly. NIST SP 800-53 is 2607 raw lines holding 1189 records; OWASP ASVS puts a
+  // comma inside a third of its rows. Both were refused here as "not a catalogue" while
+  // the parser behind this gate read them without complaint - and a gate stricter than
+  // its own parser can only reject work that parser could have done.
+  const cols = table?.headers.length ?? 0;
+  if (cols >= 2 && (table?.rows.length ?? 0) >= 2) {
+    const rows = table!.rows;
+    const fit = rows.filter((r) => r.length === cols).length / rows.length;
+    if (fit >= 0.9) {
+      return { shape: "table", reason: `${cols} columns on ${Math.round(fit * 100)}% of ${rows.length} rows` };
     }
   }
   const probe = readList(t);
