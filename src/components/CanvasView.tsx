@@ -20,7 +20,6 @@ export function CanvasView({ tax, study }: { tax: Taxonomy; study: Study }) {
   const lanesRef = useRef<HTMLDivElement>(null);
   const ribbonSvgRef = useRef<SVGSVGElement>(null);
   const warmedRef = useRef(false);
-  const wasSelectingRef = useRef(false);
   const centerRafRef = useRef(0);
   const roRef = useRef<ResizeObserver | null>(null);
   const scrollLeftRef = useRef(0);   // user's horizontal scroll, captured on click to survive the refine re-render
@@ -140,15 +139,17 @@ export function CanvasView({ tax, study }: { tax: Taxonomy; study: Study }) {
     const headers = Array.from(el.querySelectorAll<HTMLElement>(".lane-header[data-lane]"));
     const reset = (c: HTMLElement) => { c.style.transform = ""; c.style.animationDelay = ""; c.classList.remove("ef-floating"); };
     const resetHeader = (h: HTMLElement) => { h.style.transform = ""; h.classList.remove("ef-lane-flown"); };
-    if (!availableSet || selected.size === 0) { cards.forEach(reset); headers.forEach(resetHeader); wasSelectingRef.current = false; return; }
+    if (!availableSet || selected.size === 0) { cards.forEach(reset); headers.forEach(resetHeader); return; }
     headers.forEach(resetHeader);
-    // Horizontal scroll: reveal the centred tree from its start only when FIRST
-    // entering highlight mode. On a refining click the React commit resets the
-    // scroller to the left, which yanks the view while the user is scrolling
-    // around - so restore the position captured at click time instead.
+    // Horizontal scroll: where the user left it, on the first selecting click as much as
+    // on a refining one. The React commit resets the scroller to the left; restoring the
+    // position captured at click time is what keeps the view still. Snapping to 0 on the
+    // first click to reveal the centred tree from its start took the swimlane out from
+    // under anyone who had scrolled right to reach the node they were clicking, which is
+    // the usual way of reaching one. Where selecting narrows the lanes until they no
+    // longer overflow, the browser clamps the position by itself.
     const scroller = el.parentElement;
-    if (scroller) scroller.scrollLeft = wasSelectingRef.current ? scrollLeftRef.current : 0;
-    wasSelectingRef.current = true;
+    if (scroller) scroller.scrollLeft = scrollLeftRef.current;
     const byLane = new Map<number, HTMLElement[]>();
     cards.forEach((c) => {
       const nk = c.dataset.nk || "";

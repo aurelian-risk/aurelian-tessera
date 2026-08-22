@@ -6,6 +6,30 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.4.1] - 2026-08-21
+
+### Added
+
+- A recorded tour in the README: the requirement package derived from the catalogue with the
+  account of what brought each requirement in, the risk matrix before and after treatment,
+  an attack chain along its MITRE tactics, every chain of the study on the objects they
+  cross, chain defence per scenario and per step, the hash-chained change timeline, and a
+  document read into the register.
+- `TRADEMARK.md`, `THIRD-PARTY-NOTICES.md` and `MATURITY.md`. The notices reproduce the
+  copyright and permission text of the six libraries the single file inlines, as MIT, ISC
+  and Apache-2.0 require. `MATURITY.md` states what this build is and is not.
+
+### Changed
+
+- The download has one fixed address that always serves the newest release:
+  `releases/latest/download/aurelian-tessera.html`.
+
+### Fixed
+
+- The build names itself Aurelian Tessera++ - in its own header, in the browser tab, and in
+  the source reference it hands a recipient.
+- In the flow view, a selecting click keeps the horizontal scroll where the reader left it.
+
 ## [0.4.0] - 2026-08-21
 
 ### Added

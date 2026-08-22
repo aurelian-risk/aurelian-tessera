@@ -717,6 +717,30 @@ try {
   await page.keyboard.press("Escape"); // Escape clears the selection
   await page.waitForTimeout(200);
   ok("Escape clears the flow selection", (await page.locator(".flow-node.selected").count()) === 0);
+  // Scrolling right is how a node off-screen is reached, so the FIRST selecting click must
+  // not take the swimlane back to the left. The click is dispatched in the page rather than
+  // driven, because driving it would scroll the node into view first and reset the position
+  // before the handler ever ran. The window is narrowed for this: at 1280 the lanes fit and
+  // there is nothing to lose.
+  {
+    await page.setViewportSize({ width: 620, height: 900 });
+    await page.waitForTimeout(400);
+    const r = await page.evaluate(async () => {
+      const el = document.querySelector(".flow-scroll");
+      el.scrollLeft = 500;
+      await new Promise((x) => setTimeout(x, 250));
+      const before = Math.round(el.scrollLeft);
+      document.querySelectorAll(".flow-node")[10].click();
+      await new Promise((x) => setTimeout(x, 700));
+      return { before, after: Math.round(el.scrollLeft), sw: el.scrollWidth, cw: el.clientWidth };
+    });
+    ok("the first selecting click keeps the horizontal scroll",
+      r.sw > r.cw + 4 && r.before === 500 && r.after === 500,
+      `${r.before} -> ${r.after}, ${r.sw}/${r.cw}`);
+    await page.keyboard.press("Escape");
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.waitForTimeout(400);
+  }
   await page.locator(".flow-node").filter({ hasText: "Organised cybercrime" }).first().click({ force: true });
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${shots}/FlowNarrow.png` });

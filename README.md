@@ -4,7 +4,9 @@
 
 Download it, double-click it, work. The complete Anwenderkatalog Grundschutz++ is already inside: all 1000 requirements, the target-object hierarchy, the BSI's mappings to IT-Grundschutz and ISO 27001.
 
-[**↓ Download the current build**](https://github.com/aurelian-risk/aurelian-tessera/releases/latest) - 4 MB, single file, runs in Edge or Chrome straight from disk.
+[**↓ Download the current build**](https://github.com/aurelian-risk/aurelian-tessera/releases/latest/download/aurelian-tessera.html) - 4 MB, single file, runs in Edge or Chrome straight from disk.
+
+<img src="docs/media/demo.webp" alt="A tour of Aurelian Tessera++: the requirement package derived from the catalogue with the account of what brought each requirement in, the risk matrix before and after treatment, an attack chain along its MITRE tactics, every chain of the study projected onto the objects they cross, chain defence per scenario and per step, the hash-chained change timeline, and a document read into the register." width="700">
 
 ---
 
@@ -18,7 +20,7 @@ Aurelian Tessera++ is intended for the space between these options: the method a
 
 ## Getting started
 
-1. Download `index.html` from [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases/latest).
+1. Download [`aurelian-tessera.html`](https://github.com/aurelian-risk/aurelian-tessera/releases/latest/download/aurelian-tessera.html) - the same file at that address for every release.
 2. Open it in Edge or Chrome.
 3. Describe your first business process and its assets. The requirements follow.
 
@@ -83,7 +85,7 @@ Where Aurelian Risk Manager automates the analysis, Aurelian Tessera++ executes 
 
 ## Licence
 
-Software under [MPL-2.0](LICENSE). The ruleset is © Bundesamt für Sicherheit in der Informationstechnik under CC BY-SA 4.0 and is carried with the changes made to it named - see [`NOTICE.md`](NOTICE.md).
+Software under [MPL-2.0](LICENSE). The ruleset is © Bundesamt für Sicherheit in der Informationstechnik under CC BY-SA 4.0 and is carried with the changes made to it named - see [`NOTICE.md`](NOTICE.md). The bundled libraries keep their own licences - see [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). The name is not part of the licence: see [`TRADEMARK.md`](TRADEMARK.md). What this build does and does not do: [`MATURITY.md`](MATURITY.md).
 
 "IT-Grundschutz", "Grundschutz++" and "BSI" are designations of the Federal Office for Information Security, used here to identify the method implemented. Not affiliated with, endorsed by or certified by the BSI.
 
