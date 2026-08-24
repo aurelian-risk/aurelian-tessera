@@ -6,6 +6,35 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.5.1] - 2026-08-24
+
+### Added
+
+- **The reference documents are a page to read and print, and they are written in German.**
+  The delivery goes to a German federal office, so the words this tool writes are German -
+  the headings, the columns, the licence notice - and the page says which language it is in,
+  which is what hyphenation and a screen reader read. Where the method catalogue has the
+  word, the document uses that word: Anforderung, Informationsverbund, Zielobjektkategorie,
+  Umsetzungsstatus, Sicherheitsniveau. What the BSI publishes as a value stands in it as
+  published; this product's own values are read in German without the stored value changing.
+- **A contact address** in the README.
+
+### Changed
+
+- **The generated documents are set like documents.** A serif for prose and a sans for
+  everything carrying data - tables, figures, the meta block - so a reader can tell at a
+  glance which of the two they are looking at. A title block, sections opened by a rule, the
+  sentence under a heading as a lede, hairline tables with the figures in columns, and a
+  table header that repeats on every page it runs over. Nothing is fetched: every family is
+  one the machine already has.
+- **A printed register past a dozen records is a table**, and past twenty rows it is set
+  dense. The rule was inside the report's own loop, so a document assembled from the same
+  registers printed a headed block per record - 393 requirements over several thousand
+  lines, 198 kB. 900px is a measure for prose and left a seven-column register wrapping
+  every cell, so the sheet grows to hold its widest table while the prose keeps its measure
+  on it, and printing sets the table fixed so it cannot grow past the page. A paragraph
+  field stays out of the columns and is printed where it is read.
+
 ## [0.5.0] - 2026-08-23
 
 ### Added

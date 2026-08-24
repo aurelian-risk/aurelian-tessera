@@ -30,6 +30,8 @@ function fieldSpec(f: FieldDef, tax: Taxonomy): string {
 const CARD_LIMIT = 12;
 /** Columns a printed register can carry before it stops being readable on a page. */
 const TABLE_COLS = 6;
+/** Rows above which a table is set dense rather than at reading size. */
+const DENSE_ROWS = 20;
 
 /** One table cell: a pipe would end the column, and a paragraph would break the row. */
 const cell = (s: string): string =>
@@ -86,23 +88,61 @@ export function workshopMarkdown(tax: Taxonomy, study: Study, groupKey: string):
  *  protection need - which is what `fields` is for. `items` narrows to a subset the caller
  *  has already chosen; without it the register is whole. */
 export function registerMarkdown(tax: Taxonomy, study: Study, typeKey: string,
-  opts?: { level?: number; fields?: string[]; items?: EntityRecord[] }): string {
+  opts?: { level?: number; fields?: string[]; items?: EntityRecord[]; as?: "table" | "cards";
+    /** What to call the register and its columns here. A taxonomy is named for the people
+     *  working in it; a document is named for the person it is handed to, and those are not
+     *  always the same language. Keys are field keys; `heading` replaces the type's own. */
+    heading?: string; labels?: Record<string, string>;
+    /** What a stored value is called here, by field key then by value. The value itself is
+     *  engine contract and is never touched - treatment.ts compares against "Accept" - so
+     *  this changes what is printed and nothing else. */
+    values?: Record<string, Record<string, string>> }): string {
   const t = tax.entityTypes.find((x) => x.key === typeKey);
   if (!t) return "";
   const items = opts?.items ?? study.entities.filter((e) => e.type === t.key);
   const titleKey = t.titleField ?? "name";
-  const shown = opts?.fields
+  const picked = opts?.fields
     ? opts.fields.map((k) => t.fields.find((f) => f.key === k)).filter((f): f is FieldDef => !!f)
-    : t.fields;
+    : null;
   const L: string[] = [];
-  L.push(`${"#".repeat(opts?.level ?? 3)} ${t.labelPlural} (${items.length})`);
-  if (items.length === 0) L.push("_none_");
+  const name = (f: FieldDef) => opts?.labels?.[f.key] ?? f.label;
+  const shown = (f: FieldDef, e: EntityRecord) => {
+    const v = valueMd(f, e.values[f.key] ?? null, tax, study);
+    const m = opts?.values?.[f.key];
+    if (!m) return v;
+    // A multiref renders as a joined list, so each part is looked up on its own.
+    return v.split(", ").map((x) => m[x] ?? x).join(", ");
+  };
+  L.push(`${"#".repeat(opts?.level ?? 3)} ${opts?.heading ?? t.labelPlural} (${items.length})`);
+  if (items.length === 0) { L.push("_none_", ""); return L.join("\n"); }
+
+  // Past a dozen the register is read across its rows, not one card at a time - the same
+  // rule the report follows, and for the same reason: a catalogue-backed type reaches the
+  // hundreds, and a headed block each turns a document about this institution into a copy
+  // of the ruleset. Where the caller named its fields those are the columns, since it chose
+  // them for this document; otherwise the type's own.
+  if ((opts?.as ?? (items.length > CARD_LIMIT ? "table" : "cards")) === "table") {
+    // A paragraph in a cell makes every row the height of its longest text, which is what
+    // columnFields already keeps out of a table. It holds for a caller's own selection too:
+    // the field is wanted in the document, just not as a column.
+    const cols = (picked ?? columnFields(t).slice(0, TABLE_COLS))
+      .filter((f) => f.key !== titleKey && f.type !== "textarea");
+    L.push(`| ${opts?.labels?.[titleKey] ?? t.label} | ${cols.map(name).join(" | ")} |`);
+    L.push(`|${" --- |".repeat(cols.length + 1)}`);
+    for (const e of items) {
+      const cells = cols.map((f) => cell(shown(f, e)));
+      L.push(`| ${cell(recordTitle(t, e))} | ${cells.join(" | ")} |`);
+    }
+    L.push("");
+    return L.join("\n");
+  }
+
   items.forEach((e: EntityRecord, i) => {
     L.push(`${i + 1}. **${recordTitle(t, e)}**`);
-    for (const f of shown) {
+    for (const f of picked ?? t.fields) {
       if (f.key === titleKey) continue;
-      const val = valueMd(f, e.values[f.key] ?? null, tax, study);
-      if (val !== " - ") L.push(`   - ${f.label}: ${val}`);
+      const val = shown(f, e);
+      if (val !== " - ") L.push(`   - ${name(f)}: ${val}`);
     }
   });
   L.push("");
@@ -814,21 +854,34 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
  *  Here rather than in a product because it is the build's promise, not a method's. A
  *  product that declares an export writes its own content and ends with this, so the notice
  *  cannot be forgotten in the second document by being written out by hand in the first. */
-export function documentCredits(): string[] {
+export function documentCredits(words?: Partial<CreditWords>): string[] {
+  const w = { ...CREDIT_WORDS_EN, ...words };
   const L: string[] = [];
   if (PRODUCT.attribution?.length) {
-    L.push("## Sources and terms\n");
-    L.push("| Content | Rights holder | Licence | Changes |");
+    L.push(`## ${w.heading}\n`);
+    L.push(`| ${w.content} | ${w.holder} | ${w.licence} | ${w.changes} |`);
     L.push("|---|---|---|---|");
     for (const a of PRODUCT.attribution) {
-      L.push(`| ${a.url ? `[${a.title}](${a.url})` : a.title} | ${a.holder} | ${a.licence} | ${a.changes ?? "none"} |`);
+      L.push(`| ${a.url ? `[${a.title}](${a.url})` : a.title} | ${a.holder} | ${a.licence} | ${a.changes ?? w.none} |`);
     }
     L.push("");
   }
-  L.push(`_Generated with ${PRODUCT.name} - ${PRODUCT.tagline}, offline._  `);
+  L.push(`_${w.generated(PRODUCT.name, PRODUCT.tagline)}_  `);
   if (PRODUCT.source) L.push(`[${PRODUCT.source}](https://${PRODUCT.source})`);
   return L;
 }
+
+/** The wording of the notice. A licence has to be readable by whoever receives the document,
+ *  and that is not always the language the application is worked in. */
+export type CreditWords = {
+  heading: string; content: string; holder: string; licence: string; changes: string;
+  none: string; generated: (name: string, tagline: string) => string;
+};
+const CREDIT_WORDS_EN: CreditWords = {
+  heading: "Sources and terms", content: "Content", holder: "Rights holder",
+  licence: "Licence", changes: "Changes", none: "none",
+  generated: (n, t) => `Generated with ${n} - ${t}, offline.`,
+};
 
 // ── Print-ready HTML report ──────────────────────────────────────────────
 // Many users have no Markdown viewer, so we also render the report to a fully
@@ -901,7 +954,11 @@ function mdToHtml(md: string): string {
       const body: string[][] = [];
       while (i < lines.length && lines[i].trim().startsWith("|")) { body.push(cells(lines[i])); i++; }
       const hasHead = head.some((c) => c !== "");
-      out.push("<table>");
+      // A register of hundreds of rows is not read the way an eight-row summary is. Set
+      // dense it fits a page: the columns take the width their content needs instead of an
+      // equal share, so an identifier stops occupying a seventh of the table and a name
+      // stops wrapping into four lines.
+      out.push(body.length > DENSE_ROWS ? `<table class="dense">` : "<table>");
       if (hasHead) out.push("<thead><tr>" + head.map((c) => `<th>${inline(c)}</th>`).join("") + "</tr></thead>");
       out.push("<tbody>" + body.map((r) => "<tr>" + r.map((c) => `<td>${inline(c)}</td>`).join("") + "</tr>").join("") + "</tbody>");
       out.push("</table>");
@@ -942,6 +999,19 @@ body { margin: 0; background: #eef0f4; color: #1c2430;
 .report th { text-align: left; padding: 7px 10px; border: 1px solid #c3ccd8; background: #f4f6f9; font-weight: 700; }
 .report td { padding: 7px 10px; border: 1px solid #d8dee7; vertical-align: top; }
 .report tbody tr:nth-child(even) td { background: #fafbfd; }
+/* A long register: the columns take the width they need, at a size that fits a page. */
+.report table.dense { font-size: 10.5px; table-layout: auto; margin: 8px 0 14px; }
+/* 900px is a measure for prose, and it leaves a seven-column register wrapping every cell.
+   So the SHEET grows to its widest table and the prose keeps its measure on it - rather
+   than the table hanging over the edges of a sheet it is supposed to be printed on. */
+.report:has(table.dense) { max-width: 1400px; }
+.report:has(table.dense) > *:not(table.dense) { max-width: 820px; }
+.report table.dense th { padding: 3px 7px; font-size: 10px; letter-spacing: 0.02em; text-transform: uppercase; color: #55606f; }
+.report table.dense td { padding: 2.5px 7px; line-height: 1.35; }
+/* Auto layout sizes a column to its content, so a cap is what keeps one long list from
+   taking the page; a short value still gets a narrow column. */
+.report table.dense td:first-child { max-width: 26em; }
+.report table.dense td:not(:first-child) { max-width: 14em; }
 .report h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
 .report h2 { font-size: 19px; margin: 30px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #eceef2; }
 .report h3 { font-size: 15.5px; margin: 22px 0 10px; color: #364152; }
@@ -1005,6 +1075,19 @@ body { margin: 0; background: #eef0f4; color: #1c2430;
   table.qt-tbl { break-inside: avoid; }
   body { background: #fff; }
   .report { box-shadow: none; margin: 0; max-width: none; padding: 0 8mm; border-radius: 0; }
+  /* A register runs over pages, and a column without its header is a column of unlabelled
+     values. thead repeats it on every one. */
+  thead { display: table-header-group; }
+  tr, .ent { break-inside: avoid; }
+  p { orphans: 2; widows: 2; }
+  /* Each numbered part of a document set starts on its own sheet, the way the set is filed. */
+  .report h2 { break-before: page; }
+  .report h1 + *, .report h2:first-of-type { break-before: auto; }
+  /* On paper the sheet is the width there is, so the table has to fit it: a fixed layout
+     cannot grow past 100% the way an automatic one does. */
+  .report:has(table.dense), .report:has(table.dense) > * { max-width: none; }
+  .report table.dense { width: 100%; table-layout: fixed; font-size: 9px; }
+  .report table.dense td, .report table.dense th { max-width: none; }
   h1, h2, h3 { break-after: avoid; }
   svg, pre.mermaid, li, div[align="center"] { break-inside: avoid; }
   a { color: inherit; text-decoration: none; }
@@ -1012,12 +1095,30 @@ body { margin: 0; background: #eef0f4; color: #1c2430;
 
 /** Full self-contained, print-ready HTML report (opens in a new tab). */
 export function reportHtml(tax: Taxonomy, study: Study): string {
-  const body = mdToHtml(reportMarkdown(tax, study));
+  return documentHtml(reportMarkdown(tax, study),
+    `${study.name} - ${PRODUCT.documentTitle ?? "Risk Analysis Report"}`, { className: "numbered" });
+}
+
+/** Markdown as a print-ready page: the report's stylesheet, the product's on top, and
+ *  nothing fetched - it opens over file:// like everything else here.
+ *
+ *  Separate from reportHtml so a document a product declares is SET the way the report is,
+ *  instead of inventing a second look for the same institution's papers.
+ *
+ *  `className` is what a stylesheet can tell two documents apart by. The report is
+ *  `numbered`, because its sections have no numbers of their own; a document set whose parts
+ *  are called A.0 to A.6 must not be numbered a second time on top of that.
+ *
+ *  `lang` is the language the document is WRITTEN in, which is not the language the
+ *  application is worked in - a delivery to a federal office is not English because the
+ *  interface is. It decides hyphenation and what a screen reader does with the text. */
+export function documentHtml(markdown: string, title: string,
+  opts?: { className?: string; lang?: string }): string {
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(study.name)} - ${esc(PRODUCT.documentTitle ?? "Risk Analysis Report")}</title>
+<html lang="${esc(opts?.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)}</title>
 <style>${REPORT_CSS}${PRODUCT.reportCss ?? ""}</style></head>
-<body><main class="report">${body}</main></body></html>`;
+<body><main class="report${opts?.className ? ` ${opts.className}` : ""}">${mdToHtml(markdown)}</main></body></html>`;
 }
 
 /** Open an HTML document in a new tab (blob URL); falls back to download. */

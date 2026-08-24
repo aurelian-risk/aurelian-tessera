@@ -18,7 +18,8 @@
 //
 // The security concept stays what the report writes. This is a second shape of the same
 // content, offered from the same menu, for a reader who expects those seven names.
-import { documentCredits, registerMarkdown } from "../../domain/clipboard";
+import { documentCredits, documentHtml, registerMarkdown } from "../../domain/clipboard";
+import { DOC_DE, HEADING_DE, LABEL_DE, TITLE_DE, VALUE_DE } from "./exportterms";
 import type { EntityRecord, Study, Taxonomy } from "../../domain/types";
 import { shortVersion } from "../../domain/vocabulary";
 
@@ -27,54 +28,70 @@ import { shortVersion } from "../../domain/vocabulary";
  *  them is stale. */
 const MEASURED = "2026-08-23";
 
-type Part = { type: string; fields?: string[] };
-type Doc = { id: string; title: string; english: string; note: string; parts: Part[] };
+type Part = {
+  type: string;
+  fields?: string[];
+  /** Override the renderer's own choice. A paragraph field only survives as a card. */
+  as?: "table" | "cards";
+  /** Narrow the register to the records this part is about. */
+  only?: (r: EntityRecord) => boolean;
+  /** A sentence before the register, where the heading alone does not say which part it is. */
+  lead?: string;
+};
+type Doc = { id: string; title: string; note: string; parts: Part[] };
 
 /** The seven, in the publisher's order, each naming the registers it reads.
  *
- *  The titles are the BSI's own and stay as published, with the English reading beside
- *  them - the way the BSI itself writes "Vertraulichkeit (Confidentiality)" where it wants
- *  both. A translated document name is not the document an auditor asked for. */
+ *  Written in German throughout, and not as a courtesy: this is what an institution hands to
+ *  a German federal office, the titles are the names that office uses for them, and the
+ *  vocabulary is the method catalogue's own. See exportterms.ts for which words and why. */
 const DOCS: Doc[] = [
   {
-    id: "A.0", title: "Leitlinie zur Informationssicherheit", english: "Information security policy",
-    note: "The policy, its objectives, the strategy behind it, and the management authorisation it draws its force from (GC.5).",
+    id: "A.0", title: "Leitlinie zur Informationssicherheit",
+    note: "Die Leitlinie, ihre messbaren Ziele, die Strategie dahinter und die Autorisierung durch die Leitung, aus der das Dokument seine Verbindlichkeit bezieht (GC.5).",
     parts: [{ type: "leitlinie" }],
   },
   {
-    id: "A.1", title: "Strukturanalyse", english: "Structure analysis",
-    note: "The business processes and the assets that carry them, with the interfaces out of the information domain (STM.1, GC.7.1.1).",
+    id: "A.1", title: "Strukturanalyse",
+    note: "Die Geschäftsprozesse und Informationen des Informationsverbunds und die Assets, die sie tragen, mit den Schnittstellen nach außen (STM.1, GC.7.1.1).",
     parts: [
-      // The processes WITHOUT their protection need: that is A.2, and printing it here
-      // would make the two documents restate each other.
+      // Die Prozesse OHNE ihren Schutzbedarf: der ist A.2, und beide Dokumente sollen
+      // einander nicht wiederholen.
       { type: "business_asset", fields: ["description", "asset_type", "verantwortlich", "criticality"] },
       { type: "supporting_asset" },
     ],
   },
   {
-    id: "A.2", title: "Schutzbedarfsfeststellung", english: "Protection-need assessment",
-    note: "The same processes, read for their classification. Two levels, normal and hoch, decided on the process rather than on the object (GC.7.1); an object's level is carried by the requirement's sec_level.",
+    id: "A.2", title: "Schutzbedarfsfeststellung",
+    note: "Dieselben Prozesse, gelesen auf ihre Klassifizierung. Zwei Stufen, normal und hoch, festgelegt am Prozess und nicht am Zielobjekt (GC.7.1); das Niveau eines Zielobjekts trägt die Anforderung in ihrem Sicherheitsniveau.",
     parts: [{ type: "business_asset", fields: ["protection_need", "protection_rationale"] }],
   },
   {
-    id: "A.3", title: "Modellierung", english: "Modelling",
-    note: "Which requirements reached which object, and by which rule (STM.2.1). The practices are the catalogue's own top-level grouping.",
+    id: "A.3", title: "Modellierung",
+    note: "Welche Anforderung welches Zielobjekt erreicht hat, und nach welcher Regel (STM.2.1). Die Praktiken sind die oberste Gliederung des Anwenderkatalogs selbst.",
     parts: [
       { type: "praktik" },
-      { type: "requirement", fields: ["ref_id", "praktik", "modal_verb", "sec_level", "target_object_categories", "applies_to_process", "applies_to_asset", "herkunft", "scope", "begruendung"] },
+      // Nicht die Praktik: eine Kennung beginnt mit ihrem Kürzel, eine Spalte voller
+      // Praktiknamen wiederholt also die Spalte daneben und ist die breiteste der Zeile.
+      { type: "requirement", fields: ["ref_id", "modal_verb", "sec_level", "target_object_categories", "applies_to_asset"] },
     ],
   },
   {
-    id: "A.4", title: "Ergebnis des Grundschutz-Checks", english: "Result of the Grundschutz check",
-    note: "The implementation status per requirement - ja or nein, and only ja when everything it depends on is (UMS.1.1) - with the residual risk of what is not implemented (UMS.1.2) and any security level reviewed after the fact (STM.3.1).",
+    id: "A.4", title: "Ergebnis des Grundschutz-Checks",
+    note: "Der Umsetzungsstatus je Anforderung - ja oder nein, und ja erst, wenn auch alles Abhängige umgesetzt ist (UMS.1.1) - mit dem Restrisiko aus dem, was nicht umgesetzt ist (UMS.1.2), und jedem nachträglich überprüften Sicherheitsniveau (STM.3.1).",
     parts: [
-      { type: "requirement", fields: ["ref_id", "modal_verb", "umsetzung", "fortschritt", "residual_risk", "verantwortlich", "prioritaet", "faellig"] },
+      { type: "requirement", fields: ["ref_id", "modal_verb", "umsetzung", "verantwortlich", "prioritaet", "faellig"] },
+      // UMS.1.2 ist ein Satz je Anforderung, und ein Satz ist keine Spalte. Gedruckt werden
+      // nur die, die einen tragen - die Handvoll, die die Statustabelle offenlässt.
+      { type: "requirement", fields: ["ref_id", "residual_risk"], as: "cards",
+        only: (r) => String(r.values.residual_risk ?? "").trim() !== "",
+        lead: "Das Restrisiko, das die Institution einstweilen trägt, soweit eines benannt wurde (`UMS.1.2`)." },
       { type: "niveau_review" },
     ],
   },
   {
-    id: "A.5", title: "Risikoanalyse", english: "Risk analysis",
-    note: "Entered on the four triggers of GC.7.2 / STM.4.1, not walked by everyone. Grundschutz++ prescribes no risk method; this one models the attack chain and places the risk before and after treatment.",
+    id: "A.5", title: "Risikoanalyse",
+    note: "Betreten über die vier Auslöser aus GC.7.2 / STM.4.1, nicht von jedem durchlaufen. Grundschutz++ schreibt keine Risikomethode vor; diese modelliert die Angriffskette und verortet das Risiko vor und nach der Behandlung.",
     parts: [
       { type: "feared_event" },
       { type: "strategic_scenario" },
@@ -82,15 +99,16 @@ const DOCS: Doc[] = [
     ],
   },
   {
-    id: "A.6", title: "Realisierungsplan", english: "Implementation plan",
-    note: "What is to be done about what is not implemented, with priority, owner and date (UMS.2.2 / 3.1 / 4.1), what was authorised as an exception instead (UMS.5), and the rounds that tracked it (UMS.6).",
+    id: "A.6", title: "Realisierungsplan",
+    note: "Was gegen das Nichtumgesetzte unternommen wird, mit Priorität, Verantwortlichkeit und Termin (UMS.2.2 / 3.1 / 4.1), was stattdessen als Ausnahme genehmigt wurde (UMS.5), und die Runden, die es nachverfolgt haben (UMS.6).",
     parts: [
-      { type: "security_measure", fields: ["description", "measure_type", "status", "priority", "fulfills", "covers", "verantwortlich", "termin"] },
+      { type: "security_measure", fields: ["description", "measure_type", "status", "priority", "verantwortlich", "termin"] },
       { type: "exception" },
       { type: "nachverfolgung" },
     ],
   },
 ];
+
 
 /** The records of one type that belong in a delivered document.
  *
@@ -109,63 +127,90 @@ function inPlay(tax: Taxonomy, study: Study, typeKey: string): EntityRecord[] {
 export function referenceDocuments(
   tax: Taxonomy, study: Study,
 ): { filename: string; text: string } | { nothing: string } {
-  const parts = DOCS.flatMap((d) => d.parts);
-  const present = parts.filter((p) => tax.entityTypes.some((t) => t.key === p.type));
-  if (!present.length) return { nothing: "this taxonomy declares none of the seven registers" };
-
-  const records = new Map<string, EntityRecord[]>();
-  let total = 0;
-  for (const p of present) {
-    if (!records.has(p.type)) {
-      const rs = inPlay(tax, study, p.type);
-      records.set(p.type, rs);
-      total += rs.length;
-    }
+  const declared = (p: Part) => tax.entityTypes.some((t) => t.key === p.type);
+  if (!DOCS.flatMap((d) => d.parts).some(declared)) {
+    return { nothing: "this taxonomy declares none of the seven registers" };
   }
+
+  // Resolved once per part, not per type: two parts may read the same register through
+  // different fields, and one of them may narrow it.
+  const byType = new Map<string, EntityRecord[]>();
+  const items = new Map<Part, EntityRecord[]>();
+  for (const p of DOCS.flatMap((d) => d.parts)) {
+    if (!declared(p)) continue;
+    if (!byType.has(p.type)) byType.set(p.type, inPlay(tax, study, p.type));
+    const all = byType.get(p.type)!;
+    items.set(p, p.only ? all.filter(p.only) : all);
+  }
+  const total = [...byType.values()].reduce((n, rs) => n + rs.length, 0);
   if (total === 0) return { nothing: "nothing to deliver yet - this study holds no records in any of the seven documents" };
 
   const L: string[] = [];
-  L.push(`# ${study.name} - Referenzdokumente (Reference documents)`);
+  L.push(`# Referenzdokumente`);
+  L.push(`## ${study.name}`);
   L.push("");
-  L.push(`The BSI has published no certification scheme for Grundschutz++ (library read ${MEASURED}). This set is the one published for the classic IT-Grundschutz certification, ISO 27001 on the basis of IT-Grundschutz, filled from this study.`);
+  L.push(`Das BSI hat für Grundschutz++ kein Zertifizierungsschema veröffentlicht (Bibliothek gelesen am ${MEASURED}). Dieser Satz folgt dem veröffentlichten Satz der klassischen IT-Grundschutz-Zertifizierung, ISO 27001 auf Basis von IT-Grundschutz, gefüllt aus dieser Studie.`);
   L.push("");
 
   const head: string[] = ["| | |", "|---|---|"];
-  if (study.organization) head.push(`| Institution | ${study.organization} |`);
-  if (study.scope) head.push(`| Information domain | ${study.scope} |`);
-  head.push(`| Method | ${tax.name} |`);
+  if (study.organization) head.push(`| ${DOC_DE.institution} | ${study.organization} |`);
+  if (study.scope) head.push(`| ${DOC_DE.domain} | ${study.scope} |`);
+  head.push(`| ${DOC_DE.method} | ${tax.name} |`);
   if (tax.vocabularySource) {
-    head.push(`| Ruleset | ${tax.vocabularySource.name}${tax.vocabularySource.version ? `, version ${shortVersion(tax.vocabularySource.version)}` : ""} |`);
+    head.push(`| ${DOC_DE.ruleset} | ${tax.vocabularySource.name}${tax.vocabularySource.version ? `, ${DOC_DE.version(shortVersion(tax.vocabularySource.version))}` : ""} |`);
   }
-  head.push(`| Generated | ${new Date().toISOString().slice(0, 10)} |`);
+  head.push(`| ${DOC_DE.generated} | ${new Date().toISOString().slice(0, 10)} |`);
   const log = study.log ?? [];
-  if (log.length) head.push(`| Change record | ${log.length} entries, last ${String(log[log.length - 1]?.ts ?? "").slice(0, 10)} |`);
+  if (log.length) {
+    head.push(`| ${DOC_DE.changeRecord} | ${DOC_DE.entries(log.length, String(log[log.length - 1]?.ts ?? "").slice(0, 10))} |`);
+  }
   L.push(head.join("\n"));
   L.push("");
 
-  L.push("## Contents\n");
+  L.push(`## ${DOC_DE.contents}\n`);
   for (const d of DOCS) {
-    const n = d.parts.reduce((s, p) => s + (records.get(p.type)?.length ?? 0), 0);
-    L.push(`- **${d.id} ${d.title}** (${d.english}) - ${n} record${n === 1 ? "" : "s"}`);
+    const n = [...new Set(d.parts.filter(declared).map((p) => p.type))]
+      .reduce((s, k) => s + (byType.get(k)?.length ?? 0), 0);
+    L.push(`- **${d.id} ${d.title}** - ${DOC_DE.records(n)}`);
   }
   L.push("");
 
   for (const d of DOCS) {
     L.push("---\n");
-    L.push(`## ${d.id} ${d.title} (${d.english})\n`);
+    L.push(`## ${d.id} ${d.title}\n`);
     L.push(`_${d.note}_\n`);
     for (const p of d.parts) {
-      const items = records.get(p.type);
-      if (!items) continue;
-      L.push(registerMarkdown(tax, study, p.type, { level: 3, fields: p.fields, items }));
+      const rs = items.get(p);
+      if (!rs || !rs.length) continue;
+      if (p.lead) L.push(`${p.lead}\n`);
+      L.push(registerMarkdown(tax, study, p.type, {
+        level: 3, fields: p.fields, items: rs, as: p.as,
+        heading: HEADING_DE[p.type],
+        labels: { ...LABEL_DE, name: TITLE_DE[p.type] ?? LABEL_DE.name },
+        values: VALUE_DE,
+      }));
     }
   }
 
   L.push("---\n");
   // The set quotes the BSI's ruleset throughout, so it carries the notice the licence asks
-  // for - the same one the report ends with, written in one place.
-  L.push(...documentCredits());
+  // for - the same one the report ends with, written in one place and in this document's
+  // language, because a licence has to be readable by whoever receives it.
+  L.push(...documentCredits(DOC_DE.credits));
 
   const slug = study.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "study";
   return { filename: `${slug}-referenzdokumente.md`, text: L.join("\n").trim() + "\n" };
+}
+
+/** The same set as a page, set the way the report is: read in the browser, printed from
+ *  there. Markdown is the file to keep; this is the one an auditor is handed. */
+export function referenceDocumentsHtml(
+  tax: Taxonomy, study: Study,
+): { filename: string; text: string } | { nothing: string } {
+  const md = referenceDocuments(tax, study);
+  if ("nothing" in md) return md;
+  return {
+    filename: md.filename.replace(/\.md$/, ".html"),
+    text: documentHtml(md.text, `Referenzdokumente - ${study.name}`, { lang: "de" }),
+  };
 }

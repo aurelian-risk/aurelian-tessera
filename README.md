@@ -91,6 +91,10 @@ Software under [MPL-2.0](LICENSE). The ruleset is © Bundesamt für Sicherheit i
 
 Built on the Aurelian engine, shared with [Aurelian Lite](https://github.com/aurelian-risk/aurelian-lite).
 
+## Contact
+
+Defects, corrections and questions: [aurelian-risk@posteo.com](mailto:aurelian-risk@posteo.com), or an issue on this repository. A defect report is most use with the version the build reports and the steps that reproduce it.
+
 ## Disclaimer
 
 Aurelian Tessera++ is provided "as is" and "as available", without warranties or conditions of any kind, whether express, implied or statutory, including but not limited to any implied warranties of merchantability, fitness for a particular purpose, title, non-infringement, accuracy, reliability or availability.

@@ -382,6 +382,10 @@ export interface Product {
     label: string;
     /** One line under the label: what the file is, and who reads it. */
     hint?: string;
+    /** Open it in a tab instead of saving it. A page meant to be read and printed is read
+     *  where it is opened; a file meant for another program is saved. The report offers
+     *  both of itself, and a document a product declares may want the same. */
+    open?: boolean;
     run: (tax: Taxonomy, study: Study) => { filename: string; text: string } | { nothing: string };
   }[];
 

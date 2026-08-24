@@ -65,8 +65,12 @@ function ReportMenu({ tax, study }: { tax: Taxonomy; study: Study }) {
               return (
                 <button key={x.id} className="menu-item stacked" disabled={!!nothing}
                   title={nothing ?? undefined}
-                  onClick={() => { if (!nothing && "filename" in r) { setOpen(false); downloadText(r.filename, r.text); } }}>
-                  <Icon.download />
+                  onClick={() => {
+                    if (nothing || !("filename" in r)) return;
+                    setOpen(false);
+                    if (x.open) openReportHtml(r.text, r.filename); else downloadText(r.filename, r.text);
+                  }}>
+                  {x.open ? <Icon.doc /> : <Icon.download />}
                   <span className="mi-text"><span>{x.label}</span>
                     <span className="menu-hint">{nothing ?? x.hint ?? ""}</span></span>
                 </button>

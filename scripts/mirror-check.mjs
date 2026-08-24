@@ -35,6 +35,7 @@ const PRIVATE = [
   [/^harness\//, "local probes and model harness"],
   [/^viz-demo\.html$/, "scratch"],
   [/^scripts\/demo-video\.mjs$/, "recording script"],
+  [/^scripts\/mirror-push\.mjs$/, "the release procedure, like docs/mirror.md"],
   [/\.generated\.ts$/, "the ruleset - produced at build time, in neither repository"],
 ];
 
@@ -104,6 +105,32 @@ if (!existsSync(resolve(mirror, ".git"))) {
     samples.length === 1 && samples[0] === "samples/test-corpus.txt", samples.join(", ") || "empty");
   ok("the mirror's docs/media holds the still the README embeds and nothing else",
     media.length === 1 && media[0] === "docs/media/demo.webp", media.join(", ") || "empty");
+
+  // The author of a mirror commit is the PROJECT ACCOUNT, by its GitHub noreply address -
+  // the same one the main stream uses, and the only kind of address GitHub attributes to an
+  // account at all. A personal address shows as no account; the machine's global identity
+  // showed as a stranger's. Set per repository, never globally: the private repository goes
+  // on committing under the personal address.
+  const AUTHOR = "309364953+aurelian-risk@users.noreply.github.com";
+  const AUTHOR_NAME = "aurelian-risk";
+  const cfg = (k) => {
+    try { return execFileSync("git", ["-C", mirror, "config", "--local", "--get", k], { encoding: "utf8" }).trim(); }
+    catch { return ""; }
+  };
+  ok("the mirror commits under the project account, set in the mirror itself",
+    cfg("user.email") === AUTHOR && cfg("user.name") === AUTHOR_NAME,
+    `${cfg("user.name") || "no user.name"} <${cfg("user.email") || "no user.email - it would fall through to the global one"}>`);
+  const strangers = [...new Set(execFileSync("git",
+    ["-C", mirror, "log", "--format=%ae%n%ce", "HEAD"], { encoding: "utf8" })
+    .split("\n").map((x) => x.trim()).filter(Boolean))].filter((e) => e !== AUTHOR);
+  ok("...and every commit on the branch was written under it",
+    strangers.length === 0, strangers.join(", "));
+  // A tag is signed by whoever made it and that name stands on the release page.
+  const tagged = execFileSync("git",
+    ["-C", mirror, "for-each-ref", "refs/tags", "--format=%(refname:short) %(taggeremail)"],
+    { encoding: "utf8" }).split("\n").map((x) => x.trim()).filter(Boolean)
+    .filter((l) => l.includes(" <") && !l.endsWith(`<${AUTHOR}>`));
+  ok("...and so was every tag on it", tagged.length === 0, tagged.join(", "));
 }
 
 say(problems ? `\n${problems} to answer before pushing` : "\nnothing undeclared, nothing leaked");

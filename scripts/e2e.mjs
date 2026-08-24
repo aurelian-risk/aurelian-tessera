@@ -598,7 +598,7 @@ try {
   // this product may live there. Checked while the menu is open - it holds a fixed overlay
   // that swallows every later click, and only using an entry takes it down.
   {
-    const own = page.locator(".menu-item", { hasText: "Own requirements for the BSI" });
+    const own = page.locator(".menu-item", { hasText: "own requirements to the BSI" });
     ok("the method's own delivery is offered beside the report", (await own.count()) === 1);
     // The sample carries an own requirement out of a compliance obligation (STM.2.1.7) and
     // none for an asset the catalogue misses (STM.2.1.6). Only .6 names a delivery, so the
@@ -613,6 +613,12 @@ try {
     const refs = page.locator(".menu-item", { hasText: "Reference documents" });
     ok("the reference documents are offered beside the report", (await refs.count()) === 1);
     ok("...enabled, because this study fills them", !(await refs.first().isDisabled()));
+    ok("...as a page to read and print", /new tab/.test(await refs.first().innerText()));
+    // Not a document: the file an institution submits, in the publisher's own format. The
+    // hint carries the reason while the entry is disabled, so the LABEL is what has to say
+    // that this is a sending rather than something to read.
+    ok("...and the delivery is labelled as a sending, not as a document",
+      /Send own requirements to the BSI/.test(await own.first().innerText()));
   }
   const [report] = await Promise.all([
     page.context().waitForEvent("page"),
@@ -625,42 +631,93 @@ try {
   ok("...and no monetary figures at all", !/[\u20ac$]\s?\d|\d\s?(EUR|USD)\b/.test(rep));
   await report.close();
 
-  // Driven end to end: the file is taken, read back, and asked whether it is the set it
-  // claims to be. A.1 and A.2 are the SAME register read twice - the objects, then their
-  // protection need - which is the whole reason the renderer takes a field selection.
-  await page.locator(".btn.sm", { hasText: "Report" }).click();
-  await page.waitForTimeout(200);
-  const [dl] = await Promise.all([
-    page.waitForEvent("download"),
-    page.locator(".menu-item.stacked", { hasText: "Reference documents" }).click(),
+  // Driven end to end: the set is opened, read back, and asked whether it is what it claims
+  // to be. A.1 and A.2 are the SAME register read twice - the objects, then their protection
+  // need - which is the whole reason the renderer takes a field selection.
+  const [refPage] = await Promise.all([
+    page.context().waitForEvent("page"),
+    page.locator(".btn.sm", { hasText: "Report" }).click().then(() => page.waitForTimeout(200))
+      .then(() => page.locator(".menu-item.stacked", { hasText: "Reference documents" }).click()),
   ]);
-  const refText = await new Promise(async (res, rej) => {
-    const st = await dl.createReadStream(); let b = "";
-    st.on("data", (c) => { b += c; }); st.on("end", () => res(b)); st.on("error", rej);
-  });
-  ok("the reference set is written as a file", refText.length > 2000);
+  await refPage.waitForLoadState("domcontentloaded");
+  const refText = await refPage.locator("body").innerText();
+  ok("the reference set opens as a page", refText.length > 2000);
   ok("...saying the BSI published no scheme for this method",
-    /no certification scheme for Grundschutz\+\+/.test(refText));
+    /kein Zertifizierungsschema veröffentlicht/.test(refText));
   ok("...and that this is the classic set, named as that set",
-    /classic IT-Grundschutz certification/.test(refText));
+    /klassischen IT-Grundschutz-Zertifizierung/.test(refText));
+  // The delivery goes to a German federal office, so the document is written in German and
+  // says so - hyphenation and a screen reader both read that attribute.
+  ok("...written in German, and declaring it",
+    (await refPage.evaluate(() => document.documentElement.lang)) === "de");
+  ok("...naming its columns and its own words in German",
+    /Kennung/.test(refText) && /Sicherheitsniveau/.test(refText)
+    && /Umsetzungsstatus/.test(refText) && /Quellen und Lizenzbedingungen/.test(refText));
+  // The values the BSI publishes stay as published; this product's own get a German
+  // reading, and the stored value behind it is untouched - treatment.ts compares on it.
+  ok("...with the published values as published, and ours read in German",
+    /MUSS/.test(refText) && /normal-SdT/.test(refText)
+    && /Prozess/.test(refText) && !/Statutory task/.test(refText));
   for (const [id, title] of [["A.0", "Leitlinie"], ["A.1", "Strukturanalyse"],
     ["A.2", "Schutzbedarfsfeststellung"], ["A.3", "Modellierung"],
     ["A.4", "Ergebnis des Grundschutz-Checks"], ["A.5", "Risikoanalyse"],
     ["A.6", "Realisierungsplan"]]) {
-    ok(`...carrying ${id} ${title}`, new RegExp(`## ${id.replace(".", "\\.")} ${title}`).test(refText));
+    ok(`...carrying ${id} ${title}`,
+      (await refPage.locator("h2", { hasText: `${id} ${title}` }).count()) === 1);
   }
   {
-    const a1 = refText.slice(refText.indexOf("## A.1 "), refText.indexOf("## A.2 "));
-    const a2 = refText.slice(refText.indexOf("## A.2 "), refText.indexOf("## A.3 "));
+    // Each name stands twice - once in the contents, once as the heading - so the LAST
+    // occurrence is the section itself.
+    const a1 = refText.slice(refText.lastIndexOf("A.1 Strukturanalyse"), refText.lastIndexOf("A.2 Schutzbedarfsfeststellung"));
+    const a2 = refText.slice(refText.lastIndexOf("A.2 Schutzbedarfsfeststellung"), refText.lastIndexOf("A.3 Modellierung"));
+    // innerText is the RENDERED text and a register heading is set in capitals, so the
+    // comparison is on the words, not on their case.
+    const reg = /geschäftsprozesse und informationen \(/i;
     ok("A.1 reads the processes without their protection need",
-      /Business processes \(/.test(a1) && !/Protection need:/.test(a1));
+      reg.test(a1) && !/Schutzbedarf/i.test(a1));
     ok("...and A.2 reads the same register for exactly that",
-      /Business processes \(/.test(a2) && /Protection need:/.test(a2));
+      reg.test(a2) && /Schutzbedarf/i.test(a2));
   }
   ok("...and it carries the licence notice the ruleset asks for",
-    /Sources and terms/.test(refText) && /CC BY-SA 4\.0/.test(refText));
+    /Quellen und Lizenzbedingungen/.test(refText) && /CC BY-SA 4\.0/.test(refText));
   ok("...with the catalogue version a reader can compare, not to the microsecond",
-    !/version \d{4}-\d{2}-\d{2}T/.test(refText));
+    !/Version \d{4}-\d{2}-\d{2}T/.test(refText));
+  // Past a dozen records a register is a table, and past twenty rows it is set dense -
+  // 393 requirements as a headed block each ran to several thousand lines.
+  ok("...printing the big registers as tables rather than a block per record",
+    (await refPage.locator("table tr").count()) > 700);
+  ok("...set dense, so a long register fits a page",
+    (await refPage.locator("table.dense").count()) >= 2
+    && (await refPage.locator("table:not(.dense)").count()) >= 1);
+  // The residual risk of UMS.1.2 is a sentence each: wanted in the document, not as a
+  // column, and printed where it is read.
+  ok("...and keeping paragraphs out of the columns",
+    (await refPage.locator("th", { hasText: "Restrisiko bei Nichtumsetzung" }).count()) === 0
+    && /Restrisiko bei Nichtumsetzung/.test(refText));
+  // The defect this replaces was invisible to scrollWidth: a transform pulled the register
+  // out of the sheet, hanging over both edges of the page it is meant to be printed on, and
+  // scrollWidth does not count transformed boxes. So this measures the boxes themselves.
+  ok("...with nothing written past the edges of the sheet",
+    (await refPage.evaluate(() => {
+      const rep = document.querySelector(".report");
+      const cs = getComputedStyle(rep), r = rep.getBoundingClientRect();
+      const l = r.left + parseFloat(cs.paddingLeft), rt = r.right - parseFloat(cs.paddingRight);
+      return [...document.querySelectorAll("table, pre, div[align]")]
+        .filter((e) => { const b = e.getBoundingClientRect(); return b.left < l - 1 || b.right > rt + 1; })
+        .length;
+    })) === 0);
+  ok("...and the sheet grew to hold the register rather than the register leaving it",
+    (await refPage.evaluate(() => {
+      const t = document.querySelector("table.dense");
+      return t.getBoundingClientRect().width / document.querySelector(".report").clientWidth;
+    })) > 0.8);
+  // A set whose parts are called A.0 to A.6 must not be numbered a second time on top.
+  ok("...numbered once, by the names the set already carries",
+    !/^\s*\d+\s+A\.\d/m.test(refText)
+    && (await refPage.locator(".report.numbered").count()) === 0);
+  ok("...fetching nothing from anywhere",
+    (await refPage.locator("link[href^='http'], script[src^='http'], img[src^='http']").count()) === 0);
+  await refPage.close();
 
   // VRB, the improvement practice: a nonconformity is examined for its cause and for
   // whether it can recur (VRB.2.1), and the corrections and improvements against it are a

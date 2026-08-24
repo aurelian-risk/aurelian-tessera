@@ -149,7 +149,7 @@ and "Verteilungseffekt" do not occur in the method catalogue at all.
 
 Done, in this order:
 
-1. **`test:e2e` rewritten for this product** - 341 checks against the portable build,
+1. **`test:e2e` rewritten for this product** - 353 checks against the portable build,
    without network, driven by the position of a group in the taxonomy and by the heading of
    the section a table sits in, never by label text.
 2. **Vocabularies derived from the publication, and kept current.** `npm run sync` runs
@@ -175,7 +175,8 @@ Done, in this order:
 11. **The improvement plan** (VRB.5) as one register of corrections and improvements.
 12. **Own requirements delivered to the BSI** (STM.2.1.6), as an export in the form the BSI
     reads. The OSCAL reader exists; this is the writer.
-13. **The reference documents**, A.0–A.6, filled from the study.
+13. **The reference documents**, A.0–A.6, filled from the study, as a page to read and
+    print, written in German for the office they are addressed to.
 
 Next:
 

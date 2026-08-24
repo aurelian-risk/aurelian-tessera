@@ -1,6 +1,6 @@
 {
   "name": "aurelian-tessera",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "BSI Grundschutz implemented - an offline ISMS tool for the Grundschutz++ method, in a single HTML file.",
   "type": "module",
@@ -33,7 +33,8 @@
     "test:perf": "node harness/perf.mjs",
     "test:sealimport": "node harness/seal-import.mjs",
     "test:whitepage": "node harness/white-page.mjs",
-    "mirror:check": "node scripts/mirror-check.mjs"
+    "mirror:check": "node scripts/mirror-check.mjs",
+    "mirror:push": "node scripts/mirror-push.mjs"
   },
   "dependencies": {
     "d3-force": "^3.0.0",

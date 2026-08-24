@@ -102,36 +102,120 @@ svg text, .tbl .badge, .hm-cell, .kc-tile, .flow-node, .ap-node, .qb-row, .ft-ca
  *  printed page. The report is read beside the guide it works to; it should not look like
  *  a different trade to the paper it cites. */
 export const REPORT_STYLES = `
+/* The voice of this product's papers. Two typefaces and nothing fetched: the application
+   must render without a network, so every family here is one the machine already has.
+
+   The pairing is the point. Prose is set in a serif, because a security concept is read in
+   sentences; everything that carries DATA - the tables, the meta block, the figures, the
+   counts - is set in the sans, because a column of values is scanned, not read. A reader
+   can tell at a glance which of the two they are looking at, and that is what makes a
+   document of many registers legible rather than uniform. */
+:root {
+  --doc-ink: #16181c;
+  --doc-quiet: #5b6472;
+  --doc-rule: #c8cfd9;
+  --doc-hair: #dfe4ea;
+  --doc-accent: #1f4f8f;
+  --doc-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --doc-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
 body { background: #f2f3f5; }
-.report { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
-  max-width: 210mm; color: #16181c; border-radius: 0; box-shadow: 0 2px 14px -6px rgba(20,30,50,0.35);
-  padding: 30mm 24mm; counter-reset: sec fig; }
-.report h1 { font-size: 27px; font-weight: 600; letter-spacing: 0; line-height: 1.25;
-  border-bottom: 2px solid #16181c; padding-bottom: 10px; margin-bottom: 6px; }
-.report h2 { counter-increment: sec; counter-reset: sub; font-size: 19px; font-weight: 700;
-  margin: 32px 0 10px; border-bottom: 1px solid #b9c0cb; padding-bottom: 5px; }
-.report h2::before { content: counter(sec) "  "; color: #6a7382; font-variant-numeric: tabular-nums; }
-.report h3 { counter-increment: sub; font-size: 15.5px; font-weight: 700; margin: 22px 0 6px; }
-.report h3::before { content: counter(sec) "." counter(sub) "  "; color: #6a7382; font-variant-numeric: tabular-nums; }
-.report h4 { font-size: 14px; font-weight: 700; margin: 14px 0 4px; }
-.report hr { border: 0; border-top: 1px solid #d5dae2; margin: 26px 0; }
+.report { font-family: var(--doc-serif); color: var(--doc-ink);
+  max-width: 210mm; border-radius: 0; box-shadow: 0 2px 14px -6px rgba(20,30,50,0.35);
+  padding: 30mm 24mm; font-size: 15px; line-height: 1.58; }
+.report p { margin: 9px 0; hyphens: auto; }
 
-/* Tables as the guide sets them: full rules, an italic centred head, zebra off. */
-.report table { border-collapse: collapse; width: 100%; margin: 10px 0 20px; font-size: 12.5px; }
-.report th { border: 1px solid #8d97a5; border-bottom-width: 1.5px; background: #eceff3; font-style: italic; font-weight: 700;
-  text-align: center; padding: 6px 9px; }
-.report td { border: 1px solid #ccd3dc; padding: 6px 9px; vertical-align: top; }
+/* ── The title block ───────────────────────────────────────────────────────
+   The name of the document, then what it is about. The subtitle is the first
+   paragraph after h1, set in the sans so the two do not read as one sentence. */
+.report h1 { font-family: var(--doc-serif); font-size: 32px; font-weight: 600; line-height: 1.15;
+  letter-spacing: -0.01em; margin: 0 0 4px; padding: 0; border: 0; }
+.report h1 + h2, .report h1 + p {
+  font-family: var(--doc-sans); font-size: 15px; font-weight: 400; color: var(--doc-quiet);
+  letter-spacing: 0.01em; margin: 0 0 4px; padding: 0; border: 0; }
+.report h1 + h2::before { content: none; }
+.report h1 + h2 + p, .report h1 + p + p {
+  border-top: 2px solid var(--doc-ink); padding-top: 14px; margin-top: 14px; }
+
+/* ── Sections ──────────────────────────────────────────────────────────────
+   A rule above rather than under: it opens the section instead of underlining
+   its name, and the eye finds the start of a part on a long page. */
+.report h2 { font-size: 21px; font-weight: 600; letter-spacing: -0.005em;
+  margin: 34px 0 4px; padding-top: 12px; border: 0; border-top: 1px solid var(--doc-rule); }
+.report h3 { font-family: var(--doc-sans); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.09em; color: var(--doc-quiet);
+  margin: 24px 0 6px; }
+.report h4 { font-size: 15px; font-weight: 700; margin: 16px 0 4px; }
+.report hr { border: 0; border-top: 1px solid var(--doc-hair); margin: 26px 0 0; }
+/* A section opens with a rule of its own, so a separator before it would draw two. */
+.report hr + h2 { border-top: 0; padding-top: 0; margin-top: 20px; }
+
+/* Only a document whose sections have no numbers of their own gets counted. */
+.report.numbered { counter-reset: sec fig; }
+.report.numbered h2 { counter-increment: sec; counter-reset: sub; }
+.report.numbered h2::before { content: counter(sec) "  "; color: var(--doc-quiet);
+  font-variant-numeric: tabular-nums; }
+.report.numbered h3 { counter-increment: sub; }
+.report.numbered h3::before { content: counter(sec) "." counter(sub) "  ";
+  font-variant-numeric: tabular-nums; }
+
+/* ── The lede ──────────────────────────────────────────────────────────────
+   The sentence under a section heading says what the part is for. It is not body
+   text and should not read as the first paragraph of it. */
+.report h2 + p em, .report h2 + p > em:only-child {
+  display: block; font-family: var(--doc-sans); font-style: normal; font-size: 13.5px;
+  line-height: 1.5; color: var(--doc-quiet); border-left: 2px solid var(--doc-accent);
+  padding: 2px 0 2px 12px; margin: 10px 0 16px; }
+
+/* ── Tables ────────────────────────────────────────────────────────────────
+   Data, so the sans, and hairlines rather than a grid: the rows should carry the
+   eye across without every cell being boxed. Figures line up in columns. */
+.report table { font-family: var(--doc-sans); border-collapse: collapse; width: 100%;
+  margin: 10px 0 20px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+/* Not set in capitals: a German compound in capitals with letterspacing is half again as
+   wide as the values under it, and it broke mid-word - "ZIELOBJEKTKATEGORI / EN". Small,
+   bold and quiet says "this is the head of a column" just as clearly, in half the room. */
+.report th { border: 0; border-bottom: 1.5px solid var(--doc-ink); background: transparent;
+  font-style: normal; font-weight: 700; font-size: 11px; letter-spacing: 0.01em;
+  color: var(--doc-quiet); text-align: left; padding: 4px 10px 5px;
+  overflow-wrap: normal; hyphens: none; }
+.report td { border: 0; border-bottom: 1px solid var(--doc-hair); padding: 5px 10px;
+  vertical-align: top; }
 .report tbody tr:nth-child(even) td { background: transparent; }
+.report tbody tr:last-child td { border-bottom: 1px solid var(--doc-rule); }
+/* The dense register keeps the engine's size; only the voice is this product's. */
+.report table.dense th { text-align: left; font-style: normal; text-transform: none;
+  letter-spacing: 0.01em; }
+.report table.dense td { hyphens: auto; }
 
-/* Figures are drawings: they keep the sans, and they are centred with room around them. */
-.report svg { font-family: "Segoe UI", system-ui, sans-serif; max-width: 100%; height: auto; }
-.report div[align="center"] { margin: 18px 0 24px; }
+/* The meta block at the head of a document: two columns, the label quiet and small. */
+.report h1 ~ table:first-of-type td:first-child {
+  font-family: var(--doc-sans); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--doc-quiet); width: 34%; padding-top: 7px; }
+
+/* ── Lists ─────────────────────────────────────────────────────────────────
+   The contents of a set is a list of its parts, not prose. */
+.report ul, .report ol { margin: 8px 0 16px; padding-left: 20px; }
+.report li { margin: 3px 0; }
+.report ul > li > strong:first-child { font-family: var(--doc-sans); font-weight: 600; }
+
+/* ── Figures ───────────────────────────────────────────────────────────────
+   Drawings are data: they keep the sans, centred with room around them. */
+.report svg { font-family: var(--doc-sans); max-width: 100%; height: auto; }
+.report div[align="center"] { margin: 20px 0 26px; }
+
+.report code, .report pre { font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  font-size: 0.88em; }
+.report a { color: var(--doc-accent); }
 
 @media print {
   @page { size: A4; margin: 20mm 18mm 18mm; }
   body { background: #fff; }
-  .report { box-shadow: none; padding: 0; max-width: none; }
-  .report h2, .report h3 { break-after: avoid; }
-  .report table, .report div[align="center"] { break-inside: avoid; }
+  .report { box-shadow: none; padding: 0; max-width: none; font-size: 10.5pt; }
+  .report h1 { font-size: 22pt; }
+  .report h2 { font-size: 14pt; }
+  .report h2, .report h3, .report h4 { break-after: avoid; }
+  .report div[align="center"] { break-inside: avoid; }
+  .report a { color: inherit; text-decoration: none; }
 }
 `;
