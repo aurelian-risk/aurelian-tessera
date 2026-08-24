@@ -29,8 +29,21 @@
 //    declaration is a copy that ages in silence.
 import type { Taxonomy } from "../../domain/types";
 import { EFFECT_CLASSES } from "../../domain/controls";
-import { VOCABULARY } from "./vocabulary.generated";
+import { VOCABULARY, VOCABULARY_SOURCE } from "./vocabulary.generated";
 import { CATEGORY_EN, PRACTICE_EN, VALUE_EN, labelsFor } from "./terms";
+
+/** The five ISMS practices, and the fifteen that are not.
+ *
+ *  STM.2.1.1 models GC, STM, UMS, VRB and PERF onto the whole information domain "ohne
+ *  Auswahl" - they name no target object and no business process because the method says
+ *  they apply to everything. A rule about requirements the catalogue classifies nowhere has
+ *  to leave them out, or it fires on exactly the 95 the method exempted.
+ *
+ *  Derived from the published list rather than typed, so a catalogue that adds a practice
+ *  carries it in. `when` takes no negation, hence the positive list. */
+const ISMS_PRACTICES = ["GC", "STM", "UMS", "VRB", "PERF"];
+const APPLIED_PRACTICES = VOCABULARY.praktiken.filter(
+  (p) => !ISMS_PRACTICES.includes(p.split(" ")[0]));
 
 // The BSI's four published namespaces, re-derived by `npm run vocab:sync` and dated in
 // vocabulary.generated.ts. Not typed out here: a hand-kept copy of someone else's list
@@ -77,13 +90,24 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
   // STM.2.1.4.1: the categories are a tree, and every parent up to the root joins an
   // asset's categories before its requirements are collected. Generated with the list
   // itself, so the two cannot drift apart.
+  // Which publication these lists came from, and when it was read. The build has known it
+  // since npm run sync wrote the file; it just never said so, and the panel that offers to
+  // check for changes fell back to a sentence with no facts in it.
+  vocabularySource: VOCABULARY_SOURCE,
   vocabularyHierarchy: { target_object_categories: VOCABULARY.parentCategory },
   // UMS.1.1 tracks implementation through the requirement's own status, and measures act
   // on the attack chain rather than on requirements. Against a package of several hundred,
   // "not fulfilled by any measure" would report the whole ruleset as a finding and say
   // nothing. The check is right for a curated framework of thirty controls; it is not
   // right for this method.
-  checksOff: ["req-uncovered"],
+  // "gspp-unimplemented-unexcepted" is off, and this is the reason rather than a dislike of
+  // the rule. UMS.5 is about what an institution decides NOT to do; the rule as it can be
+  // written today fires on umsetzung = "nein", which is the normal content of a register -
+  // 390 of 392 in the sample. It would be right if it could ask "and the due date has
+  // passed", and `followUps.when` carries one field and a value list, so it cannot. The
+  // condition is proposed upstream; until it exists the finding says nothing a reader can
+  // act on. UMS.1.2, the residual risk stated per requirement, still stands as its own field.
+  checksOff: ["req-uncovered", "gspp-unimplemented-unexcepted"],
   // A requirement examined and found not to apply is a decision of the study (STM.2.1.5);
   // the concept states what applies. The count left out is printed, so nothing is hidden.
   reportSkip: [
@@ -94,6 +118,12 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
   // is set back rather than hidden - a register you cannot see cannot be extended.
   dimWhen: [
     { type: "requirement", field: "scope", values: ["out of scope", ""] },
+    // A procedure the institution owes and has not written is present and dimmed, not
+    // absent: recording what is still owed is the point of the register. A fresh record
+    // carries no status yet, so empty reads the same way.
+    { type: "verfahren", field: "status", values: ["Not anchored", ""] },
+    { type: "rolle", field: "status", values: ["Not established", ""] },
+    { type: "leitlinie", field: "status", values: ["Draft", ""] },
     // A measure that acts on an attack step is in use by that very fact - the chain view
     // switches it on when it is put there. Letting it be switched off again while it still
     // sits on a step would leave the study saying two things at once, so the switch is
@@ -122,6 +152,18 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       require: { type: "exception", field: "requirement" },
     },
     {
+      // VRB.4.1: "angemessene Korrekturmaßnahmen zur Beseitigung der Ursachen von Fehlern
+      // festlegen." A nonconformity being worked on with nothing pointing at it is a finding
+      // that was written down and then left, which is the failure the whole practice exists
+      // to prevent.
+      id: "gspp-nonconformity-uncorrected",
+      title: "Nonconformities being worked on with no action against them",
+      hint: "Record the corrective action that removes the cause, and give it a priority and an owner. (VRB.4.1, VRB.5.1)",
+      severity: "medium",
+      when: { type: "abweichung", field: "status", values: ["Open", "In progress"] },
+      require: { type: "verbesserung", field: "abweichung" },
+    },
+    {
       // STM.2.1.6: "Zuerst erfolgt die Identifikation und Dokumentation von Assets, für die
       // es keine Anforderungen im Anforderungskatalog-GS++ gibt." Once the package is a
       // relation, that identification is a query rather than a memory. It is also the
@@ -137,6 +179,78 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
   // What the method requires a decision to carry. Each one names the requirement it comes
   // from; none of them judges the decision itself.
   mustState: [
+    // PERF.1.3. The package is re-read at the institution's interval; the reading says what
+    // it took in, what it found, and who it was agreed with, and it sets when the next one
+    // is owed. The last rule is the one nothing else could ask: a date that has passed.
+    {
+      id: "gspp-package-review-overdue",
+      title: "Package readings that were due and have not been held",
+      hint: "The date this reading was owed has passed. Hold it and record what it found, or move the date and say why. (PERF.1.3)",
+      severity: "medium",
+      type: "paket_review",
+      when: [{ field: "faellig", past: true }],
+      require: ["durchgefuehrt_am"],
+    },
+    {
+      id: "gspp-package-review-unrecorded",
+      title: "Package readings held without a result or the areas they were agreed with",
+      hint: "Say what the reading found and who it was agreed with. The method asks for every relevant perspective to be in it, not just the ISMS's own. (PERF.1.3)",
+      severity: "medium",
+      type: "paket_review",
+      when: [{ field: "durchgefuehrt_am" }],
+      require: ["ergebnis", "abgestimmt_mit"],
+    },
+    {
+      id: "gspp-package-review-adjusted-unmodelled",
+      title: "Package readings that adjusted the selection without saying whether it was derived again",
+      hint: "Say whether the adjustment took the modelling again. A significant one does, and that is what makes the package's history readable. (PERF.1.3)",
+      severity: "low",
+      type: "paket_review",
+      when: [{ field: "anpassungen" }],
+      require: ["neumodellierung"],
+    },
+
+    // UMS.6.1 asks the tracking process to compare the target against the actual, to
+    // analyse the cause where they part, and to communicate the result. A round that skips
+    // one of the three is a status note.
+    {
+      id: "gspp-tracking-without-comparison",
+      title: "Tracking rounds held without a target and an actual",
+      hint: "Record how many measures the plan had implemented by this date and how many were. The comparison is what the round is for. (UMS.6.1)",
+      severity: "medium",
+      type: "nachverfolgung",
+      when: [{ field: "durchgefuehrt_am" }],
+      require: ["soll", "ist"],
+    },
+    {
+      id: "gspp-tracking-uncommunicated",
+      title: "Tracking rounds held that were told to nobody",
+      hint: "Name who was told the result. A round whose figures stayed with whoever compiled them changed nothing. (UMS.6.1)",
+      severity: "low",
+      type: "nachverfolgung",
+      when: [{ field: "durchgefuehrt_am" }],
+      require: ["kommuniziert_an"],
+    },
+    {
+      id: "gspp-tracking-unanchored",
+      title: "Tracking rounds held outside any procedure",
+      hint: "Point the round at the procedure it runs under. UMS.6.1 requires the procedure to be anchored, and a round outside one is a report. (UMS.6.1)",
+      severity: "low",
+      type: "nachverfolgung",
+      when: [{ field: "durchgefuehrt_am" }],
+      require: ["verfahren"],
+    },
+    // UMS.6.2: "ein Verfahren zur Fortschreibung des Umsetzungsplans". A round that found
+    // a cause and left the plan as it was is where that requirement fails in practice.
+    {
+      id: "gspp-tracking-cause-without-plan-change",
+      title: "Tracking rounds that found a cause and changed nothing in the plan",
+      hint: "Say what followed for the plan - dates, resources, priorities, measures added or dropped. Or record that it stands as it is, and why. (UMS.6.2)",
+      severity: "medium",
+      type: "nachverfolgung",
+      when: [{ field: "ursache" }],
+      require: ["planaenderung"],
+    },
     {
       // STM.2.1.5: "Für die vorliegenden Geschäftsprozesse nicht relevante Anforderungen
       // werden aus dem Anforderungspaket gestrichen, was mit einer Begründung zu
@@ -160,7 +274,8 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       hint: "You brought this one in yourself, so it needs the business processes it applies to and someone who owns it. (STM.2.1.5)",
       severity: "medium",
       type: "requirement",
-      when: [{ field: "target_object_categories", empty: true }, { field: "scope", values: ["in scope"] }],
+      when: [{ field: "target_object_categories", empty: true }, { field: "scope", values: ["in scope"] },
+             { field: "praktik", values: APPLIED_PRACTICES }],
       require: ["applies_to_process", "verantwortlich"],
     },
     {
@@ -171,7 +286,12 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       hint: "Say who implements this, and by when. A date that slips has to be acted on. (UMS.3.1, UMS.4.1)",
       severity: "medium",
       type: "requirement",
-      when: [{ field: "scope", values: ["in scope"] }, { field: "umsetzung", values: ["nein"] }],
+      // ...once it is PLANNED. A term with no values reads as "holds anything", so a
+      // priority set is the signal that this requirement has entered the plan. Asking all
+      // 392 for an owner and a date on the first day answers nothing: it reports the
+      // register's normal content as 389 findings and buries the four that point somewhere.
+      when: [{ field: "scope", values: ["in scope"] }, { field: "umsetzung", values: ["nein"] },
+             { field: "prioritaet" }],
       require: ["verantwortlich", "faellig"],
     },
     {
@@ -197,16 +317,21 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       require: ["ziel", "umfang", "auditteam"],
     },
     {
-      // STM.2.1.6: "Daraufhin ist nachvollziehbar zu begründen, warum die Anforderungen
-      // aus dem GS++ nicht ausreichen." A requirement of one's own that does not say that
-      // is an addition nobody can defend at an audit.
+      // STM.2.1.6, in the publisher's own words: "Daraufhin ist nachvollziehbar zu
+      // begründen, warum die Anforderungen aus dem GS++ nicht ausreichen. Dann erfolgt
+      // (ggfs.) die Erstellung von neuen Anforderungen IN BEZUG AUF DIE SCHUTZZIELE
+      // (Vertraulichkeit, Integrität und Verfügbarkeit), für diese Assets."
+      //
+      // So an own requirement owes three things, not two: the justification, the asset it
+      // is for, and which protection goals it acts on. The three the guidance names -
+      // authenticity is not among them, and is not asked for here.
       id: "gspp-own-requirement-unjustified",
       title: "Own requirements that do not say why the catalogue does not suffice",
-      hint: "A requirement of your own has to say why the catalogue is not enough, and which asset it is for. (STM.2.1.6)",
+      hint: "A requirement of your own has to say why the catalogue is not enough, which asset it is for, and which protection goals it acts on - confidentiality, integrity, availability. (STM.2.1.6)",
       severity: "medium",
       type: "requirement",
       when: [{ field: "herkunft", values: ["Own - asset not covered"] }],
-      require: ["begruendung", "applies_to_asset"],
+      require: ["begruendung", "applies_to_asset", "confidentiality", "integrity", "availability"],
     },
     {
       // STM.2.1.7: a requirement taken on out of the compliance environment names the
@@ -218,6 +343,160 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       type: "requirement",
       when: [{ field: "herkunft", values: ["Own - compliance obligation"] }],
       require: ["compliance_basis", "applies_to_process"],
+    },
+    {
+      // PERF.3.2.2: "MUSS alle relevanten Stakeholder über die Auditergebnisse informieren."
+      // An audit that has been held and reported, whose result stayed with the auditor,
+      // changed nothing - and the requirement is about the telling, not the finding.
+      id: "gspp-audit-not-communicated",
+      title: "Audits carried out whose results nobody was told",
+      hint: "Record which stakeholders were informed of what this audit found. The requirement is to inform them. (PERF.3.2.2)",
+      severity: "medium",
+      type: "audit",
+      when: [{ field: "durchgefuehrt_am" }],
+      require: ["kommuniziert_an"],
+    },
+    {
+      // PERF.4.1.9: "priorisierte Maßnahmenvorschläge mit realistischen Abschätzungen zum
+      // erwarteten Umsetzungsaufwand ... in einem Managementbericht dokumentieren." Both
+      // halves are in the requirement: an order, and what each one costs.
+      id: "gspp-report-without-proposals",
+      title: "Management reports submitted with no prioritised proposals",
+      hint: "Say what the review proposes, in order, and what carrying each out is expected to take. A proposal without an estimate is not something a management can decide on. (PERF.4.1.9)",
+      severity: "medium",
+      type: "managementbericht",
+      when: [{ field: "vorgelegt_am" }],
+      require: ["massnahmenvorschlaege"],
+    },
+    {
+      // GC.5.1.4: "MUSS die festgelegte Sicherheitsleitlinie durch die Institutionsleitung
+      // autorisieren", and the guidance is one sentence long - "Diese Autorisierung muss
+      // dokumentiert werden." A policy in force that cannot say who authorised it and when
+      // is the one document in the ISMS whose whole force comes from that signature.
+      id: "gspp-policy-unauthorised",
+      title: "A security policy in force with no documented authorisation",
+      hint: "Record who in the management put this in force and when. The method requires the authorisation itself to be documented, not merely to have happened. (GC.5.1.4)",
+      severity: "high",
+      type: "leitlinie",
+      when: [{ field: "status", values: ["In force"] }],
+      require: ["freigegeben_durch", "freigegeben_am"],
+    },
+    {
+      // GC.5.1, .1.1 and .1.2: measurable objectives, a strategy for reaching them, and the
+      // commitment of the management. A policy without them is a statement of intent.
+      id: "gspp-policy-without-substance",
+      title: "A security policy with no objectives, strategy or commitment",
+      hint: "Name the measurable objectives it sets, how the institution means to reach them, and what the management commits to. (GC.5.1, GC.5.1.1, GC.5.1.2)",
+      severity: "medium",
+      type: "leitlinie",
+      when: [{ field: "status", values: ["In force"] }],
+      require: ["ziele", "strategie", "verpflichtung"],
+    },
+    {
+      // GC.4.1 / GC.4.2: what the party needs and expects, and what follows from it. A
+      // register of names would answer neither.
+      id: "gspp-party-unanalysed",
+      title: "Interested parties recorded without their needs or their weight",
+      hint: "Say what this party needs from information security and how much weight its demands carry. The requirement is an analysis, not a list. (GC.4.1, GC.4.2)",
+      severity: "medium",
+      type: "partei",
+      when: [{ field: "name" }],
+      require: ["bedarf", "relevanz"],
+    },
+    {
+      // GC.9.1.1 and GC.9.1.1.4, per role: assigned to someone, with what it may do and
+      // what its holder has to be able to do. A role with a name and nothing else is an
+      // organisation chart, which is what the method is trying to prevent.
+      id: "gspp-role-unassigned",
+      title: "Roles in force that say nothing about who holds them or what they may do",
+      hint: "Name who holds it, what it may decide, and what its holder has to be able to do. A role with only a name is a box in a diagram. (GC.9.1.1, GC.9.1.1.4)",
+      severity: "medium",
+      type: "rolle",
+      when: [{ field: "status", values: ["Established"] }],
+      require: ["traeger", "befugnisse", "qualifikation"],
+    },
+    {
+      // GC.9.1.1.2: "Stellvertreterregelungen für ALLE relevanten Rollen und
+      // Zuständigkeiten" - the word is all, and the reason is in the guidance: continuity
+      // is only guaranteed where every relevant role has one.
+      id: "gspp-role-without-deputy",
+      title: "Roles in force with no deputy",
+      hint: "Say who acts when the holder cannot. The method asks it of every relevant role, because an organisation that stops when one person is away was never continuous. (GC.9.1.1.2)",
+      severity: "medium",
+      type: "rolle",
+      when: [{ field: "status", values: ["Established"] }],
+      require: ["stellvertreter"],
+    },
+    {
+      // GC.9.1.1.1 with .1.1 and .1.2: the information security officer is answerable to
+      // the management directly, has a direct right of audience, and has resources. Three
+      // requirements about one function, and the three most often lost when an ISB is
+      // appointed on paper.
+      id: "gspp-isb-without-standing",
+      title: "An information security officer without the standing the method requires",
+      hint: "The ISB is answerable to the management directly, can speak to it without anyone in between, and has resources to act with. Record all three. (GC.9.1.1.1, GC.9.1.1.1.1, GC.9.1.1.1.2)",
+      severity: "high",
+      type: "rolle",
+      when: [{ field: "art", values: ["Information security officer"] }, { field: "status", values: ["Established"] }],
+      require: ["unterstellt", "vorspracherecht", "ressourcen"],
+    },
+    {
+      // A procedure in force that names neither a document nor an owner is an assertion
+      // that one exists, which is precisely what an audit will not accept. GC.11.1 asks for
+      // the documents of the ISMS to be governed; a procedure nobody can point at is not.
+      id: "gspp-procedure-unanchored",
+      title: "Procedures said to be in force with nothing behind them",
+      hint: "Say where this is written down and who owns it. A procedure that cannot be pointed at is a statement, not a procedure. (GC.11.1)",
+      severity: "medium",
+      type: "verfahren",
+      when: [{ field: "status", values: ["In force"] }],
+      require: ["dokument", "verantwortlich"],
+    },
+    {
+      // Which method requirement a procedure answers is what turns a shelf of documents
+      // into an argument that the method is being followed.
+      id: "gspp-procedure-unattributed",
+      title: "Procedures that do not say which requirement they answer",
+      hint: "Name the method requirement this procedure anchors - UMS.6.1, VRB.1.1, PERF.3.1. Without it the document cannot be read as an answer to anything.",
+      severity: "low",
+      type: "verfahren",
+      when: [{ field: "status", values: ["In force"] }],
+      require: ["anforderung"],
+    },
+    {
+      // VRB.2.1: "eine Methode zur Überprüfung von Nicht-Konformitäten hinsichtlich Ursachen
+      // und Wiederauftreten". A finding still being worked on that names neither is a finding
+      // nobody has understood yet, and the correction hanging off it is a guess.
+      id: "gspp-nonconformity-uncaused",
+      title: "Nonconformities with no cause and no recurrence judgement",
+      hint: "Say what let this happen, and whether it can happen again as things stand. A correction that removes the symptom leaves the cause. (VRB.2.1)",
+      severity: "medium",
+      type: "abweichung",
+      when: [{ field: "status", values: ["Open", "In progress"] }],
+      require: ["ursache", "wiederauftreten"],
+    },
+    {
+      // VRB.5.1: "Verbesserung MUSS den Maßnahmen zur Korrektur und Verbesserung Prioritäten
+      // zuweisen." Both kinds, in one sentence - which is why they are one register here.
+      id: "gspp-improvement-unprioritised",
+      title: "Corrective and improvement actions with no priority",
+      hint: "Say where this stands next to the others. The method requires it of corrections and improvements alike. (VRB.5.1)",
+      severity: "medium",
+      type: "verbesserung",
+      when: [{ field: "status", values: ["Planned", "In progress"] }],
+      require: ["prioritaet"],
+    },
+    {
+      // VRB.6.1: "die Wirksamkeit der umgesetzten Korrektur- und Verbesserungsmaßnahmen
+      // testen". Done is a state of the work; effective is a statement about the world, and
+      // only the second closes a nonconformity honestly.
+      id: "gspp-improvement-untested",
+      title: "Actions reported done whose effect was never tested",
+      hint: "This was carried out. Test whether it worked and record what the test showed - done is not the same as worked. (VRB.6.1)",
+      severity: "medium",
+      type: "verbesserung",
+      when: [{ field: "status", values: ["Done"] }],
+      require: ["wirksamkeit"],
     },
     {
       // STM.3.1 with STM.4.1: lowering a level from erhöht to normal-SdT is the fourth
@@ -289,6 +568,12 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "asset_type", label: "Target-object category", type: "enum", options: ZIELOBJEKTKATEGORIE,
           optionLabels: labelsFor(ZIELOBJEKTKATEGORIE, CATEGORY_EN), vocabulary: "target_object_categories",
           help: "What kind of thing this is, from the BSI's own list. Pick it by what the asset does, not by what it is built from. This one choice decides which requirements land on it - and the class you pick brings the classes above it with it: a dial-up line is an external network connection, which sits under networks, so it gets the requirements for both. (STM.2.1.3, STM.2.1.4.1)" },
+        // STM.1.2: "Schnittstellen des Informationsverbunds zu externen Prozessen
+        // festlegen." An interface is not a kind of asset - it is a fact about one: this is
+        // where something outside reaches in. Recording it on the asset keeps it beside the
+        // requirements that land there, rather than in a second list that drifts.
+        { key: "externe_schnittstelle", label: "External interface", type: "textarea", column: false,
+          help: "Which process outside the information domain reaches it through this asset, who runs that process, and what crosses. Empty means this asset is not on the boundary. (STM.1.2)" },
         { key: "supports", label: "Supports", type: "multiref", refType: "business_asset", relation: "supports" },
         // 3.4.2: "Bei manueller Zuordnung ist die Entscheidung nachvollziehbar zu
         // dokumentieren." The category decides which requirements reach this asset, so
@@ -582,6 +867,45 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       ],
     },
 
+    {
+      // UMS.6. Two MUSS, and both are "verankere ein Verfahren" - the procedure register
+      // holds those. What the guidance describes is the round the procedure runs: status
+      // reporting at an interval, the target against the actual, the KPI readings, the
+      // cause where they diverge, the corrections that follow, and the communication to
+      // whoever is waiting on it (UMS.6.1). What the round then changes in the plan is the
+      // second requirement (UMS.6.2), which is why that field sits on the round rather than
+      // in a document of its own: a plan revision nobody can trace to a reading is a plan
+      // revision nobody can question.
+      //
+      // A round points at metrics rather than restating their numbers - `kennzahl` carries
+      // target and actual already, and its own change history is the time series.
+      key: "nachverfolgung", label: "Tracking round", labelPlural: "Tracking rounds", group: "ums",
+      fields: [
+        { key: "name", label: "Name", type: "text", required: true },
+        { key: "verfahren", label: "Runs under", type: "ref", refType: "verfahren", relation: "runs under",
+          help: "The anchored procedure this round follows. UMS.6.1 requires the procedure; a round outside one is a report, not a process." },
+        // Like an audit: empty means planned, filled means held. No second field saying
+        // the same thing in words.
+        { key: "durchgefuehrt_am", label: "Held on", type: "text",
+          help: "When this round was actually run. Leave it empty for one that is still planned - a round on the calendar and not yet held is the honest state." },
+        { key: "soll", label: "Due by now", type: "number",
+          help: "How many measures the plan had implemented by this date. The comparison the method asks for is against the plan, not against the total. (UMS.6.1)" },
+        { key: "ist", label: "Implemented", type: "number",
+          help: "How many were actually implemented at this date. Recorded rather than counted, because a round says what was true then, and the register moves on." },
+        { key: "kennzahl", label: "Metrics read", type: "multiref", refType: "kennzahl", relation: "reads", column: false,
+          help: "Which metrics this round took a reading of. The numbers stay on the metric - here is which ones were looked at. (UMS.6.1)" },
+        { key: "ursache", label: "Why they diverge", type: "textarea", column: false,
+          help: "What the analysis found behind the gap between due and implemented. The method asks for the cause, not for the observation that there is one. (UMS.6.1)" },
+        { key: "verbesserung", label: "Actions decided", type: "multiref", refType: "verbesserung", relation: "decides", column: false,
+          help: "The corrections this round set in motion. They live in the improvement register with their owner, date and effectiveness test. (UMS.6.1)" },
+        { key: "planaenderung", label: "What changed in the plan", type: "textarea", column: false,
+          help: "What this round changed: dates, resources, priorities, measures added or dropped, findings from the effectiveness test taken up. (UMS.6.2)" },
+        { key: "kommuniziert_an", label: "Communicated to", type: "text", column: false,
+          help: "Who was told the result. A round whose figures stayed with whoever compiled them changed nothing. (UMS.6.1)" },
+        { key: "verantwortlich", label: "Owner", type: "text", column: false },
+      ],
+    },
+
     // ── Monitoring-Evaluation ──
     {
       key: "kennzahl", label: "Metric", labelPlural: "Metrics", group: "perf",
@@ -593,6 +917,44 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "zielwert", label: "Target", type: "number" },
         { key: "istwert", label: "Actual", type: "number" },
         { key: "einheit", label: "Unit", type: "text" },
+      ],
+    },
+
+    {
+      // PERF.1.3: "die Aktualität der Anforderungen {{Intervall}} überprüfen" - the package
+      // is re-read against the information domain at the interval the institution sets,
+      // generally yearly. The guidance names what the reading has to take in: changed
+      // business processes, new IT components, organisational changes, and external factors
+      // such as new regulation or a changed threat picture.
+      //
+      // The derivation is already repeatable and reports what changed (modelling.ts). What
+      // was missing is the record that it HAPPENED, and when the next one is owed - the
+      // half a tool can carry. A significant adjustment leads back into the modelling,
+      // which the last field records rather than performs.
+      key: "paket_review", label: "Package review", labelPlural: "Package reviews", group: "perf",
+      fields: [
+        { key: "name", label: "Name", type: "text", required: true },
+        { key: "verfahren", label: "Runs under", type: "ref", refType: "verfahren", relation: "runs under",
+          help: "The anchored procedure for measuring and evaluating the ISMS. (PERF.1.1)" },
+        { key: "durchgefuehrt_am", label: "Held on", type: "text",
+          help: "When the package was actually re-read. Leave it empty for one still planned." },
+        // The interval lives as the next record, not as a number on this one: PERF.1.3
+        // leaves the interval to the institution, and a reading that is owed is a reading
+        // somebody has to put on the calendar. Past and not held is the finding.
+        { key: "faellig", label: "Due on", type: "text",
+          help: "When this reading is owed - generally a year after the last, and the interval is the institution's to set by size and depth. Past and not held is a finding. (PERF.1.3)" },
+        { key: "betrachtet", label: "What was taken into account", type: "textarea", column: false,
+          help: "The method names four: changed business processes, new IT components, organisational changes, and external factors - new regulation, a changed threat picture. (PERF.1.3)" },
+        { key: "ergebnis", label: "What the reading found", type: "textarea", column: false,
+          help: "Whether the package still fits the information domain, and where it does not." },
+        { key: "anpassungen", label: "Adjustments made", type: "textarea", column: false,
+          help: "What was changed in the selection of requirements as a result. (PERF.1.3)" },
+        { key: "neumodellierung", label: "Led back into the modelling", type: "enum",
+          options: ["No", "Yes - the package was derived again"],
+          help: "A significant adjustment takes the whole cycle of structural modelling again. Recording which reviews did that is what makes the package's history readable. (PERF.1.3)" },
+        { key: "abgestimmt_mit", label: "Agreed with", type: "text", column: false,
+          help: "The areas the reading was agreed with. The method asks for it so that every relevant perspective is in it, not just the ISMS's own. (PERF.1.3)" },
+        { key: "verantwortlich", label: "Owner", type: "text", column: false },
       ],
     },
 
@@ -638,14 +1000,146 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "eignung", label: "Suitability, adequacy and effectiveness", type: "textarea",
           help: "Whether the security you set out to achieve is actually being achieved. Keep it short: this is what the management reads. (PERF.4.1)" },
         { key: "audit", label: "Audits it rests on", type: "multiref", refType: "audit", relation: "draws on", column: false },
+        { key: "kommuniziert_an", label: "Results communicated to", type: "text", column: false,
+          help: "Which stakeholders were told what the audit found. The requirement is to inform them, and an audit whose result stayed with the auditor changed nothing. (PERF.3.2.2)" },
         { key: "folgemassnahmen", label: "Status of what the last review decided", type: "textarea", column: false,
           help: "What became of the decisions from the last review - done, and did they work? (PERF.4.1.1)" },
         { key: "entscheidungen", label: "Decisions and resources", type: "textarea", column: false },
+        { key: "massnahmenvorschlaege", label: "Proposals, prioritised, with the effort they take", type: "textarea", column: false,
+          help: "What the review proposes, in order, each with a realistic estimate of what carrying it out will cost. A proposal without an estimate is a wish the management cannot decide on. (PERF.4.1.9)" },
         { key: "vorgelegt_am", label: "Submitted on", type: "text", column: false },
       ],
     },
 
     // ── Verbesserung ──
+    {
+      // GC.4.1 and GC.4.2: the interested parties, external and internal, "sowie ihre
+      // Bedürfnisse und Erwartungen an das Informationssicherheitsmanagement". Two MUSS,
+      // one shape - the guidance's own examples split the same way: legislators, regulators,
+      // customers, service providers and the public on one side; management, the ISB, the
+      // data protection officer, staff, line managers and the works council on the other.
+      //
+      // What the requirement asks for is not a list of names. It is what each of them needs
+      // and expects, and what follows from that for the ISMS - the guidance says the
+      // relevance and priority of the identified demands are assessed and acted on.
+      key: "partei", label: "Interested party", labelPlural: "Interested parties", group: "gc",
+      fields: [
+        { key: "name", label: "Name", type: "text", required: true },
+        { key: "art", label: "Kind", type: "enum", options: ["External", "Internal"],
+          help: "External: legislators, regulators, customers, service providers, the public. Internal: the management, the ISB, the data protection officer, staff, line managers, the works council. (GC.4.1, GC.4.2)" },
+        { key: "bedarf", label: "Needs and expectations", type: "textarea",
+          help: "What this party needs from information security and expects of it. The requirement is about this, not about the name. (GC.4.1, GC.4.2)" },
+        { key: "relevanz", label: "Relevance", type: "scale", scaleLabels: SCALE,
+          help: "How much weight this party's demands carry, assessed rather than assumed - the guidance asks for relevance and priority to be judged before anything follows from them." },
+        { key: "ableitung", label: "What follows for the ISMS", type: "textarea", column: false,
+          help: "The requirement, the objective or the measure that this party's expectation produced. An analysis nothing follows from was not an analysis." },
+        { key: "verantwortlich", label: "Contact", type: "text", column: false },
+      ],
+    },
+    {
+      // GC.5.1 with .1.1 to .1.4: the objectives, the strategy, the commitment of the
+      // management, the policy and its authorisation. Five MUSS about one document set, so
+      // one record rather than five registers - the guidance for GC.5.1.3 says the policy
+      // itself carries the overall responsibility, which is the commitment of GC.5.1.2.
+      //
+      // The objectives are NOT restated here. GC.5.1 asks for "konkrete und messbare Ziele"
+      // and its own example is a metric - 98% of devices with signatures under 24 hours old.
+      // This product already has metrics with a target and an actual, so the policy names
+      // them and the numbers stay in one place.
+      key: "leitlinie", label: "Security policy", labelPlural: "Security policy and strategy", group: "gc",
+      fields: [
+        { key: "name", label: "Name", type: "text", required: true },
+        { key: "version", label: "Version", type: "text" },
+        { key: "ziele", label: "Measurable objectives", type: "multiref", refType: "kennzahl", relation: "sets",
+          help: "The objectives this policy sets, as the metrics that measure them. The method asks for them to be concrete and measurable, and its own example is a metric. (GC.5.1)" },
+        { key: "strategie", label: "Strategy", type: "textarea",
+          help: "How the institution means to reach those objectives - the overall approach and the principles, agreed with the management. (GC.5.1.1)" },
+        { key: "verpflichtung", label: "Commitment of the management", type: "textarea", column: false,
+          help: "The management taking overall responsibility, confirming and monitoring the objectives, and promoting the ISMS. The policy is where this is written down. (GC.5.1.2)" },
+        { key: "dokument", label: "Written down in", type: "text", column: false },
+        { key: "freigegeben_durch", label: "Authorised by", type: "text",
+          help: "Who in the management put it in force. The method requires the authorisation itself to be documented. (GC.5.1.4)" },
+        { key: "freigegeben_am", label: "Authorised on", type: "text" },
+        { key: "status", label: "In force", type: "enum", options: ["Draft", "In force"], toggle: true },
+      ],
+    },
+    {
+      // GC.9.1 and its six sub-requirements: the security organisation. Eight MUSS in one
+      // shape, and the product carried none of it - "who is answerable" was five free text
+      // fields called `verantwortlich`, which names a person and can be asked nothing else.
+      //
+      // What the method asks per role, in its own words: the role assigned "inklusive ihrer
+      // Kompetenzen bzw. Befugnisse" (GC.9.1.1), "für jeden Rollen- und Verantwortungsträger
+      // die erforderlichen Anforderungen und Fähigkeiten" (GC.9.1.1.4), and
+      // "Stellvertreterregelungen für alle relevanten Rollen" (GC.9.1.1.2). Avoiding
+      // conflicts of interest (GC.9.1.1.3) reads differently - "Maßnahmen ... bei der
+      // Festlegung von Rollen ... festlegen" is one decision about how roles are cut, not a
+      // sentence owed by each - so it is a field here and not a check.
+      key: "rolle", label: "Role", labelPlural: "Roles and responsibilities", group: "gc",
+      fields: [
+        { key: "name", label: "Name", type: "text", required: true },
+        // The ISB is its own kind because the method makes it one: GC.9.1.1.1 is a
+        // requirement about that function and nothing else, and it carries three more.
+        { key: "art", label: "Kind", type: "enum",
+          options: ["Information security officer", "Role", "Committee", "Interface to another discipline"],
+          help: "The method asks for roles, responsibilities and committees (GC.9.1), and for the interfaces to data protection, physical security, classified information and occupational safety to be anchored with them." },
+        { key: "traeger", label: "Held by", type: "text",
+          help: "The person or the organisational unit that holds it. A role nobody holds is a role in a diagram. (GC.9.1.1)" },
+        { key: "stellvertreter", label: "Deputy", type: "text",
+          help: "Who acts when the holder cannot. The method asks for this for every relevant role - an organisation that stops when one person is away was never continuous. (GC.9.1.1.2)" },
+        { key: "aufgaben", label: "Tasks", type: "textarea", column: false,
+          help: "What this role does, in enough detail that someone else could tell whether it was done. (GC.9.1.1)" },
+        { key: "befugnisse", label: "Authority", type: "textarea", column: false,
+          help: "What it may decide and what it may demand. Tasks without authority are a wish. (GC.9.1.1)" },
+        { key: "qualifikation", label: "Required qualification", type: "textarea", column: false,
+          help: "The knowledge and abilities the holder needs. The method asks for this per holder, not per organisation. (GC.9.1.1.4)" },
+        { key: "unterstellt", label: "Reports to", type: "text", column: false,
+          help: "Where it sits in the line. The information security officer is answerable to the management directly - that is what the requirement says, and it is the part most often quietly lost. (GC.9.1.1.1)" },
+        { key: "vorspracherecht", label: "Direct right of audience", type: "enum", options: ["Yes", "No"], column: false,
+          help: "Whether this role can speak to the management without anyone in between. Empty means nobody has settled it. (GC.9.1.1.2 / GC.9.1.1.1.2)" },
+        { key: "ressourcen", label: "Resources assigned", type: "textarea", column: false,
+          help: "Time, budget and people. The requirement is not that the role exists but that it can act. (GC.9.1.1.1.1)" },
+        { key: "interessenkonflikt", label: "Conflicts of interest", type: "textarea", column: false,
+          help: "Which roles this one must not be held together with - an executing role and the role that checks or approves it, above all. (GC.9.1.1.3)" },
+        { key: "status", label: "Established", type: "enum", options: ["Not established", "Established"], toggle: true,
+          help: "Switch it on once the role is assigned and in force. Recording the ones the organisation still owes, switched off, is what makes the gap visible." },
+      ],
+    },
+    {
+      // Seventeen of the method's 95 requirements - fifteen of them MUSS - do not ask for a
+      // record or a decision. They ask the institution to ANCHOR a procedure: "Umsetzung
+      // MUSS ein Verfahren für die Nachverfolgung der Umsetzung von Maßnahmen verankern"
+      // (UMS.6.1), "Verbesserung MUSS ein Verfahren zur kontinuierlichen Verbesserung des
+      // ISMS verankern" (VRB.1.1), and so on through GC, UMS, VRB and PERF.
+      //
+      // A tool cannot anchor a procedure. What it can do is hold the statement that one
+      // exists, what it says, who owns it, where it is written down and when it was last
+      // looked at - which is exactly what an auditor asks for and what nobody can produce
+      // from memory. Anchored is therefore a claim ON a record here, not a checkbox: a
+      // procedure in force that names no document and no owner is an assertion, not a
+      // procedure, and the checks say so.
+      key: "verfahren", label: "Procedure", labelPlural: "Procedures and rules", group: "gc",
+      fields: [
+        { key: "name", label: "Name", type: "text", required: true },
+        { key: "praktik", label: "Practice", type: "enum", options: PRAKTIKEN, optionLabels: labelsFor(PRAKTIKEN, PRACTICE_EN),
+          help: "Which of the five ISMS practices this procedure belongs to. The method asks for procedures in GC, UMS, VRB and PERF." },
+        { key: "anforderung", label: "Anchors requirement", type: "text",
+          help: "The method requirement this procedure answers, by its identifier - UMS.6.1, VRB.1.1, PERF.3.1. More than one if it covers several." },
+        { key: "description", label: "What the procedure says", type: "textarea",
+          help: "The steps in it, in enough detail that someone who has not read the document can tell whether it was followed." },
+        { key: "dokument", label: "Written down in", type: "text",
+          help: "Where it lives - the document, its identifier, its version. A procedure nobody can point at is one nobody can follow. (GC.11.1)" },
+        { key: "verantwortlich", label: "Owner", type: "text", column: false },
+        { key: "freigegeben_am", label: "Approved on", type: "text", column: false,
+          help: "When it was put in force, and by that fact who stands behind it. (GC.1.2)" },
+        { key: "letzte_pruefung", label: "Last reviewed", type: "text", column: false,
+          help: "When it was last read against what the institution actually does. A procedure that has not been looked at since it was written is a document, not a procedure." },
+        // The toggle: present but not anchored is the honest state for a procedure the
+        // method requires and the institution has not written yet.
+        { key: "status", label: "In force", type: "enum", options: ["Not anchored", "In force"], toggle: true,
+          help: "Switch it on once the procedure is written down and in force. Recording the ones you still owe, switched off, is what makes the gap visible." },
+      ],
+    },
     {
       key: "abweichung", label: "Nonconformity", labelPlural: "Nonconformities", group: "vrb",
       fields: [
@@ -656,7 +1150,50 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
           help: "The audit that found this, so the finding can be traced back to it. (PERF.3.2, VRB.2)" },
         { key: "schwere", label: "Severity", type: "scale", scaleLabels: SCALE },
         { key: "status", label: "Status", type: "enum", options: ["Open", "In progress", "Resolved", "Accepted"] },
-        { key: "korrektur", label: "Corrective action", type: "textarea" },
+        // VRB.2.1: "eine Methode zur Überprüfung von Nicht-Konformitäten hinsichtlich
+        // Ursachen und Wiederauftreten". Two questions, not one - a cause that was found
+        // and whether the thing can happen again are different findings, and an action that
+        // removes the first without answering the second is why it comes back.
+        { key: "ursache", label: "Cause", type: "textarea",
+          help: "What let this happen, not what happened. A correction that removes the symptom leaves the cause in place. (VRB.2.1, VRB.4.1)" },
+        { key: "wiederauftreten", label: "Can recur", type: "enum", options: ["Yes", "No"],
+          help: "Whether this can happen again as things stand. Empty means nobody has examined it - the method asks for the examination, so silence is not an answer. (VRB.2.1)" },
+        // VRB.2.2: the ISMS itself may be what needs changing, and that is a decision
+        // somebody has to have taken rather than a question nobody asked.
+        { key: "isms_anpassung", label: "ISMS needs adjusting", type: "enum", options: ["Yes", "No"], column: false,
+          help: "Whether the management system itself has to change because of this, not just the case at hand. (VRB.2.2)" },
+      ],
+    },
+    {
+      // VRB.4.1, VRB.4.2, VRB.5.1 and VRB.6.1 as one register, because the method treats
+      // them as one: "Verbesserung MUSS den Maßnahmen zur Korrektur und Verbesserung
+      // Prioritäten zuweisen" (VRB.5.1) names both kinds in one breath. So one type with a
+      // kind, not two registers that would then need the same priority rule twice.
+      //
+      // This replaces a free-text "Corrective action" on the nonconformity. A sentence
+      // cannot carry a priority, an owner, a date or a test of whether it worked, and those
+      // are exactly what VRB.5.1 and VRB.6.1 ask for.
+      key: "verbesserung", label: "Corrective and improvement action", labelPlural: "Corrective and improvement actions", group: "vrb",
+      fields: [
+        { key: "name", label: "Name", type: "text", required: true },
+        { key: "art", label: "Kind", type: "enum", options: ["Correction", "Improvement"],
+          help: "A correction removes the cause of a fault (VRB.4.1). An improvement takes up a potential nobody was forced to act on (VRB.4.2, VRB.3.1)." },
+        { key: "description", label: "What is done", type: "textarea" },
+        { key: "abweichung", label: "Answers nonconformity", type: "ref", refType: "abweichung", relation: "answers",
+          help: "The nonconformity whose cause this removes. A correction with none is either an improvement or an action nobody can trace. (VRB.4.1)" },
+        { key: "vorteile_nachteile", label: "Advantages and disadvantages", type: "textarea", column: false,
+          help: "What this gains and what it costs, weighed. The method asks for the judgement, not just the decision. (VRB.3.1, VRB.4.2)" },
+        { key: "prioritaet", label: "Priority", type: "enum", options: ["1 - first", "2", "3", "4 - last"],
+          help: "Where this stands next to the others. The method requires it of corrections and improvements alike. (VRB.5.1)" },
+        { key: "verantwortlich", label: "Owner", type: "text", column: false },
+        { key: "faellig", label: "Due", type: "text", column: false },
+        { key: "status", label: "Status", type: "enum", options: ["Planned", "In progress", "Done", "Dropped"] },
+        // VRB.6.1: "die Wirksamkeit der umgesetzten Korrektur- und Verbesserungsmaßnahmen
+        // testen". Done is not the same as worked, and the method asks for the second.
+        { key: "wirksamkeit", label: "Effectiveness tested", type: "enum", options: ["Effective", "Partly effective", "Not effective"],
+          help: "What a test after the fact showed. Empty means it was not tested, which the method does not allow for an action reported done. (VRB.6.1)" },
+        { key: "wirksamkeit_ergebnis", label: "What the test showed", type: "textarea", column: false,
+          help: "How the effectiveness was tested and what it showed - the evidence behind the verdict beside it. (VRB.6.1, VRB.6.2)" },
       ],
     },
   ],

@@ -22,10 +22,18 @@
 import { chromium } from "playwright";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const file = "file://" + resolve(here, "../dist/index.html");
+const built = resolve(here, "../dist/index.html");
+const file = "file://" + built;
+// One script for both builds. The generative branch is a build flag (VITE_LLM), so the
+// artefact itself says which one this is - and it says it the only way that cannot be
+// wrong, by whether the model names are in the file at all. A released build must carry
+// none of them, and that absence is asserted rather than assumed; a development build
+// carries the branch and its checks run instead. Reading the source would prove nothing:
+// a guard on a state variable leaves every string in the bundle.
+const LLM = /SmolLM2|Qwen2\.5|WebLLM/.test(readFileSync(built, "utf8"));
 const shots = "/tmp/gspp-e2e";
 mkdirSync(shots, { recursive: true });
 
@@ -584,6 +592,28 @@ try {
   // The report follows the product, not the engine: no quantitative section, no money.
   await page.locator(".btn.sm", { hasText: "Report" }).click();
   await page.waitForTimeout(200);
+  // STM.2.1.6 ends with "dem BSI zugestellt", and the delivery sits here rather than in the
+  // export menu: to a reader "what can I get out of this study" is one question, and the
+  // export menu is one of the five files the mirror takes from the parent, so nothing of
+  // this product may live there. Checked while the menu is open - it holds a fixed overlay
+  // that swallows every later click, and only using an entry takes it down.
+  {
+    const own = page.locator(".menu-item", { hasText: "Own requirements for the BSI" });
+    ok("the method's own delivery is offered beside the report", (await own.count()) === 1);
+    // The sample carries an own requirement out of a compliance obligation (STM.2.1.7) and
+    // none for an asset the catalogue misses (STM.2.1.6). Only .6 names a delivery, so the
+    // entry says there is nothing to send rather than writing an empty document.
+    ok("...and says there is nothing to deliver rather than writing an empty file",
+      await own.first().isDisabled());
+    ok("...naming the requirement it would answer",
+      /STM\.2\.1\.6/.test((await own.first().innerText()) + (await own.first().getAttribute("title") ?? "")));
+    // The BSI has published no certification scheme for Grundschutz++, so the seven
+    // reference documents are the classic set, named as that set. Beside the report, not
+    // instead of it - the report stays the security concept the method itself names.
+    const refs = page.locator(".menu-item", { hasText: "Reference documents" });
+    ok("the reference documents are offered beside the report", (await refs.count()) === 1);
+    ok("...enabled, because this study fills them", !(await refs.first().isDisabled()));
+  }
   const [report] = await Promise.all([
     page.context().waitForEvent("page"),
     page.locator(".menu-item.stacked", { hasText: "Open in browser" }).click(),
@@ -594,6 +624,130 @@ try {
   ok("...with no quantitative-risk section", !/Quantitative risk|Monte.Carlo|Expected annual loss/i.test(rep));
   ok("...and no monetary figures at all", !/[\u20ac$]\s?\d|\d\s?(EUR|USD)\b/.test(rep));
   await report.close();
+
+  // Driven end to end: the file is taken, read back, and asked whether it is the set it
+  // claims to be. A.1 and A.2 are the SAME register read twice - the objects, then their
+  // protection need - which is the whole reason the renderer takes a field selection.
+  await page.locator(".btn.sm", { hasText: "Report" }).click();
+  await page.waitForTimeout(200);
+  const [dl] = await Promise.all([
+    page.waitForEvent("download"),
+    page.locator(".menu-item.stacked", { hasText: "Reference documents" }).click(),
+  ]);
+  const refText = await new Promise(async (res, rej) => {
+    const st = await dl.createReadStream(); let b = "";
+    st.on("data", (c) => { b += c; }); st.on("end", () => res(b)); st.on("error", rej);
+  });
+  ok("the reference set is written as a file", refText.length > 2000);
+  ok("...saying the BSI published no scheme for this method",
+    /no certification scheme for Grundschutz\+\+/.test(refText));
+  ok("...and that this is the classic set, named as that set",
+    /classic IT-Grundschutz certification/.test(refText));
+  for (const [id, title] of [["A.0", "Leitlinie"], ["A.1", "Strukturanalyse"],
+    ["A.2", "Schutzbedarfsfeststellung"], ["A.3", "Modellierung"],
+    ["A.4", "Ergebnis des Grundschutz-Checks"], ["A.5", "Risikoanalyse"],
+    ["A.6", "Realisierungsplan"]]) {
+    ok(`...carrying ${id} ${title}`, new RegExp(`## ${id.replace(".", "\\.")} ${title}`).test(refText));
+  }
+  {
+    const a1 = refText.slice(refText.indexOf("## A.1 "), refText.indexOf("## A.2 "));
+    const a2 = refText.slice(refText.indexOf("## A.2 "), refText.indexOf("## A.3 "));
+    ok("A.1 reads the processes without their protection need",
+      /Business processes \(/.test(a1) && !/Protection need:/.test(a1));
+    ok("...and A.2 reads the same register for exactly that",
+      /Business processes \(/.test(a2) && /Protection need:/.test(a2));
+  }
+  ok("...and it carries the licence notice the ruleset asks for",
+    /Sources and terms/.test(refText) && /CC BY-SA 4\.0/.test(refText));
+  ok("...with the catalogue version a reader can compare, not to the microsecond",
+    !/version \d{4}-\d{2}-\d{2}T/.test(refText));
+
+  // VRB, the improvement practice: a nonconformity is examined for its cause and for
+  // whether it can recur (VRB.2.1), and the corrections and improvements against it are a
+  // register of their own with priorities (VRB.5.1) and a test of whether they worked
+  // (VRB.6.1) - not a sentence in a text field, which cannot carry any of that.
+  await openWs(WS.VRB, 500);
+  {
+    const act = section("Corrective and improvement actions");
+    ok("corrections and improvements are one register", (await act.count()) === 1);
+    const rows = await act.locator("tbody tr.row-clickable").count();
+    ok("...carrying both kinds", rows === 2, `${rows} rows`);
+    const txt = await act.innerText();
+    ok("...with a priority on each, which VRB.5.1 requires of both", /1 - first/.test(txt) && /2/.test(txt));
+    ok("...and a verdict on whether the carried-out one worked", /Partly effective/.test(txt));
+    const nc = section("Nonconformities");
+        await nc.locator("tbody tr.row-clickable").first().locator(".name").click();
+    await page.waitForTimeout(300);
+    ok("a nonconformity records what let it happen, not only what happened",
+      /never given to anyone as a task/.test(await nc.locator(".detail").first().innerText()));
+  }
+
+  // GC.4 and GC.5: who expects something of information security here, and the policy that
+  // answers them. Five MUSS in the policy alone, and the one that carries the document's
+  // whole force - GC.5.1.4, the authorisation, which the method requires to be documented
+  // rather than merely to have happened.
+  await openWs(WS.GC, 500);
+  {
+    const parties = section("Interested parties");
+    ok("the interested parties are analysed, not listed", (await parties.count()) === 1);
+    const pt = await parties.innerText();
+    ok("...external and internal, as GC.4.1 and GC.4.2 split them",
+      /External/.test(pt) && /Internal/.test(pt) && /Bundesnetzagentur/.test(pt));
+    ok("...none of them missing what it needs or what it weighs",
+      (await page.locator(".lint-card .lint-title", { hasText: "without their needs" }).count()) === 0);
+
+    const pol = section("Security policy and strategy");
+    ok("the policy is a record of its own", (await pol.count()) === 1);
+    await pol.locator("tbody tr.row-clickable").first().locator(".name").click();
+    await page.waitForTimeout(300);
+    const d = await pol.locator(".detail").first().innerText();
+    ok("...naming its measurable objectives as the metrics that measure them",
+      /Share of MUSS requirements implemented/.test(d) && /second factor/.test(d));
+    ok("...and who authorised it, and when", /Managing director/.test(d) && /2026-02-14/.test(d));
+    ok("an authorised policy in force is not a finding",
+      (await page.locator(".lint-card .lint-title", { hasText: "no documented authorisation" }).count()) === 0);
+  }
+
+  // GC.9.1 and its six sub-requirements: the security organisation. Eight MUSS about roles,
+  // committees and the interfaces to neighbouring disciplines - and about the ISB in
+  // particular, whose standing is what the method spends three requirements on.
+  await openWs(WS.GC, 500);
+  {
+    const roles = section("Roles and responsibilities");
+    ok("the security organisation is a register", (await roles.count()) === 1);
+    const rows = await roles.locator("tbody tr.row-clickable").count();
+    const owed = await roles.locator("tbody tr.row-dim").count();
+    ok(`...holding what is established and what is owed (${rows}, of which ${owed} owed)`, rows === 4 && owed === 1);
+    const txt = await roles.innerText();
+    ok("...roles, a committee and an interface to another discipline, as GC.9.1 asks",
+      /Committee/.test(txt) && /Interface to another discipline/.test(txt));
+    ok("...every established one naming a deputy",
+      (await page.locator(".lint-card .lint-title", { hasText: "no deputy" }).count()) === 0);
+    // The three the method asks of the ISB alone: answerable to the management directly, a
+    // direct right of audience, and resources to act with.
+    await roles.locator("tbody tr", { hasText: "Information security officer" }).first().locator(".name").click();
+    await page.waitForTimeout(300);
+    const d = await roles.locator(".detail").first().innerText();
+    ok("the information security officer carries the standing the method requires",
+      /Directly to the managing director/.test(d) && /Yes/.test(d) && /FTE/.test(d));
+  }
+
+  // Fifteen MUSS requirements of the method ask for a PROCEDURE to be anchored rather than
+  // for a record to be kept. A tool cannot anchor one; it can hold the statement that one
+  // exists, what it says, where it is written down and who owns it - and it can show the
+  // ones still owed, switched off, which is the gap nobody notices otherwise.
+  await openWs(WS.GC, 500);
+  {
+    const proc = section("Procedures and rules");
+    ok("the procedures the method asks to be anchored are a register", (await proc.count()) === 1);
+    const rows = await proc.locator("tbody tr.row-clickable").count();
+    const owed = await proc.locator("tbody tr.row-dim").count();
+    ok(`...holding what is in force and what is still owed (${rows}, of which ${owed} owed)`, rows === 3 && owed === 1);
+    ok("...each naming the method requirement it answers",
+      /VRB\.1\.1/.test(await proc.innerText()) && /PERF\.3\.1/.test(await proc.innerText()));
+    ok("a procedure in force with a document and an owner is not a finding",
+      (await page.locator(".lint-card .lint-title", { hasText: "in force with nothing behind them" }).count()) === 0);
+  }
 
   // Completeness checks. The sample leaves real gaps and the checks have to name them;
   // the ones it does not leave have to show up among the PASSING checks, not vanish.
@@ -639,6 +793,42 @@ try {
     && /\+\d+ more/.test(await group.innerText()));
   await scada.locator(".name").click();
   await page.waitForTimeout(200);
+
+  // The other direction, and the one a thousand-row register is opened for: from the
+  // Requirements table, which of them apply to THAT asset. The facets are derived from
+  // the data, so a reference is offered only because the derivation filled it in.
+  {
+    const req = section("Requirements");
+    const menu = req.locator(".facet-menu").filter({ has: page.locator(".facet-btn", { hasText: "Applies to assets" }) }).first();
+    ok("the requirements table offers the asset a requirement applies to", (await menu.count()) === 1);
+    await menu.locator(".facet-btn").click();
+    await page.waitForTimeout(200);
+    const first = menu.locator(".facet-opt").first();
+    const named = (await first.innerText()).replace(/\s+/g, " ").trim();
+    const counted = Number(named.replace(/.*?(\d+)$/, "$1"));
+    ok("...each asset with the number of requirements pointing at it", counted > 20, named);
+    await first.click();
+    await page.waitForTimeout(500);
+    ok("...and picking one narrows the table to them",
+      (await req.locator(".tbl-count").innerText()).startsWith(`${counted} of `),
+      await req.locator(".tbl-count").innerText());
+    await first.click();
+    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+
+    await req.locator(".tbl-group").selectOption({ label: "by applies to assets" });
+    await page.waitForTimeout(900);
+    const heads = await req.locator(".group-row th").allInnerTexts();
+    ok("grouping by the asset lays the register out under each of them", heads.length >= 3, `${heads.length} groups`);
+    ok("...saying that a row appears under each asset it names",
+      /under each asset it names/.test(await req.locator(".tbl-note").innerText()));
+    ok("...and the requirements naming none form a group of their own, not a gap",
+      heads.some((h) => /no asset named/.test(h)), heads.slice(-1)[0]);
+    await req.locator(".tbl-group").selectOption({ label: "no grouping" });
+    await page.waitForTimeout(500);
+  }
+
   await page.locator(".ws-tab", { hasText: "Checks" }).click();
   await page.waitForTimeout(250);
 
@@ -650,6 +840,116 @@ try {
     (await page.locator(".lint-card, .lint-pass").filter({ hasText: "no objective, scope or team" }).count()) === 1);
   ok("...and the audit still to be held is the one it names",
     (await page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: "no objective, scope or team" }) }).count()) === 0);
+
+  // UMS.6.1 / UMS.6.2: the tracking round. The sample holds one run and one still on the
+  // calendar, and the one that was run answers all four rules - so each has to be OFFERED
+  // and each has to pass. A rule that fires on nothing and a rule that fires on everything
+  // are the same mistake, and this is where the difference shows.
+  for (const [name, needle] of [
+    ["a target and an actual", "target and an actual"],
+    ["who the result was told to", "told to nobody"],
+    ["the procedure it runs under", "outside any procedure"],
+    ["what the cause changed in the plan", "changed nothing in the plan"],
+  ]) {
+    ok(`a tracking round is asked for ${name}`,
+      (await page.locator(".lint-card, .lint-pass").filter({ hasText: needle }).count()) === 1, needle);
+    ok(`...and the round that was run answers it`,
+      (await page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: needle }) }).count()) === 0, needle);
+  }
+
+  // Four rules that pass could equally be four rules that fire on nothing - the failure
+  // CLAUDE.md warns about, where a declaration is read by nobody and says so without one
+  // error. So take the answer away from the round that was run and see the finding appear.
+  {
+    await openWs(WS.UMS, 500);
+    const round = section("Tracking rounds").locator("tbody tr")
+      .filter({ has: page.locator(".name", { hasText: "Q3/2026" }) }).first();
+    await round.locator(".name").click();
+    await page.waitForTimeout(300);
+    await section("Tracking rounds").locator(".detail .btn", { hasText: "Edit" }).first().click();
+    await page.waitForSelector(".modal-lg", { timeout: 8000 });
+    // By its label, not by position - the form's order is not this check's business.
+    const fld = page.locator(".modal-lg .field", { has: page.locator("label", { hasText: "Communicated to" }) })
+      .locator("input").first();
+    const kept = await fld.inputValue();
+    ok("the sample round says who it was told", kept.length > 0, JSON.stringify(kept));
+    await fld.fill("");
+    await page.locator(".modal-lg .btn.primary", { hasText: "Save" }).click();
+    await page.waitForTimeout(400);
+    await page.locator(".ws-tab", { hasText: "Checks" }).click();
+    await page.waitForTimeout(500);
+    ok("...and taking that away makes the rule fire, so it is read",
+      (await page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: "told to nobody" }) }).count()) === 1);
+
+    await openWs(WS.UMS, 500);
+    if (!(await section("Tracking rounds").locator(".detail").count())) {
+      await section("Tracking rounds").locator("tbody tr")
+        .filter({ has: page.locator(".name", { hasText: "Q3/2026" }) }).first().locator(".name").click();
+      await page.waitForTimeout(300);
+    }
+    await section("Tracking rounds").locator(".detail .btn", { hasText: "Edit" }).first().click();
+    await page.waitForSelector(".modal-lg", { timeout: 8000 });
+    await page.locator(".modal-lg .field", { has: page.locator("label", { hasText: "Communicated to" }) })
+      .locator("input").first().fill(kept);
+    await page.locator(".modal-lg .btn.primary", { hasText: "Save" }).click();
+    await page.waitForTimeout(400);
+    await page.locator(".ws-tab", { hasText: "Checks" }).click();
+    await page.waitForTimeout(500);
+    ok("...and putting it back clears it again",
+      (await page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: "told to nobody" }) }).count()) === 0);
+  }
+  // PERF.1.3, and the one condition no value comparison can express: a date that has
+  // passed. The sample's next reading is not due yet, so nothing fires - move its date
+  // behind us and it must, then put it back.
+  {
+    await openWs(WS.PERF, 500);
+    const rev = section("Package reviews").locator("tbody tr")
+      .filter({ has: page.locator(".name", { hasText: "2027" }) }).first();
+    await rev.locator(".name").click();
+    await page.waitForTimeout(300);
+    await section("Package reviews").locator(".detail .btn", { hasText: "Edit" }).first().click();
+    await page.waitForSelector(".modal-lg", { timeout: 8000 });
+    const due = page.locator(".modal-lg .field", { has: page.locator("label", { hasText: "Due on" }) })
+      .locator("input").first();
+    const kept = await due.inputValue();
+    ok("a reading not yet due raises nothing", kept === "2027-03-31", kept);
+    await due.fill("2025-03-31");
+    await page.locator(".modal-lg .btn.primary", { hasText: "Save" }).click();
+    await page.waitForTimeout(400);
+    await page.locator(".ws-tab", { hasText: "Checks" }).click();
+    await page.waitForTimeout(500);
+    ok("...and a date behind us makes the reading overdue",
+      (await page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: "were due and have not been held" }) }).count()) === 1);
+
+    await openWs(WS.PERF, 500);
+    if (!(await section("Package reviews").locator(".detail").count())) {
+      await section("Package reviews").locator("tbody tr")
+        .filter({ has: page.locator(".name", { hasText: "2027" }) }).first().locator(".name").click();
+      await page.waitForTimeout(300);
+    }
+    await section("Package reviews").locator(".detail .btn", { hasText: "Edit" }).first().click();
+    await page.waitForSelector(".modal-lg", { timeout: 8000 });
+    await page.locator(".modal-lg .field", { has: page.locator("label", { hasText: "Due on" }) })
+      .locator("input").first().fill(kept);
+    await page.locator(".modal-lg .btn.primary", { hasText: "Save" }).click();
+    await page.waitForTimeout(400);
+    await page.locator(".ws-tab", { hasText: "Checks" }).click();
+    await page.waitForTimeout(500);
+    ok("...and moving it forward again clears it",
+      (await page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: "were due and have not been held" }) }).count()) === 0);
+  }
+
+  // The reading that was held answers what the method asks of it.
+  ok("a package reading is asked what it found and who it was agreed with",
+    (await page.locator(".lint-card, .lint-pass").filter({ hasText: "agreed with" }).count()) === 1);
+  ok("...and the reading that was held answers it",
+    (await page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: "agreed with" }) }).count()) === 0);
+  ok("a reading that adjusted the selection says whether it was derived again",
+    (await page.locator(".lint-card, .lint-pass").filter({ hasText: "derived again" }).count()) === 1);
+
+  // Everything below reads the checks page, so leave it where it was found.
+  await page.locator(".ws-tab", { hasText: "Checks" }).click();
+  await page.waitForTimeout(400);
 
   // STM.2.1.6/.7: the package may be extended by the institution's own requirements. Both
   // rules have to be offered, and the sample's compliance requirement has to satisfy its.
@@ -668,17 +968,39 @@ try {
   ok("...and the sample's review is not a finding",
     (await page.locator(".lint-card .lint-title", { hasText: "lowered without a risk consideration" }).count()) === 0);
 
-  // What the method requires a decision to carry (STM.2.1.5, UMS.3.1, UMS.4.1). The sample
-  // leaves these open deliberately: the whole ruleset is recorded, and the relevance
-  // decision on what the catalogue classifies nowhere is the reader's to make.
-  const struck = page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: "struck from the package with no reason" }) });
-  ok("striking a requirement without a reason is a finding", (await struck.count()) === 1);
-  const struckN = Number((/(\d+)/.exec(await struck.locator(".lint-count").first().innerText()) ?? [0, 0])[1]);
-  ok("...and it names the ones the catalogue classifies nowhere", struckN >= 200 && struckN <= 300, `${struckN} affected`);
-  ok("an open requirement with nobody answerable is a finding",
-    (await page.locator(".lint-card .lint-title", { hasText: "no one answerable or no date" }).count()) === 1);
-  ok("...and a requirement reached by a category is not asked for a striking reason",
-    !/every requirement/i.test(await struck.innerText()));
+  // What the method requires a decision to carry (STM.2.1.5, UMS.3.1, UMS.4.1) - and what
+  // it does NOT require, which is the harder half.
+  //
+  // These three rules used to report 95, 269 and 389 of 392 requirements. A finding that
+  // names almost every record in the register is not a finding: it describes the register's
+  // normal content and buries the handful that point somewhere. Each is now asked at the
+  // moment the method actually asks it.
+  {
+    const finding = (t) => page.locator(".lint-card", { has: page.locator(".lint-title", { hasText: t }) });
+    const passing = (t) => page.locator(".lint-pass", { hasText: t });
+
+    // The reading records why it did NOT reach a requirement, the same way it records why
+    // it did, so the justification STM.2.1.5 wants is on the record rather than demanded.
+    ok("what the reading struck carries its own reason", (await finding("struck from the package with no reason").count()) === 0);
+    ok("...and the rule is still there, passing", (await passing("struck from the package with no reason").count()) === 1);
+
+    // STM.2.1.1 models the 95 ISMS practices onto the whole domain "ohne Auswahl". They
+    // name no business process because the method says they apply to all of them.
+    const judged = finding("brought in by judgement");
+    const jn = (await judged.count()) ? Number((/(\d+)/.exec(await judged.locator(".lint-count").first().innerText()) ?? [0,0])[1]) : 0;
+    console.log(`   brought-in-by-judgement: ${await judged.count()} Karte(n), ${jn} betroffen`);
+    ok("the 95 ISMS practices are not asked for a business process", jn < 10, `${jn} affected`);
+
+    // UMS.2.2/3.1/4.1 are about the implementation PLAN. Nothing in the sample carries a
+    // priority yet, so nothing has entered the plan and nothing is owed an owner or a date.
+    ok("an owner and a date are asked once a requirement is planned", (await finding("no one answerable or no date").count()) === 0);
+
+    // And the ones that do point somewhere are still there.
+    const cards = await page.locator(".lint-card").count();
+    ok(`the checks name a readable number of findings (${cards})`, cards > 0 && cards <= 12, `${cards} findings`);
+    ok("...including the chain that nothing blocks",
+      (await finding("no security measure").count()) + (await finding("nothing blocks or detects").count()) >= 1);
+  }
 
   // UMS.1.1: the catalogue's own dependency edges, followed. The rule has to be offered
   // at all - passing or failing - because a register that cannot see them reports a
@@ -1080,8 +1402,55 @@ try {
   ok("every record in the study is accounted for in the log", tlItems >= 45);
   ok("the study log verifies as a whole", /integrity verified/i.test(await page.locator(".tl-stats").innerText()));
   ok("no drift warning on an untouched sample", (await page.locator(".tl-warn").count()) === 0);
+  // Seals: the half the hash chain cannot do. The chain proves a log is consistent with
+  // itself; anyone holding the file can recompute it, so it catches accident rather than
+  // intent. A seal signs the head, so rewriting the past needs a private key.
+  {
+    const panel = page.locator(".panel.sp");
+    ok("the timeline offers seals", (await panel.count()) === 1);
+    ok("...refusing to seal before there is a key", await panel.locator(".panel-head .btn.primary").isDisabled());
+    // The explanation is a dialog, not a wall on the page: the panel says the verdict, and
+    // what a signature does and does not prove is one click away for whoever wants it.
+    await panel.locator("button", { hasText: "What does a seal prove" }).click();
+    await page.waitForSelector(".sp-modal", { timeout: 5000 });
+    const proves = await page.locator(".sp-modal").innerText();
+    ok("...and explains itself in a dialog rather than on the page",
+      /does not prove when/i.test(proves) && /does not prove who/i.test(proves));
+    await page.locator(".sp-modal button", { hasText: "Close" }).click();
+    await page.waitForTimeout(250);
+
+    await panel.locator("button", { hasText: "Keys" }).click();
+    await page.waitForSelector(".sp-modal", { timeout: 5000 });
+    await page.locator(".sp-modal button", { hasText: "Create a key" }).click();
+    await page.waitForTimeout(700);
+    const keysDlg = await page.locator(".sp-modal").innerText();
+    ok("a signing key is made in the keys dialog", /Save public key/.test(keysDlg));
+    ok("...and the public half can be saved as a file too", /Save public key/.test(keysDlg) && /Save private key/.test(keysDlg));
+    // Close by the overlay only: the last ghost button in this dialog is the "forget this
+    // key" bin, and clicking it emptied the ring the next assertion is about.
+    await page.locator(".overlay").click({ position: { x: 5, y: 5 } });
+    await page.waitForTimeout(300);
+
+    await panel.locator(".panel-head .btn.primary").click();
+    await page.waitForSelector(".sp-modal", { timeout: 5000 });
+    await page.locator(".sp-modal input").first().fill("M. Westerberg");
+    await page.locator(".sp-modal .btn.primary").click();
+    await page.waitForTimeout(900);
+    const sealed = await panel.locator(".sp-seal").first().innerText().catch(() => "");
+    ok("the study can be sealed from a dialog", (await panel.locator(".sp-seal").count()) === 1, sealed);
+    // The seal's own key was named when it was created, so it reads as verified rather
+    // than merely valid.
+    if ((await panel.locator(".sp-seal.sp-verified").count()) !== 1) console.log("   seal row:", sealed.replace(/\n/g, " | "));
+    ok("...and reads as verified, because the key is one you named",
+      (await panel.locator(".sp-seal.sp-verified").count()) === 1);
+    ok("...saying what it covers, and that nothing followed it",
+      /covers entries 1–\d+/.test(sealed) && /records unchanged since/.test(sealed), sealed);
+    ok("...while the chain itself still verifies",
+      /integrity verified/i.test(await page.locator(".tl-stats").innerText()));
+  }
   await page.screenshot({ path: `${shots}/Timeline.png` });
-  await page.locator(".tl-item").first().click();
+  // A study-scope entry - a seal, an import - is not about one record and opens nothing.
+  await page.locator(".tl-item:not(.tl-scope)").first().click();
   await page.waitForSelector(".modal-lg .hist-item");
   ok("timeline item opens change-history popup", (await page.locator(".modal-lg .hist-item").count()) > 0);
   await page.locator('.modal-lg .btn.ghost[aria-label="Close"]').click();
@@ -1117,7 +1486,14 @@ try {
   await page.screenshot({ path: `${shots}/TimelineDelete.png` });
 
   // Taxonomy view - the product's own vocabulary, and the engine keys behind it.
-  await page.locator(".sidebar .nav-item", { hasText: "Taxonomy" }).click();
+  // "Schema" edits the shape; the product-named item beside it reads the method's structure.
+  // Both used to read as "the model", which is how a reader picks the wrong one.
+  await page.locator(".sidebar .nav-item", { hasText: "Schema" }).click();
+  await page.waitForTimeout(300);
+  // Asking the publisher whether its lists have changed is a question about the
+  // publication, so it is not here, beside "add a field" and "reset to default".
+  ok("the schema editor carries no download from a standards body",
+    (await page.locator(".vocab-check").count()) === 0);
   await page.waitForTimeout(250);
   const taxBody = await page.locator(".content").innerText();
   ok("taxonomy lists the entity types under their product names",
@@ -1127,8 +1503,26 @@ try {
 
   // The model, seen rather than edited - a page of its own. Here the class reading has the
   // BSI's own tree behind it, so it can say what a category costs once inheritance runs.
-  await page.locator(".sidebar .nav-item", { hasText: "Explore" }).click();
+  await page.locator(".sidebar .nav-item", { hasText: "Grundschutz++" }).click();
   await page.waitForTimeout(300);
+  ok("the reading view carries the method's name, not \"Explore\"",
+    (await page.locator(".sidebar .nav-item", { hasText: "Grundschutz++" }).count()) === 1);
+  ok("...and is where the publisher's own lists are checked for changes",
+    (await page.locator(".vocab-check").count()) >= 1);
+  {
+    const vp = page.locator(".panel").filter({ has: page.locator(".vocab-check") }).first();
+    const t = await vp.innerText();
+    // The stamp follows the last publication whose lists were taken, not the one the build
+    // shipped with - which is why this run sees the fixture applied earlier and not the
+    // bundled catalogue. That is the useful behaviour: it says what the lists ARE, not what
+    // they were.
+    ok("...saying which publication the lists came from and when it was read",
+      /From .+, version \d{4}-\d\d-\d\d, taken \d{4}-\d\d-\d\d/.test(t));
+    ok("...and following the catalogue whose vocabularies were taken", /Prüfkatalog/.test(t));
+    // The four sentences it used to carry said three things the reader already knows.
+    ok("...and not restating what the button and the documentation already say",
+      !/belong to the publisher|never taken away|Nothing is fetched/.test(t));
+  }
   ok("the explorer is reachable from the navigation", (await page.locator(".tx-explorer").count()) === 1);
   ok("the outline lists the five process steps and what each holds",
     (await page.locator(".tx-row-g").count()) === 6);
@@ -1137,6 +1531,18 @@ try {
   ok("a type opens onto its fields, with what each one is",
     (await page.locator(".tx-row-f").count()) > 20
     && /enum|text|list/.test(await page.locator(".tx-row-f .tx-spec").first().innerText()));
+
+  // Which fields the publication itself fills, and which this application keeps beside
+  // them. Reading them as one thing makes the register look either more official than it is
+  // or less, and which it is is the first thing an auditor asks.
+  {
+    const marked = await page.locator(".tx-row-f").filter({ has: page.locator(".tx-pub") }).locator(".tx-key").allInnerTexts();
+    ok(`the outline says which fields the publication fills (${marked.length})`, marked.length >= 20);
+    ok("...the BSI's own property names among them",
+      marked.includes("modal_verb") && marked.includes("sec_level") && marked.includes("target_object_categories"));
+    ok("...and the institution's own decisions not among them",
+      !marked.includes("scope") && !marked.includes("umsetzung") && !marked.includes("verantwortlich"));
+  }
 
   // The records themselves are one level below the fields, and a search reaches all three
   // readings at once.
@@ -1168,8 +1574,10 @@ try {
 
   await page.locator(".tx-seg .seg-btn", { hasText: "Relations" }).click();
   await page.waitForTimeout(300);
+  // Pinned on purpose: a type appearing or vanishing is a change to what the product IS,
+  // and it should be noticed here rather than discovered in a screenshot.
   ok("the relations reading draws a node per type and an edge per relationship",
-    (await page.locator(".tx-graph .tx-node").count()) === 17
+    (await page.locator(".tx-graph .tx-node").count()) === 24
     && (await page.locator(".tx-graph .tx-edge").count()) >= 20);
   // A box in the graph opens onto what the model says about that type.
   await page.locator(".tx-graph .tx-node-g").first().click();
@@ -1180,6 +1588,8 @@ try {
   await page.locator('.tx-detail .btn.ghost[aria-label="Close"]').click();
   await page.waitForTimeout(200);
   await page.screenshot({ path: `${shots}/TaxonomyExplorer.png` });
+
+
 
   // Documents section
   await page.locator(".sidebar .nav-item", { hasText: "Documents" }).click();
@@ -1192,11 +1602,50 @@ try {
   await page.locator(".page-head button", { hasText: "Extract" }).click();
   await page.waitForTimeout(200);
   ok("extraction dialog opens", (await page.locator(".overlay .modal-lg").count()) > 0);
+  ok("extraction offers the embedding engine", (await page.locator(".modal-lg .seg-btn", { hasText: "embeddings" }).count()) > 0);
+  ok(LLM ? "...and the language-model engine beside it" : "...and no language-model engine, this build has none",
+    (await page.locator(".modal-lg .seg-btn", { hasText: "local LLM" }).count()) > 0 === LLM);
   ok("extraction defers model loading to the Model section", (await page.locator(".modal-lg", { hasText: "managed in the" }).count()) > 0);
   ok("extract disabled until a model is loaded", await page.locator(".modal-lg button", { hasText: "Extract" }).isDisabled());
   await page.screenshot({ path: `${shots}/Extraction.png` });
   await page.keyboard.press("Escape").catch(() => {});
   await page.locator(".overlay").click({ position: { x: 5, y: 5 } }).catch(() => {});
+
+  // Two ways to protect an export, answering different problems: a password has to reach
+  // the recipient somehow, a key does not. The second is only offered once a key has been
+  // named, because encrypting to nobody is an unopenable file.
+  await page.locator(".sidebar .nav-item", { hasText: "Studies" }).click();
+  await page.waitForTimeout(250);
+  {
+    if (!(await page.locator(".ws-tabs").count())) {
+      await page.getByText("Riverbend Municipal Utilities").first().click();
+      await page.waitForSelector(".ws-tabs", { timeout: 10000 });
+    }
+    await page.locator("button", { hasText: "Export / Import" }).first().click();
+    await page.waitForSelector(".menu-pop", { timeout: 8000 });
+    const menu = page.locator(".menu-pop").first();
+    const body = await menu.innerText().catch(() => "");
+    // Escape closes a drop-down. Without it the backdrop takes the click and nothing else,
+    // and a reader reaching for the habitual way out finds the page apparently stuck -
+    // which then fails a later, unrelated interaction.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(250);
+    ok("Escape closes the export menu", (await page.locator(".menu-pop").count()) === 0);
+    await page.locator("button", { hasText: "Export / Import" }).first().click();
+    await page.waitForSelector(".menu-pop", { timeout: 8000 });
+    if (!(/Password/.test(body) && /Key/.test(body))) console.log("   menu:", body.replace(/\n/g, " | ").slice(0, 160));
+    ok("the export offers both kinds of protection", /Password/.test(body) && /\bKey\b/.test(body));
+    await menu.locator(".seg-btn", { hasText: /^Key$/ }).click();
+    await page.waitForTimeout(250);
+    const rows = await menu.locator(".menu-to-row").count();
+    ok("...listing the keys that have been named", rows >= 1, `${rows} recipients`);
+    ok("...and saying the recipient list is readable in the file",
+      /readable in the file/i.test(await menu.innerText()));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+    await page.locator("body").click({ position: { x: 5, y: 5 } }).catch(() => {});
+    await page.waitForTimeout(200);
+  }
 
   // Model configuration section
   await page.locator(".sidebar .nav-item", { hasText: "Model" }).click();
@@ -1204,9 +1653,69 @@ try {
   const modelBody = await page.locator(".content").innerText();
   ok("model section renders", modelBody.includes("Model") && modelBody.includes("all-MiniLM"));
   ok("model section lists options", (await page.locator(".model-row").count()) >= 2);
-  ok("model section is embedding-only", !modelBody.includes("Language model")
-    && !modelBody.includes("SmolLM2") && !modelBody.includes("Qwen2.5"));
+  // The one check the released build most needs to make about itself.
+  if (LLM) {
+    ok("model section manages the language models too", modelBody.includes("Language model") && modelBody.includes("SmolLM2") && modelBody.includes("Qwen2.5"));
+    ok("model section offers Qwen-3B (WebLLM, level-2 default)", modelBody.includes("Qwen2.5-3B"));
+  } else {
+    ok("model section is embedding-only", !modelBody.includes("Language model")
+      && !modelBody.includes("SmolLM2") && !modelBody.includes("Qwen2.5"));
+  }
+  console.log(`\n  build: ${LLM ? "with the generative branch (VITE_LLM=1)" : "released - embedding only"}`);
   await page.screenshot({ path: `${shots}/Model.png` });
+
+  // ── the page must survive being worked in and navigated ────────────────
+  //
+  // Reported from use: switching back and forth leaves a white page, most often on
+  // Implementation. Measured against the released v0.4.2 artefact, this sequence blanks it
+  // after 7 steps with React error #310 - a component returned early on one render and ran
+  // its hooks on the next, React counts hooks per render, and the whole tree goes with it.
+  // No message, no view, nothing to go back to.
+  //
+  // Navigation alone does not do it: the table tools have to be USED first. Every check
+  // above visits a view once and in order, which is why none of them ever saw it.
+  const blank = async () => (await page.evaluate(
+    () => (document.querySelector("#root")?.textContent || "").trim().length < 40));
+  const goTab = async (t) => {
+    await page.locator(".ws-tabs .ws-tab").filter({ hasText: t }).first().click().catch(() => {});
+    await page.waitForTimeout(350);
+  };
+  await page.locator(".sidebar .nav-item", { hasText: "Studies" }).click();
+  await page.waitForTimeout(150);
+  if (!(await page.locator(".ws-tabs").count())) {
+    await page.getByText("Riverbend Municipal Utilities").first().click();
+    await page.waitForSelector(".ws-tabs", { timeout: 10000 });
+  }
+  const errorsBefore = errors.length;
+  let survived = 0, blanked = "";
+  for (let round = 0; round < 3 && !blanked; round++) {
+    await goTab("Implementation"); survived++;
+    for (const sel of [".tbl-search input", ".facet-btn", ".panel-fold", ".seg-btn"]) {
+      const el = page.locator(sel).first();
+      if (!(await el.count())) continue;
+      if (sel.endsWith("input")) await el.fill("mfa").catch(() => {});
+      else await el.click().catch(() => {});
+      await page.waitForTimeout(200); survived++;
+      if (await blank()) { blanked = `after ${sel}`; break; }
+    }
+    if (blanked) break;
+    await goTab("Requirements Analysis"); survived++;
+    await goTab("Risk Consideration"); survived++;
+    await goTab("Implementation"); survived++;
+    if (await blank()) { blanked = "on returning to Implementation"; break; }
+    await page.locator(".sidebar .nav-item", { hasText: "Grundschutz++" }).first().click().catch(() => {});
+    await page.waitForTimeout(250);
+    await page.locator(".sidebar .nav-item", { hasText: "Studies" }).first().click().catch(() => {});
+    await page.waitForTimeout(250); survived++;
+    if (!(await page.locator(".ws-tabs").count())) {
+      await page.getByText("Riverbend Municipal Utilities").first().click().catch(() => {});
+      await page.waitForSelector(".ws-tabs", { timeout: 8000 }).catch(() => {});
+    }
+    if (await blank()) { blanked = "on coming back to the study"; break; }
+  }
+  ok(`the page survives ${survived} steps of working in it and navigating away`,
+    !blanked && errors.length === errorsBefore,
+    blanked || errors.slice(errorsBefore).join(" | "));
 } catch (e) {
   errors.push("exception: " + (e?.message ?? String(e)));
 } finally {

@@ -12,7 +12,14 @@
 export const STYLES = `
 /* ── The page ───────────────────────────────────────────────────────── */
 body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
-.content { padding: 34px 40px 60px; max-width: 1180px; }
+/* 1180 was a reading width, and this product's pages are registers rather than prose. The
+   widest one - Requirements, with the security level, the implementation state, the scope
+   and the assets it applies to - measures 1276px, so at 1180 the last two columns sat
+   outside the panel at every window size and could only be reached by a scrollbar inside
+   it. 1380 fits the widest register with slack; beyond that a line of body text gets long
+   enough to lose. 1420, not 1356: between .content and the table body another 44px go to
+   the panel and the scrollbar gutter, which is only visible by measuring. */
+.content { padding: 34px 40px 60px; max-width: 1420px; }
 
 /* Sidebar: a spine, not a floating panel. Set at reading size - a caption is still text,
    and 11px under a 15px name is a label nobody reads. */

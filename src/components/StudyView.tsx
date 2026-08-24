@@ -2,6 +2,7 @@
 import { Fragment, useState } from "react";
 import type { Study, Taxonomy } from "../domain/types";
 import { useActiveStudy, useStore } from "../domain/store";
+import { PRODUCT } from "../profile";
 import { workshopMarkdown, reportMarkdown, reportHtml, openReportHtml, downloadText, copyText } from "../domain/clipboard";
 import { EntitySection } from "./EntitySection";
 import { RiskMatrix } from "./RiskMatrix";
@@ -24,14 +25,17 @@ import { GraphView } from "./GraphView";
 import { CompletenessView } from "./CompletenessView";
 import { CanvasView } from "./CanvasView";
 import { DataMenu } from "./DataMenu";
-import { Icon } from "./ui";
+import { Icon, useDismissOnEscape } from "./ui";
 
 const reportSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "study";
 
-// One "Report" button with two output choices: a rendered, print-ready HTML page
-// (new tab) or a Markdown file.
+// One "Report" button with the documents this study can produce: the engine's own report,
+// rendered or as Markdown, and whatever the product declares in PRODUCT.exports - a
+// delivery in a publisher's format, a return, a form. They sit together because to a
+// reader they are one question: what can I get out of this study?
 function ReportMenu({ tax, study }: { tax: Taxonomy; study: Study }) {
   const [open, setOpen] = useState(false);
+  useDismissOnEscape(open, () => setOpen(false));
   const slug = reportSlug(study.name);
   return (
     <div style={{ position: "relative" }}>
@@ -51,6 +55,23 @@ function ReportMenu({ tax, study }: { tax: Taxonomy; study: Study }) {
               <Icon.download />
               <span className="mi-text"><span>Download Markdown</span><span className="menu-hint">.md file</span></span>
             </button>
+            {(PRODUCT.exports ?? []).length > 0 && <div className="menu-label">This method</div>}
+            {(PRODUCT.exports ?? []).map((x) => {
+              // Run it now rather than on the click: an export with nothing behind it is
+              // shown as itself, disabled and carrying the reason, instead of handing back
+              // an empty file after the menu has closed.
+              const r = x.run(tax, study);
+              const nothing = "nothing" in r ? r.nothing : null;
+              return (
+                <button key={x.id} className="menu-item stacked" disabled={!!nothing}
+                  title={nothing ?? undefined}
+                  onClick={() => { if (!nothing && "filename" in r) { setOpen(false); downloadText(r.filename, r.text); } }}>
+                  <Icon.download />
+                  <span className="mi-text"><span>{x.label}</span>
+                    <span className="menu-hint">{nothing ?? x.hint ?? ""}</span></span>
+                </button>
+              );
+            })}
           </div>
         </>
       )}

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy } from "../domain/types";
 import { columnFields, getType, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, setBackBlocked, titleField } from "../domain/taxonomy";
+import { foldScope, getFolds, setFolds } from "../domain/viewstate";
 import { TOOLBAR_MIN_ROWS } from "../domain/tablefilter";
-import { TableTools, useTableFilter } from "./TableTools";
+import { TableTools, refTypeLabel, useNameOf, useTableFilter } from "./TableTools";
 import { useStore } from "../domain/store";
 import { ChangeHistoryModal, IntegrityBadge } from "./ChangeHistoryModal";
 import { entryOf } from "../domain/audit";
@@ -42,12 +43,11 @@ function FieldValueView({ field, value, tax, study, onOpen, onToggle, toggleBloc
         const on = String(value ?? "") === field.options[1];
         // Blocked only in the direction that would take the record out of play: putting
         // one IN is never in conflict with anything.
-        const blocked = on ? toggleBlocked ?? null : null;
         return (
-          <button className={"cell-toggle" + (on ? " on" : "") + (blocked ? " locked" : "")}
-            disabled={!!blocked}
-            title={blocked ?? `${optionLabel(field, field.options[on ? 0 : 1])} instead`}
-            onClick={(e) => { e.stopPropagation(); if (!blocked) onToggle(field, field.options![on ? 0 : 1]); }}>
+          <button className={"cell-toggle" + (on ? " on" : "") + (on && toggleBlocked ? " locked" : "")}
+            disabled={!!(on && toggleBlocked)}
+            title={(on && toggleBlocked) || `${optionLabel(field, field.options[on ? 0 : 1])} instead`}
+            onClick={(e) => { e.stopPropagation(); if (!(on && toggleBlocked)) onToggle(field, field.options![on ? 0 : 1]); }}>
             {optionLabel(field, field.options[on ? 1 : 0])}
           </button>
         );
@@ -78,19 +78,23 @@ function FieldValueView({ field, value, tax, study, onOpen, onToggle, toggleBloc
   }
 }
 
-/** A record present but not in play: shown, and visibly set back. Declared in the
- *  taxonomy (dimWhen) rather than decided here - which states are dormant is a property
- *  of the method, not of the table. */
+/** A record present but not in play: shown, and visibly set back. Declared in the taxonomy
+ *  (dimWhen) rather than decided here - which states are dormant is a property of the
+ *  method, not of the table.
+ *
+ *  This product records the WHOLE published ruleset and sets back what no rule reached, so
+ *  a register of a thousand rows is only readable if the difference shows at a glance.
+ *  Without it a table says "in scope" and "out of scope" in the same tone. */
 function dimPredicate(tax: Taxonomy, typeKey: string): (r: EntityRecord) => boolean {
   const rules = (tax.dimWhen ?? []).filter((d) => d.type === typeKey);
   if (!rules.length) return () => false;
   return (r) => rules.some((d) => d.values.includes(String(r.values[d.field] ?? "")));
 }
 
-/** Which sections are folded away, by study and type. Kept out of the study itself: it is
- *  how someone is reading right now, not something about the analysis - it must not land in
- *  an export or in the change record. Module-level so switching workshop and coming back
- *  does not silently unfold everything again. */
+/** Which registers are folded away, by study and type. Kept out of the study on purpose:
+ *  it is how someone is reading right now, not something about the analysis, so it must not
+ *  land in an export or in the change record. Module-level, so switching workshop and coming
+ *  back does not silently lay every thousand-row register out again. */
 const folded = new Set<string>();
 
 export function EntitySection({ type, study, tax, color, draggableRows, renderDetailExtra, headerExtra, hideAdd }:
@@ -101,8 +105,6 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const dimmed = useMemo(() => dimPredicate(tax, type.key), [tax, type.key]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [modal, setModal] = useState<{ typeKey: string; record: EntityRecord | null } | null>(null);
-
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const foldKey = `${study.id}:${type.key}`;
   const [open, setOpen] = useState(() => !folded.has(foldKey));
   const fold = () => setOpen((o) => { o ? folded.add(foldKey) : folded.delete(foldKey); return !o; });
@@ -112,12 +114,26 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const title = titleField(type);
 
   // One filter, shared with every other long table - see TableTools.
-  const f = useTableFilter(type, items, () => setCollapsed(new Set()));
+  // The table's own name, so its arrangement is remembered per study and per type.
+  const tableScope = foldScope(study.id, type.key);
+  const nameOf = useNameOf(tax, study);
+  const f = useTableFilter(type, items,
+    { onGroupChange: () => setCollapsed(new Set()), nameOf, scope: tableScope });
   const { shown, groups, groupField, filtered } = f;
+  // What this reader folded away here last time. Kept out of the study on purpose: a fold
+  // belongs to whoever is reading, not to the analysis - see viewstate.ts. Grouping by a
+  // different field is a different layout, so the axis is part of the name.
+  const scope = foldScope(study.id, type.key, groupField?.key ?? "");
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => getFolds(scope));
+  useEffect(() => { setCollapsed(getFolds(scope)); }, [scope]);
   // Only worth showing once a table is long enough to be hard to read.
   const showTools = items.length >= TOOLBAR_MIN_ROWS;
   const clearAll = f.clearAll;
-  const toggleGroup = (k: string) => setCollapsed((c) => { const n = new Set(c); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  const toggleGroup = (k: string) => setCollapsed((c) => {
+    const n = new Set(c); n.has(k) ? n.delete(k) : n.add(k);
+    setFolds(scope, n);        // coalesced; a burst of clicks writes once
+    return n;
+  });
 
   const refTargets = (typeKey: string) => study.entities.filter((e) => e.type === typeKey);
   const missingReq = type.fields.find((f) => f.type === "ref" && f.required && refTargets(f.refType ?? "").length === 0);
@@ -150,7 +166,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
 
       {open && addBlocked && <div style={{ padding: "12px 16px 0" }}><div className="guide warn">{addBlocked}</div></div>}
 
-      {open && showTools && <TableTools type={type} f={f} />}
+      {open && showTools && <TableTools type={type} f={f} tax={tax} />}
 
       {open && <div className="panel-body">
         {items.length === 0 ? (
@@ -179,7 +195,9 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                 <tr className="group-row" onClick={() => toggleGroup(g.key)}>
                   <th colSpan={cols.length + 2}>
                     <span className={"caret" + (collapsed.has(g.key) ? "" : " open")}><Icon.chevron /></span>
-                    {g.key || <span className="hint">no {groupField.label.toLowerCase()}</span>}
+                    {g.key || <span className="hint">
+                      {groupField.refType ? `no ${refTypeLabel(tax, groupField)} named` : `no ${groupField.label.toLowerCase()}`}
+                    </span>}
                     <span className="badge">{g.items.length}</span>
                   </th>
                 </tr>
@@ -188,8 +206,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                 const isOpen = expanded === r.id;
                 return (
                   <Fragment key={r.id}>
-                    <tr className={"row-clickable" + (isOpen ? " expanded" : "") + (draggableRows ? " row-drag" : "")
-                      + (dimmed(r) ? " row-dim" : "")}
+                    <tr className={"row-clickable" + (isOpen ? " expanded" : "") + (draggableRows ? " row-drag" : "") + (dimmed(r) ? " row-dim" : "")}
                       draggable={draggableRows || undefined}
                       onDragStart={draggableRows ? (e) => { e.dataTransfer.setData("text/plain", r.id); e.dataTransfer.effectAllowed = "move"; } : undefined}
                       onClick={() => setExpanded(isOpen ? null : r.id)}>
@@ -203,8 +220,8 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                         )}
                       </td>
                       {cols.map((c) => <td key={c.key}><FieldValueView field={c} value={r.values[c.key] ?? null} tax={tax} study={study}
-                        toggleBlocked={setBackBlocked(tax, study, r)}
-                        onOpen={openEntity} onToggle={(f, next) => updateEntity(r.id, { ...r.values, [f.key]: next },
+                        onOpen={openEntity} toggleBlocked={setBackBlocked(tax, study, r)}
+                        onToggle={(f, next) => updateEntity(r.id, { ...r.values, [f.key]: next },
                           `${f.label}: ${optionLabel(f, next)}`)} /></td>)}
                       <td />
                     </tr>

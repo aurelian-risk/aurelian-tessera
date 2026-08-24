@@ -63,6 +63,78 @@ export function makeSampleStudy(): Study {
   const pBilling = add("business_asset", { name: "Consumption billing", description: "Meter readings, invoicing and payment runs for domestic and commercial customers.", asset_type: "Statutory task", verantwortlich: "Head of Customer Service", criticality: 3, protection_need: "normal", protection_rationale: "A billing run can be repeated. Delay is costly but not existential." });
   const pCustomer = add("business_asset", { name: "Customer master data", description: "Contract, bank and consumption data of connected customers. Personal data under the GDPR.", asset_type: "Information", verantwortlich: "Data Protection Officer", criticality: 3, protection_need: "hoch", protection_rationale: "Disclosure is reportable and affects every customer at once." });
 
+  // GC.4.1 and GC.4.2: who has expectations of information security here, what they are,
+  // and what followed from them. The regulator is the one with a deadline attached, which is
+  // why its weight is the highest; the works council is the one an institution forgets until
+  // a monitoring measure is already built.
+  add("partei", { name: "Bundesnetzagentur", art: "External", relevanz: 4,
+    bedarf: "Compliance with the IT security catalogue for grid operators, and notification of a reportable incident within the statutory deadline.",
+    ableitung: "The reporting path is part of the incident procedure, and the deadline is on the responsible role rather than in someone's memory.",
+    verantwortlich: "Managing director" });
+  add("partei", { name: "Connected customers", art: "External", relevanz: 3,
+    bedarf: "Supply that does not stop, and that their consumption and bank data stay confidential.",
+    ableitung: "Customer master data is rated high, and its disclosure is one of the loss events the risk consideration starts from.",
+    verantwortlich: "Head of Customer Service" });
+  add("partei", { name: "Works council", art: "Internal", relevanz: 3,
+    bedarf: "That monitoring measures do not become performance monitoring, and that any recording of sessions is agreed before it is switched on.",
+    ableitung: "The review of maintenance recordings names what is looked at and what is not; the agreement is referenced from the procedure.",
+    verantwortlich: "Head of Human Resources" });
+  add("partei", { name: "Operations staff", art: "Internal", relevanz: 2,
+    bedarf: "Security that does not stand between them and a switching command at three in the morning.",
+    ableitung: "The second factor for remote maintenance was designed with an emergency path, which is why it is an improvement rather than a correction.",
+    verantwortlich: "Head of Network Operations" });
+
+  // GC.9.1 and its six sub-requirements: the security organisation. The ISB carries the
+  // three the method asks of that function alone - answerable to the management directly, a
+  // direct right of audience, and resources. The committee shows that the register holds
+  // more than posts, and the data-protection interface that GC.9.1's guidance asks for the
+  // neighbouring disciplines to be anchored too. The last one is owed and not yet filled,
+  // which is the state the checks exist to name.
+  add("rolle", { name: "Information security officer", art: "Information security officer",
+    traeger: "M. Adler", stellvertreter: "S. Brandt",
+    aufgaben: "Advises the management on information security, coordinates the security concept and the requirement package, investigates incidents and reports on the state of security.",
+    befugnisse: "May demand information from every unit, may stop a change that would leave a MUSS requirement unmet, and reports to the management on their own initiative.",
+    qualifikation: "Knowledge of Grundschutz++ and of the utility's process control; two years in an operational security role; kept current by yearly training.",
+    unterstellt: "Directly to the managing director, outside the IT line.",
+    vorspracherecht: "Yes",
+    ressourcen: "0.6 FTE, a training budget of EUR 4,000 a year, and the external audit budget.",
+    interessenkonflikt: "Not to be held together with the head of IT operations: the role checks what that unit builds.",
+    status: "Established" });
+  add("rolle", { name: "Information security committee", art: "Committee",
+    traeger: "Managing director, head of network operations, head of IT, data protection officer, ISB",
+    stellvertreter: "Each member names a standing deputy in the convening order.",
+    aufgaben: "Meets quarterly, decides on the requirement package, on exceptions above severity 3, and on the improvement plan.",
+    befugnisse: "Approves exceptions and releases the resources for the implementation plan.",
+    qualifikation: "Members are the holders of the named posts; no separate qualification is required of them.",
+    status: "Established" });
+  add("rolle", { name: "Interface to data protection", art: "Interface to another discipline",
+    traeger: "Data Protection Officer", stellvertreter: "Deputy data protection officer",
+    aufgaben: "Joint assessment where personal data and information security meet - reporting duties, retention, access to customer master data.",
+    befugnisse: "May require a security measure to be assessed for its effect on the rights of data subjects.",
+    qualifikation: "Appointed as data protection officer under the GDPR.",
+    interessenkonflikt: "Independent of the ISB by design; both report to the management separately.",
+    status: "Established" });
+  add("rolle", { name: "Deputy for the ISB during long absence", art: "Role",
+    aufgaben: "Owed. The standing deputy covers days, not months; nobody has been named for a longer absence and no handover is written down.",
+    status: "Not established" });
+
+  // Fifteen MUSS requirements of the method ask the institution to ANCHOR a procedure
+  // rather than to record a decision. Three of them here as an example: two written down
+  // and in force, one the institution owes and has not written - which is the state worth
+  // recording, because a procedure nobody has noticed is missing is the gap the register
+  // exists to show.
+  add("verfahren", { name: "Continuous improvement of the ISMS", praktik: "VRB Verbesserung", anforderung: "VRB.1.1",
+    description: "Nonconformities and improvement potentials are collected from audits, incidents and the annual review, examined for cause and recurrence, and answered by prioritised actions whose effect is tested afterwards.",
+    dokument: "ISMS-VA-05 Kontinuierliche Verbesserung, v2.1", verantwortlich: "M. Adler",
+    freigegeben_am: "2026-02-14", letzte_pruefung: "2026-07-30", status: "In force" });
+  add("verfahren", { name: "Audit programme and audit reports", praktik: "PERF Monitoring-Evaluation", anforderung: "PERF.3.1, PERF.3.2",
+    description: "The audit programme is drawn up annually from risk and from what changed, carried out by people independent of what they examine, and reported so that findings, room for improvement and what worked are all readable.",
+    dokument: "ISMS-VA-08 Auditprogramm, v1.4", verantwortlich: "K. Cordes",
+    freigegeben_am: "2026-01-20", letzte_pruefung: "2026-06-12", status: "In force" });
+  const vfNachverfolgung = add("verfahren", { name: "Tracking the implementation of measures", praktik: "UMS Umsetzung", anforderung: "UMS.6.1, UMS.6.2",
+    description: "Owed and not yet written. Status reporting, target against actual and the KPI readings happen, but nobody has set down at what interval, to whom they are reported, or how the plan is revised when they diverge.",
+    status: "Not anchored" });
+
   // ── Step 2 · Requirements analysis ─────────────────────────────────────
   // The assets of the prioritised process, each mapped to the categories the BSI defines
   // (STM.2.1.3). The mapping is functional, not technical, and the reason is recorded:
@@ -77,7 +149,7 @@ export function makeSampleStudy(): Study {
   const aScada = asset({ name: "Control system (SCADA)", description: "Central control system operating the substations and heating plants remotely.", supports: [pGrid], begruendung: "Mapped to IT-Systeme: it is operated as a system in its own right, not as an application on someone else's platform." }, ["IT-Systeme"]);
   const aTelecontrol = asset({ name: "Telecontrol network", description: "Separate wide-area network between the control room and the stations.", supports: [pGrid], begruendung: "Mapped to Netze: it carries the switching commands and is operated as a network." }, ["Netze"]);
   const aLegacy = asset({ name: "Dial-up access at the legacy stations", description: "A dial-up line from before the telecontrol network, still connected at six stations.", supports: [pGrid], begruendung: "Mapped to Externe Netzanschlüsse: it reaches the telecontrol equipment from outside, past the controlled crossing point. Inherits Netze." }, ["Externe Netzanschlüsse"]);
-  const aProvider = asset({ name: "Remote-maintenance provider", description: "The manufacturer, holding remote access to the control system under a maintenance contract.", supports: [pGrid], begruendung: "Mapped to Dienstleistungen: what is bought is the service, not a product. Inherits Einkäufe." }, ["Dienstleistungen"]);
+  const aProvider = asset({ name: "Remote-maintenance provider", description: "The manufacturer, holding remote access to the control system under a maintenance contract.", supports: [pGrid], begruendung: "Mapped to Dienstleistungen: what is bought is the service, not a product. Inherits Einkäufe.", externe_schnittstelle: "The manufacturer's own maintenance process reaches into the control network through this access. What crosses: a session opened per assignment from the manufacturer's network, and the diagnostic data it takes back. Run by the manufacturer; on this side the head of Network Operations answers for it. (STM.1.2)" }, ["Dienstleistungen"]);
   const aDirectory = asset({ name: "Directory service", description: "Central user and permission management for the administrative IT.", supports: [pBilling, pCustomer], begruendung: "Mapped to Verzeichnisdienste, which the catalogue places under Anwendungen." }, ["Verzeichnisdienste"]);
   asset({ name: "Billing system", description: "The ERP application handling meter readings, invoices and payment runs.", supports: [pBilling, pCustomer], begruendung: "Mapped to Anwendungen: it runs on the shared platform rather than as a system of its own." }, ["Anwendungen"]);
 
@@ -135,7 +207,15 @@ export function makeSampleStudy(): Study {
         // UMS.1.1 knows two answers only. Nothing has been checked yet in this example
         // beyond the handful the measures below account for.
         umsetzung: "nein",
-        ...(hit ? { begruendung: `In scope: ${hit.why.join("; ")}.` } : {}),
+        // The reading records why it reached a requirement AND why it did not. STM.2.1.5
+        // wants a decision with a justification for what the catalogue classifies nowhere,
+        // and the reading already knows that justification - demanding it by hand made 269
+        // findings out of a fact the register was already carrying in two other fields.
+        ...(hit
+          ? { begruendung: `In scope: ${hit.why.join("; ")}.` }
+          : { begruendung: (item.props?.target_object_categories ?? "")
+              ? "Out of scope: no asset of this domain carries a class this requirement applies to."
+              : "Out of scope: the catalogue names no target-object category for this requirement, so no asset reaches it. Bring it in where it applies (STM.2.1.5)." }),
         // The package as a relation, not only as a sentence (STM.2.1.4.2). The ISMS
         // practices reach the whole information domain and name no asset.
         ...(hit?.assets.length ? { applies_to_asset: hit.assets } : {}),
@@ -200,6 +280,7 @@ export function makeSampleStudy(): Study {
     auditteam: "Internal Audit, with an external network specialist. Neither is involved in operating the access.",
     unabhaengig: "ja", geplant_fuer: "2026-09-15", durchgefuehrt_am: "2026-09-17",
     bericht: "Access is released per assignment and recorded as required. The session records are collected but not evaluated: nobody is named as reading them, so a misuse would be visible only after the fact. Two-factor authentication is in place for three of five accounts.",
+    kommuniziert_an: "Managing director and the security committee on 2026-09-24; IT Operations and the maintenance provider on 2026-09-25, the provider only for the part concerning its own access.",
   });
   add("audit", {
     name: "Surveillance audit of the telecontrol network", audit_type: "Surveillance",
@@ -217,6 +298,7 @@ export function makeSampleStudy(): Study {
     audit: [audit1],
     folgemassnahmen: "The decision of the last review to remove the dial-up lines is behind schedule; the budget has been carried into 2027.",
     entscheidungen: "The removal of the dial-up lines is confirmed for the first half of 2027. An owner is named for reading the session records.",
+    massnahmenvorschlaege: "1 - Read the maintenance session records weekly, with a named reviewer: 2 hours a week of the on-call role, no budget. 2 - Second factor on the remaining two administrative accounts: 4 person-days plus EUR 900 for tokens. 3 - Remove the six legacy dial-up stations: 25 person-days and EUR 40,000, of which EUR 18,000 falls in 2027.",
     vorgelegt_am: "2026-07-28",
   });
 
@@ -277,12 +359,76 @@ export function makeSampleStudy(): Study {
   }
 
   // ── Step 4 · Monitoring ────────────────────────────────────────────────
-  add("kennzahl", { name: "Share of MUSS requirements implemented", description: "How much of what the ruleset makes unconditional is actually in place.", praktik: "GC Governance und Compliance", zielwert: 100, istwert: 12, einheit: "%" });
-  add("kennzahl", { name: "Privileged accounts with a second factor", description: "Share of administrative accounts behind multi-factor authentication.", praktik: "BER Berechtigung", zielwert: 100, istwert: 74, einheit: "%" });
+  const kMuss = add("kennzahl", { name: "Share of MUSS requirements implemented", description: "How much of what the ruleset makes unconditional is actually in place.", praktik: "GC Governance und Compliance", zielwert: 100, istwert: 12, einheit: "%" });
+  const kMfa = add("kennzahl", { name: "Privileged accounts with a second factor", description: "Share of administrative accounts behind multi-factor authentication.", praktik: "BER Berechtigung", zielwert: 100, istwert: 74, einheit: "%" });
+
+  // GC.5.1 to GC.5.1.4 in one record: the objectives (as the metrics that measure them,
+  // because the method asks for them to be measurable and its own example is a metric), the
+  // strategy, the commitment of the management, and the authorisation without which the
+  // document has no force.
+  add("leitlinie", { name: "Information security policy of Riverbend Municipal Utilities", version: "2.0",
+    ziele: [kMuss, kMfa],
+    strategie: "Security follows supply. Where a measure would slow the control of the grid, the measure is redesigned rather than the process; everywhere else the published requirement is met as written. Nothing reaches the control network that has not been through the maintenance gateway, and nothing leaves the institution without a named owner.",
+    verpflichtung: "The managing director carries overall responsibility for information security, confirms the objectives above against the business objectives twice a year, receives the ISB without an intermediary, and releases the resources the implementation plan names.",
+    dokument: "ISMS-LL-01 Leitlinie Informationssicherheit, v2.0",
+    freigegeben_durch: "Managing director", freigegeben_am: "2026-02-14", status: "In force" });
 
   // ── Step 5 · Improvement ───────────────────────────────────────────────
-  add("abweichung", { name: "Maintenance sessions are recorded but never read", description: "Sessions by the manufacturer are recorded, and nobody reviews the logs.", requirement: byRefId.get("DLS.2.1") ?? "", audit: audit1, schwere: 3, status: "In progress", korrektur: "Connect to the central log evaluation and put the review into the operating manual." });
-  add("abweichung", { name: "The role description is out of date", description: "The named role is filled; its description still refers to the previous version of the ruleset.", requirement: "", schwere: 1, status: "Open", korrektur: "" });
+  // VRB.2.1 asks a nonconformity two questions - what let it happen, and whether it can
+  // happen again - and VRB.4.1 asks for an action against the CAUSE. The first of these
+  // carries both and its action; the second is left as a finding somebody has written down
+  // and not yet understood, which is the state the checks are there to name.
+  const abw1 = add("abweichung", { name: "Maintenance sessions are recorded but never read", description: "Sessions by the manufacturer are recorded, and nobody reviews the logs.", requirement: byRefId.get("DLS.2.1") ?? "", audit: audit1, schwere: 3, status: "In progress",
+    ursache: "The recording was set up as a technical measure and never given to anyone as a task; the operating manual names no reviewer and no interval.",
+    wiederauftreten: "Yes", isms_anpassung: "Yes" });
+  add("abweichung", { name: "The role description is out of date", description: "The named role is filled; its description still refers to the previous version of the ruleset.", requirement: "", schwere: 1, status: "Open" });
+
+  // VRB.4.1 · VRB.4.2 · VRB.5.1 · VRB.6.1: corrections and improvements in one register,
+  // because VRB.5.1 prioritises them in one sentence. One carried out and tested, one
+  // planned, one improvement taken up without any fault forcing it.
+  add("verbesserung", { name: "Log review into the operating manual, with a named reviewer",
+    art: "Correction", abweichung: abw1,
+    description: "Connect the maintenance recordings to the central log evaluation, name a reviewer in the operating manual and set a weekly interval.",
+    vorteile_nachteile: "Costs about two hours a week of the on-call role; makes a session that nobody watched visible within seven days instead of never.",
+    prioritaet: "1 - first", verantwortlich: "M. Adler", faellig: "2026-10-31", status: "Done",
+    wirksamkeit: "Partly effective",
+    wirksamkeit_ergebnis: "Tested by a deliberate out-of-hours session on 2026-11-04: it appeared in the weekly review, but three days later rather than within one. The interval is the limit, not the connection." });
+  const vbMfa = add("verbesserung", { name: "Second factor for the manufacturer's remote maintenance",
+    art: "Improvement",
+    description: "The access exists and is monitored; a second factor would remove the standing credential as a single point of failure.",
+    vorteile_nachteile: "Removes the standing credential; the manufacturer has to carry a token, and an emergency session takes longer to open.",
+    prioritaet: "2", verantwortlich: "S. Brandt", faellig: "2027-03-31", status: "Planned" });
+
+  // PERF.1.3: the package is re-read at the institution's interval. One reading held, which
+  // took the modelling again because a whole process had moved; one on the calendar and not
+  // yet due. Moving that date into the past is what makes the overdue check fire, and the
+  // end-to-end script does exactly that rather than the sample carrying a standing finding.
+  add("paket_review", { name: "Annual reading of the requirement package 2026",
+    verfahren: vfNachverfolgung, durchgefuehrt_am: "2026-03-31", faellig: "2026-03-31",
+    betrachtet: "The move of meter reading to the new metering service, two substations taken into remote operation, the merger of IT and network operations into one unit, and the NIS2 implementing act.",
+    ergebnis: "The package still fits the control system and the billing run. It does not fit the metering service: that process reaches assets no category of the catalogue had been mapped to, so the derivation reached them with nothing.",
+    anpassungen: "The metering service was classified, its two assets mapped, and the package derived again. 41 requirements came in, 3 were struck as not relevant with the reason recorded.",
+    neumodellierung: "Yes - the package was derived again",
+    abgestimmt_mit: "Network Operations, Customer Service, Data Protection Officer",
+    verantwortlich: "M. Adler" });
+  add("paket_review", { name: "Annual reading of the requirement package 2027",
+    verfahren: vfNachverfolgung, faellig: "2027-03-31",
+    verantwortlich: "M. Adler" });
+
+  // UMS.6.1 · UMS.6.2: the tracking round the procedure above still owes in writing. One
+  // held, behind plan, with the cause found and the plan revised because of it; one on the
+  // calendar and not yet run. The round points at the metrics rather than repeating their
+  // numbers.
+  add("nachverfolgung", { name: "Q3/2026 status round", verfahren: vfNachverfolgung,
+    durchgefuehrt_am: "2026-09-30", soll: 6, ist: 4,
+    kennzahl: [kMuss, kMfa],
+    ursache: "Both open measures wait on the manufacturer: the second factor needs a token the maintenance contract does not yet cover, and the log evaluation needs an export format the manufacturer has not delivered. Neither is a resource shortage on our side, which is why raising the priority alone would not have moved them.",
+    verbesserung: [vbMfa],
+    planaenderung: "The second factor moved from 2026-12-31 to 2027-03-31 and the contract amendment was made its predecessor. The log evaluation stays where it is; its date was already behind the contract talks.",
+    kommuniziert_an: "Management board, IT Operations, Network Operations",
+    verantwortlich: "M. Adler" });
+  add("nachverfolgung", { name: "Q4/2026 status round", verfahren: vfNachverfolgung,
+    verantwortlich: "M. Adler" });
 
   // A study that only ever shows creates says nothing about the change history, which is
   // one of the things this product is for. The sample therefore carries a few real edits

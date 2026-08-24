@@ -4,6 +4,7 @@
 // relationships resolved to names). Paste into an LLM chat as grounded context.
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy } from "./types";
 import { columnFields, getType, recordTitle, scaleLabel, scaleMax } from "./taxonomy";
+import { shortVersion } from "./vocabulary";
 import { PRODUCT } from "../profile";
 import { deriveInputs, hasQuantification, meanOf } from "./quantModel";
 import { residualPos } from "./treatment";
@@ -71,22 +72,41 @@ export function workshopMarkdown(tax: Taxonomy, study: Study, groupKey: string):
   }
 
   L.push("## Data");
-  for (const t of types) {
-    const items = study.entities.filter((e) => e.type === t.key);
-    L.push(`### ${t.labelPlural} (${items.length})`);
-    if (items.length === 0) L.push("_none_");
-    items.forEach((e: EntityRecord, i) => {
-      L.push(`${i + 1}. **${recordTitle(t, e)}**`);
-      for (const f of t.fields) {
-        if (f.key === (t.titleField ?? "name")) continue;
-        const val = valueMd(f, e.values[f.key] ?? null, tax, study);
-        if (val !== " - ") L.push(`   - ${f.label}: ${val}`);
-      }
-    });
-    L.push("");
-  }
+  for (const t of types) L.push(registerMarkdown(tax, study, t.key));
 
   return L.join("\n").trim() + "\n";
+}
+
+/** One register as Markdown: its heading, its count, and each record with the fields that
+ *  carry something.
+ *
+ *  Separate from the workshop above because a deliverable does not always follow the
+ *  taxonomy's own grouping. A document set a reader expects may take one register twice
+ *  under two headings, reading different fields each time - the objects, and then their
+ *  protection need - which is what `fields` is for. `items` narrows to a subset the caller
+ *  has already chosen; without it the register is whole. */
+export function registerMarkdown(tax: Taxonomy, study: Study, typeKey: string,
+  opts?: { level?: number; fields?: string[]; items?: EntityRecord[] }): string {
+  const t = tax.entityTypes.find((x) => x.key === typeKey);
+  if (!t) return "";
+  const items = opts?.items ?? study.entities.filter((e) => e.type === t.key);
+  const titleKey = t.titleField ?? "name";
+  const shown = opts?.fields
+    ? opts.fields.map((k) => t.fields.find((f) => f.key === k)).filter((f): f is FieldDef => !!f)
+    : t.fields;
+  const L: string[] = [];
+  L.push(`${"#".repeat(opts?.level ?? 3)} ${t.labelPlural} (${items.length})`);
+  if (items.length === 0) L.push("_none_");
+  items.forEach((e: EntityRecord, i) => {
+    L.push(`${i + 1}. **${recordTitle(t, e)}**`);
+    for (const f of shown) {
+      if (f.key === titleKey) continue;
+      const val = valueMd(f, e.values[f.key] ?? null, tax, study);
+      if (val !== " - ") L.push(`   - ${f.label}: ${val}`);
+    }
+  });
+  L.push("");
+  return L.join("\n");
 }
 
 const esc = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -529,7 +549,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
   if (study.sector) dc.push(`| Sector | ${study.sector} |`);
   dc.push(`| Generated | ${new Date().toISOString().slice(0, 10)} |`);
   if (tax.vocabularySource) {
-    dc.push(`| Vocabulary | ${tax.vocabularySource.name}${tax.vocabularySource.version ? `, version ${tax.vocabularySource.version}` : ""} |`);
+    dc.push(`| Vocabulary | ${tax.vocabularySource.name}${tax.vocabularySource.version ? `, version ${shortVersion(tax.vocabularySource.version)}` : ""} |`);
   }
   const log = study.log ?? [];
   if (log.length) {
@@ -784,8 +804,18 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
   if (quant) L.push(...quant);
 
   L.push("---\n");
-  // Attribution travels with the document: a concept quoting someone else's ruleset has
-  // to say whose it is, on what terms, and what was changed about it.
+  L.push(...documentCredits());
+  return L.join("\n").trim() + "\n";
+}
+
+/** What every document this build generates has to carry: whose ruleset it quotes, on what
+ *  terms and what was changed about it, and what wrote it.
+ *
+ *  Here rather than in a product because it is the build's promise, not a method's. A
+ *  product that declares an export writes its own content and ends with this, so the notice
+ *  cannot be forgotten in the second document by being written out by hand in the first. */
+export function documentCredits(): string[] {
+  const L: string[] = [];
   if (PRODUCT.attribution?.length) {
     L.push("## Sources and terms\n");
     L.push("| Content | Rights holder | Licence | Changes |");
@@ -797,7 +827,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
   }
   L.push(`_Generated with ${PRODUCT.name} - ${PRODUCT.tagline}, offline._  `);
   if (PRODUCT.source) L.push(`[${PRODUCT.source}](https://${PRODUCT.source})`);
-  return L.join("\n").trim() + "\n";
+  return L;
 }
 
 // ── Print-ready HTML report ──────────────────────────────────────────────

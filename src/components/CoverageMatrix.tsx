@@ -9,7 +9,7 @@ import { getType, isSetBack, recordTitle } from "../domain/taxonomy";
 import { useStore } from "../domain/store";
 import { EntityModal } from "./EntityModal";
 import { MultiSelect, Icon } from "./ui";
-import { TableTools, useTableFilter } from "./TableTools";
+import { TableTools, useNameOf, useTableFilter } from "./TableTools";
 
 export function CoverageMatrix({ tax, study, reqType, color }: { tax: Taxonomy; study: Study; reqType: EntityTypeDef; color: string }) {
   const updateEntity = useStore((s) => s.updateEntity);
@@ -19,9 +19,33 @@ export function CoverageMatrix({ tax, study, reqType, color }: { tax: Taxonomy; 
 
   const measureType = tax.entityTypes.find((t) => t.fields.some((f) => f.type === "multiref" && f.refType === reqType.key));
   const fulfillsF = measureType?.fields.find((f) => f.type === "multiref" && f.refType === reqType.key);
+
+  // EVERY hook runs before the guard below, and that ordering is the whole point of the
+  // next three lines being here rather than after it.
+  //
+  // The guard used to sit above them, so a render that took it counted three hooks and the
+  // next one counted six. React counts hooks per render and throws when the number changes,
+  // and the page goes WHITE: no message, no view, nothing to go back to. It was reported as
+  // "switching tabs sometimes blanks the page, especially on Implementation", which is
+  // where this matrix lives.
+  //
+  // Measured against the artefact carrying the old order: it blanks after 7 steps with
+  // React error #310. Navigation alone never does it - the table tools have to be used
+  // first, which is why every check that visits a view once and in order missed it.
+  //
+  // What decides whether a taxonomy can reach it: StudyView mounts this matrix for the
+  // first type in the ACTIVE group carrying a `framework` field. Where two groups each hold
+  // one and only one of them has a type pointing back at it, the guard takes one workshop
+  // and not the other, at the same position in the tree - and that is the render whose hook
+  // count differs. A taxonomy with a single such type, in a single group, never gets there:
+  // this one is that case, which is why it does not blank here.
+  const reqs = study.entities.filter((e) => e.type === reqType.key);
+  const nameOf = useNameOf(tax, study);
+  const f = useTableFilter(reqType, reqs, { nameOf });
+  const [gapsOnly, setGapsOnly] = useState(false);
+
   if (!measureType || !fulfillsF) return null;
 
-  const reqs = study.entities.filter((e) => e.type === reqType.key);
   const measures = study.entities.filter((e) => e.type === measureType.key && !isSetBack(tax, e));
   const measureOpts = measures.map((m) => ({ id: m.id, label: recordTitle(measureType, m) }));
 
@@ -36,11 +60,9 @@ export function CoverageMatrix({ tax, study, reqType, color }: { tax: Taxonomy; 
     }
   };
 
-  // The same filter every long table has. A package of a thousand requirements is not
-  // readable as a matrix without one, and "show me only what nothing fulfils" is the
-  // question this view exists to answer.
-  const f = useTableFilter(reqType, reqs);
-  const [gapsOnly, setGapsOnly] = useState(false);
+  // The filter every long table has - declared above with the other hooks. A package of a
+  // thousand requirements is not readable as a matrix without one, and "show me only what
+  // nothing fulfils" is the question this view exists to answer.
   const visible = gapsOnly ? f.shown.filter((r) => !measures.some((m) => fulfils(m, r.id))) : f.shown;
 
   const byFw = new Map<string, EntityRecord[]>();

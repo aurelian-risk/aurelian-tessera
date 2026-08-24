@@ -12,7 +12,7 @@ import { useState } from "react";
 import type { Taxonomy } from "../domain/types";
 import { fetchPublishedCatalog, type PublishedCatalog } from "../domain/frameworks";
 import { looksLikeOscal, parseOscalCatalog } from "../domain/oscal";
-import { planVocabularyUpdate, applyVocabularyUpdate, catalogDefinesVocabulary, type VocabularyChange } from "../domain/vocabulary";
+import { planVocabularyUpdate, applyVocabularyUpdate, catalogDefinesVocabulary, shortVersion, type VocabularyChange } from "../domain/vocabulary";
 import { PUBLISHED_CATALOGS } from "../profile";
 import { useStore } from "../domain/store";
 import { Icon } from "./ui";
@@ -70,12 +70,14 @@ export function VocabularySync({ tax }: { tax: Taxonomy }) {
         ))}
       </div>
       <div className="panel-body" style={{ padding: "10px 0 4px" }}>
+        {/* Four sentences here said three things the reader already knows and one they
+            need: which publication these lists came from. The rest - that the terms are the
+            publisher's, that nothing is fetched unpressed, that nothing is removed - is
+            either visible from the button or a rule that belongs in the documentation. */}
         <div className="guide">
-          The lists this taxonomy offers - the classes, the levels, the modal verbs - belong to
-          the publisher. This build carries them as they stood when it was made
-          {src ? <>: <b>{src.name}</b>{src.version ? `, version ${src.version}` : ""}, taken {src.at.slice(0, 10)}</> : null}.
-          Checking asks the publisher what they are now. Nothing is fetched until you press,
-          and a value already recorded is never taken away.
+          {src
+            ? <>From <b>{src.name}</b>{src.version ? `, version ${shortVersion(src.version)}` : ""}, taken {src.at.slice(0, 10)}. Checking adds what the publisher has added since.</>
+            : <>Checking asks the publisher for the current lists and adds what is new.</>}
         </div>
 
         {plan && (

@@ -49,11 +49,16 @@ function Sidebar({ route, go, hasStudy }: { route: Route; go: (r: Route) => void
         <span className="num"><Icon.spark /></span> Model
       </button>
       <button className={"nav-item" + (route === "explore" ? " active" : "")} onClick={() => go("explore")}
-        title="The model itself: what it is made of, what the classes carry, what points at what">
-        <span className="num"><Icon.graph /></span> Explore
+        title="Read the model: what it is made of, which fields the publication fills, what the classes carry, what points at what">
+        <span className="num"><Icon.graph /></span> {PRODUCT.exploreLabel ?? "Explore"}
       </button>
-      <button className={"nav-item" + (route === "taxonomy" ? " active" : "")} onClick={() => go("taxonomy")}>
-        <span className="num"><Icon.schema /></span> Taxonomy
+      {/* "Schema", not "Taxonomy": the thing above is where a reader goes to READ the
+          method's structure, and this is where they go to CHANGE the shape the application
+          keeps it in. Both called some variant of "the model" is how they end up in the
+          wrong one - and a publisher does not call its own structure a taxonomy either. */}
+      <button className={"nav-item" + (route === "taxonomy" ? " active" : "")} onClick={() => go("taxonomy")}
+        title="The shape this application keeps the model in: entity types, their fields, and the vocabularies behind them">
+        <span className="num"><Icon.schema /></span> Schema
       </button>
       <button className={"nav-item" + (route === "timeline" ? " active" : "")} onClick={() => go("timeline")}
         title="Change timeline of the active study">

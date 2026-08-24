@@ -17,7 +17,7 @@ import { likelihoodCheck } from "../domain/frequency";
 import { DistInput, fmtVal, type Unit } from "./DistInput";
 import { FactorTrace } from "./FactorTrace";
 import { EntityModal } from "./EntityModal";
-import { Icon } from "./ui";
+import { Icon, useDismissOnEscape } from "./ui";
 import { copyText, quantLlmMarkdown } from "../domain/clipboard";
 
 const UNIT: Record<keyof QuantInputs, Unit> = {
@@ -46,6 +46,7 @@ export function QuantificationView({ tax, study, color }: { tax: Taxonomy; study
   const available = allOps.filter((o) => !enabledIds.includes(o.id));
   const [open, setOpen] = useState(0);
   const [adding, setAdding] = useState(false);
+  useDismissOnEscape(adding, () => setAdding(false));
   if (!opType || !allOps.length) return null;
 
   return (

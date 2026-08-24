@@ -6,6 +6,58 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.5.0] - 2026-08-23
+
+### Added
+
+- **The reference documents, A.0-A.6.** The seven documents a certification asks for,
+  filled from the study: policy, structure analysis, protection-need assessment, modelling,
+  the result of the Grundschutz check, the risk analysis and the implementation plan.
+  Grundschutz++ declares no set of its own, so this is the published set of the classic
+  IT-Grundschutz certification and the document's first sentence says so. Offered beside the
+  report, which stays the security concept.
+- **The interested parties and the security policy** (`GC.4`, `GC.5`): who expects something
+  of information security, what they need, and the policy that answers them - its objectives
+  named as the metrics that measure them, its strategy, the management's commitment, and the
+  authorisation the document draws its force from.
+- **The security organisation** (`GC.9.1`): a register of roles and committees with the
+  holder, the deputy, the tasks, the authority and the qualification, and the information
+  security officer singled out.
+- **The procedures the method asks to be anchored**: seventeen requirements, fifteen of them
+  MUSS, ask for a procedure rather than a record. The register holds what exists, what it
+  says, where it is written down, who owns it, when it was last read - and what is still
+  owed.
+- **The improvement practice** (`VRB.2`-`VRB.6`): a nonconformity examined for cause and
+  recurrence, corrections and improvements in one register with priority, owner and date,
+  and a verdict on whether what was carried out worked.
+- **Own requirements delivered to the BSI** (`STM.2.1.6`): a requirement written because the
+  catalogue reaches an asset with nothing is written back out as an OSCAL catalogue.
+- **The tracking round** (`UMS.6`) and **the package re-read at the institution's interval**
+  (`PERF.1.3`), each as a record with what it took in, what it found and what it changed.
+- **A register can be filtered and grouped by the records a row points at** - which of the
+  thousand requirements apply to one asset, 93 of them in the example.
+- **Seals and keys**: the head of the change log signed with a verdict per seal, export
+  addressed to a recipient's public key, and the sender's key checked at import.
+
+### Changed
+
+- **The checks page went from 1143 findings to 6.** Three rules named 95, 269 and 389 of 392
+  requirements - the register's normal content rather than a gap. Each is now asked at the
+  moment the method asks it.
+- **The registers get the width the window has.** The content column was capped at 1180px
+  while the requirements table measures 1276.
+- **How a reader arranged a table is remembered** outside the study, so an export does not
+  carry it.
+
+### Fixed
+
+- **The page no longer blanks after working in it.** A component returned before its hooks
+  ran, so one render counted three and the next six. Measured at the v0.4.2 artefact: seven
+  steps, React error #310, and only after the table tools had been used.
+- **The build reports its own version.** v0.4.2 shipped naming itself 0.4.1.
+- **The catalogue version a document prints** is the day, not the microsecond the OSCAL
+  file carries.
+
 ## [0.4.2] - 2026-08-22
 
 ### Fixed

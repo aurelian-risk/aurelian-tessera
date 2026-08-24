@@ -136,14 +136,9 @@ names. Seven types are added with no engine counterpart (`praktik`, `kennzahl`, 
 
 Not mapped, still open - the full account is in `docs/method-conformance.md`:
 
-- **The annual review of the package** (PERF.1.3) is not scheduled and not recorded as
-  having been done, although the derivation that carries it out is repeatable.
-- **The progress-tracking procedure** (UMS.6.1) is not modelled; progress is kept per
-  requirement.
-- **The improvement plan** (VRB.5) exists as corrective actions on individual findings
-  rather than as a plan of its own.
-- **Reference documents** for certification are not produced as such; the report is a
-  security concept, not the A.0–A.6 set.
+- **A set of reference documents for this method.** The classic A.0–A.6 set is produced
+  from the study and named as the classic set; Grundschutz++ declares none of its own, and
+  what one would ask for is not settled.
 
 Retired rather than open: **protection-need inheritance** along `supports`. The method
 classifies only business processes and information (GC.7.1), in two levels, and the target
@@ -154,7 +149,7 @@ and "Verteilungseffekt" do not occur in the method catalogue at all.
 
 Done, in this order:
 
-1. **`test:e2e` rewritten for this product** - 243 checks against the portable build,
+1. **`test:e2e` rewritten for this product** - 341 checks against the portable build,
    without network, driven by the position of a group in the taxonomy and by the heading of
    the section a table sits in, never by label text.
 2. **Vocabularies derived from the publication, and kept current.** `npm run sync` runs
@@ -174,17 +169,18 @@ Done, in this order:
    from a change into a state.
 8. **Implementation planning** (UMS.2.2 / 3.1 / 4.1), **audits and the management report**
    (PERF.3, PERF.4), and the **migration mappings** carried with the ruleset.
+9. **The annual review of the package** (PERF.1.3) as a scheduled and recorded step.
+10. **The progress procedure** (UMS.6.1) as the round it runs - the target against the
+    actual, the metrics read, the cause where they part, and what it changed in the plan.
+11. **The improvement plan** (VRB.5) as one register of corrections and improvements.
+12. **Own requirements delivered to the BSI** (STM.2.1.6), as an export in the form the BSI
+    reads. The OSCAL reader exists; this is the writer.
+13. **The reference documents**, A.0–A.6, filled from the study.
 
 Next:
 
-9. **The annual review of the package** (PERF.1.3) as a scheduled and recorded step.
-10. **The progress procedure** (UMS.6.1). Progress stands per requirement; the reporting,
-    the target against actual and the measurement around it are not modelled as one.
-11. **The improvement plan** (VRB.5) as a plan rather than as individual corrections.
-12. **Own requirements delivered to the BSI** (STM.2.1.6), as an export in the form the BSI
-    reads. The OSCAL reader exists; this is the writer.
-13. **Reference documents** for certification, if the certification scheme for GS++ settles
-    on a set.
+14. **A set the BSI declares for Grundschutz++**, if a certification scheme for it settles
+    on one. The seven sections are a declared table; a different set is an edit to it.
 
 **Settled: the ruleset ships in the build.** Parsed rather than raw - 1.59 MB from 5.38 MB
 of OSCAL, because the reader strips the scaffolding the product never looks at, and the

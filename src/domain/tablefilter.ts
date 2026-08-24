@@ -8,22 +8,33 @@
 //
 // Values are compared as they are DISPLAYED, so a scale reads "high" rather than 3 and a
 // filter chip says what the row says. The caller passes that rendering in, which keeps
-// this module free of React and of the taxonomy's presentation rules.
+// this module free of React and of the taxonomy's presentation rules - and free of the
+// study, which is why a reference arrives here already resolved to a title.
+//
+// A field reads as a LIST, not as one string. Most fields have one value; a field pointing
+// at several records has several, and the row belongs under each of them. Spelling the
+// three out as one string would make a fourth category that no other row is ever in.
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue } from "./types";
 
 /** Below this many rows a table is readable as it stands, and a toolbar is clutter. */
 export const TOOLBAR_MIN_ROWS = 8;
 /** More distinct values than this and the chips become their own haystack. */
 const MAX_FACET_VALUES = 12;
+/** References are held to a wider limit. Their values are records the reader named, and
+ *  the question "which of these apply to THAT one" is what a register of a thousand rows
+ *  is opened for; the menu folds the tail away by itself. */
+const MAX_REF_FACET_VALUES = 60;
 
-export type Display = (field: FieldDef, value: FieldValue) => string;
+/** What a row reads as under one field - see the note at the top on why it is a list. */
+export type Display = (field: FieldDef, value: FieldValue) => string[];
 
 export interface FacetValue { value: string; count: number }
 export interface Facet { field: FieldDef; values: FacetValue[] }
 /** field key → the values selected on it. Empty or absent means "no filter on this field". */
 export type Selection = Record<string, string[]>;
 
-const FACETABLE = new Set(["text", "enum", "scale", "boolean", "number"]);
+const FACETABLE = new Set(["text", "enum", "scale", "boolean", "number", "ref", "multiref"]);
+const isRef = (f: FieldDef) => f.type === "ref" || f.type === "multiref";
 
 const isFacetable = (f: FieldDef, titleKey: string) =>
   f.key !== titleKey && f.key !== "description" && FACETABLE.has(f.type);
@@ -40,12 +51,14 @@ export function facetsOf(type: EntityTypeDef, items: EntityRecord[], display: Di
     if (!isFacetable(f, titleKey)) continue;
     const counts = new Map<string, number>();
     for (const r of items) {
-      const s = display(f, r.values[f.key] ?? null).trim();
-      if (!s) continue;
-      counts.set(s, (counts.get(s) ?? 0) + 1);
+      for (const s of display(f, r.values[f.key] ?? null)) {
+        if (!s.trim()) continue;
+        counts.set(s.trim(), (counts.get(s.trim()) ?? 0) + 1);
+      }
     }
-    if (counts.size < 2 || counts.size > MAX_FACET_VALUES) continue;
-    // Every row distinct = an identifier, not a category.
+    if (counts.size < 2 || counts.size > (isRef(f) ? MAX_REF_FACET_VALUES : MAX_FACET_VALUES)) continue;
+    // Every row distinct = an identifier, not a category. Asked of references too: a
+    // register where each row names an asset of its own is not one worth faceting.
     if (counts.size >= items.length) continue;
     out.push({
       field: f,
@@ -65,8 +78,7 @@ export function haystack(type: EntityTypeDef, r: EntityRecord, display: Display)
   const parts: string[] = [];
   for (const f of type.fields) {
     if (f.type === "ref" || f.type === "multiref") continue;
-    const s = display(f, r.values[f.key] ?? null);
-    if (s) parts.push(s);
+    for (const s of display(f, r.values[f.key] ?? null)) if (s) parts.push(s);
   }
   return parts.join(" ").toLowerCase();
 }
@@ -85,7 +97,10 @@ export function matchesSelection(type: EntityTypeDef, r: EntityRecord, sel: Sele
     if (!values?.length) continue;
     const f = type.fields.find((x) => x.key === key);
     if (!f) continue;
-    if (!values.includes(display(f, r.values[key] ?? null).trim())) return false;
+    // Within one field the picked values are alternatives, so a row pointing at several
+    // records is in as soon as ONE of them is picked.
+    const has = display(f, r.values[key] ?? null).map((v) => v.trim());
+    if (!(has.length ? has : [""]).some((v) => values.includes(v))) return false;
   }
   return true;
 }
@@ -100,14 +115,20 @@ export function filterItems(items: EntityRecord[], type: EntityTypeDef, query: s
 export interface Group { key: string; items: EntityRecord[] }
 
 /** Group by a field's displayed value. Rows with no value form a trailing group rather
- *  than disappearing - a row that vanishes when grouping is applied looks like data loss. */
+ *  than disappearing - a row that vanishes when grouping is applied looks like data loss.
+ *
+ *  A row under a field pointing at several records appears under EACH of them, so the group
+ *  counts add up to more than the table holds. That is the grouping being asked for - "the
+ *  requirements for this asset" - and the toolbar says so where it applies. */
 export function groupItems(items: EntityRecord[], field: FieldDef | null, display: Display): Group[] {
   if (!field) return [{ key: "", items }];
   const map = new Map<string, EntityRecord[]>();
   for (const r of items) {
-    const k = display(field, r.values[field.key] ?? null).trim();
-    const list = map.get(k);
-    if (list) list.push(r); else map.set(k, [r]);
+    const vals = display(field, r.values[field.key] ?? null).map((v) => v.trim()).filter(Boolean);
+    for (const k of vals.length ? vals : [""]) {
+      const list = map.get(k);
+      if (list) list.push(r); else map.set(k, [r]);
+    }
   }
   const empty = map.get("");
   map.delete("");
@@ -133,8 +154,9 @@ export function countFacets(facets: Facet[], items: EntityRecord[], type: Entity
     const scope = filterItems(items, type, query, others, display);
     const counts = new Map<string, number>();
     for (const r of scope) {
-      const v = display(f.field, r.values[f.field.key] ?? null).trim();
-      if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
+      for (const v of display(f.field, r.values[f.field.key] ?? null)) {
+        if (v.trim()) counts.set(v.trim(), (counts.get(v.trim()) ?? 0) + 1);
+      }
     }
     return { field: f.field, values: f.values.map((v) => ({ value: v.value, count: counts.get(v.value) ?? 0 })) };
   });

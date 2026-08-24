@@ -10,12 +10,38 @@
 import type { Product } from "../../domain/types";
 import { THEME } from "./theme";
 import { STYLES, REPORT_STYLES } from "./styles";
+import { ownRequirementsOscal } from "./oscalexport";
+import { referenceDocuments } from "./referencedocs";
 
 export const PRODUCT: Product = {
   name: "Aurelian Tessera++",
   tagline: "BSI Grundschutz implemented",
   mark: "Aurelian Tessera",
   source: "github.com/aurelian-risk/aurelian-tessera",
+  // The read-only view of the model is where a reader goes to see the BSI's own structure -
+  // the practices, the class tree, which fields the publication fills. "Explore" says
+  // nothing about that; the method's name does.
+  exploreLabel: "Grundschutz++",
+  // STM.2.1.6 ends with "dem BSI zugestellt": a requirement written because the catalogue
+  // reaches an asset with nothing is handed back to the office that publishes the
+  // catalogue, in the form the library is published in. The writer is in the profile - the
+  // engine offers the entry and takes the finished file.
+  exports: [{
+    id: "gspp-own-requirements",
+    label: "Own requirements for the BSI",
+    hint: "OSCAL catalogue · STM.2.1.6",
+    run: ownRequirementsOscal,
+  }, {
+    // The BSI has published no certification scheme for Grundschutz++, so this is the set
+    // published for the classic certification, named as that set. Beside the report, not
+    // instead of it: the report is the security concept the method itself names, and it
+    // carries what those seven documents have no place for - the document control, the
+    // change record with its integrity, the matrix, the chains.
+    id: "gspp-reference-documents",
+    label: "Reference documents A.0-A.6",
+    hint: "Markdown · classic certification set",
+    run: referenceDocuments,
+  }],
   // The method is the BSI's work; this is the acknowledgement of that, not a licence
   // notice - those travel with the documents that quote the ruleset, and stand in NOTICE.md.
   credit: {

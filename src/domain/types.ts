@@ -125,8 +125,14 @@ export interface Taxonomy {
     hint: string;
     severity?: "high" | "medium" | "low";
     type: string;
-    /** All of these have to hold for the record to be judged. */
-    when: { field: string; values?: string[]; empty?: boolean }[];
+    /** All of these have to hold for the record to be judged.
+     *
+     *  `past` reads the field as a date and holds once that date is behind us. It is the
+     *  one condition that cannot be written as a value comparison: a method that asks for
+     *  something to be redone at an interval says nothing a string match can find, and the
+     *  date on the record is the only thing that moves. Empty or unreadable is not past -
+     *  a finding needs a date somebody wrote. */
+    when: { field: string; values?: string[]; empty?: boolean; past?: boolean }[];
     /** …and then these fields have to carry something. */
     require: string[];
     /** Judge records that are set back too. Off by default - a record out of play carries
@@ -196,7 +202,7 @@ export interface ChangeEntry {
   seq: number;
   ts: string;
   editor: string;
-  kind: "create" | "update" | "delete" | "import";
+  kind: "create" | "update" | "delete" | "import" | "seal";
   /** The record this entry is about. */
   entity: ID;
   /** Type key and title AS OF this entry, so a deleted record stays readable in the
@@ -209,6 +215,15 @@ export interface ChangeEntry {
    *  what binds the log to the data: editing a value outside the app leaves the log
    *  intact but no longer matching, and verification says so. */
   state?: string;
+  /** Present on a `seal` entry: a signature over the head of the chain as it stood, so
+   *  rewriting anything before it needs the private key. See keys.ts for what that does
+   *  and does not prove. */
+  seal?: { jws: string; kid: string; jwk: JsonWebKey;
+    /** Set when this seal arrived with an imported file. Such a seal was made about
+     *  ANOTHER log, so it cannot bind to this one - re-chaining it here moved it. What it
+     *  still proves is that the sender held the key, and what it was worth at the moment
+     *  of import is recorded in the import entry. */
+    received?: string };
   prevHash: string;
   hash: string;
 }
@@ -341,6 +356,35 @@ export interface Product {
   /** A stylesheet for the generated report, appended after the engine's. The report is
    *  read beside the publisher's own documents; a product may need it to look the part. */
   reportCss?: string;
+  /** What the read-only view of the model is called in the navigation.
+   *
+   *  It shows the method's own structure - the classes a publisher defines, what each
+   *  carries, what points at what - so the name a reader looks for is the method's, not
+   *  "Explore". Beside it sits the editable schema, and two items both reading as "the
+   *  model" is how a reader ends up in the wrong one. Defaults to "Explore". */
+  exploreLabel?: string;
+
+  /** Documents this product can write whose shape the engine does not know.
+   *
+   *  A method decides what leaves the building: a delivery in the publisher's own format, a
+   *  return, a form an authority reads. Those shapes are the method's, not the engine's, and
+   *  teaching them to the engine is how a product particular ends up in shared code. So the
+   *  engine offers them where it offers the report, hands over the taxonomy and the study,
+   *  and takes back a finished file. What is in the file stays in the profile.
+   *
+   *  `run` returns the file, or a sentence saying why there is nothing to write. An export
+   *  with no records behind it is then offered as a disabled entry carrying its reason,
+   *  which is more use to a reader than a menu item that produces an empty document. It is
+   *  called when the menu opens, so it should read the study rather than compute over it.
+   */
+  exports?: {
+    id: string;
+    label: string;
+    /** One line under the label: what the file is, and who reads it. */
+    hint?: string;
+    run: (tax: Taxonomy, study: Study) => { filename: string; text: string } | { nothing: string };
+  }[];
+
   /** A stylesheet of this product's own, appended after the engine's. Tokens carry a
    *  palette; a product whose voice is a different KIND of document - ruled tables, no
    *  cards, a printed rather than an assembled page - needs to restate some rules. Kept

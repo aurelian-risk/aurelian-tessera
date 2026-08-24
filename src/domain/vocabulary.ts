@@ -20,6 +20,12 @@ import type { EntityRecord, Taxonomy, FieldDef } from "./types";
 import type { Framework } from "./frameworks";
 
 /** The label of the catalogue's top-level grouping, as a vocabulary source. */
+/** A publisher may version by date, and an OSCAL catalogue does it to the microsecond. The
+ *  day is the part a reader compares against; the rest is noise in a sentence. Here rather
+ *  than beside one view, because a document that prints the version has the same reader. */
+export const shortVersion = (v: string): string =>
+  /^\d{4}-\d{2}-\d{2}T/.test(v) ? v.slice(0, 10) : v;
+
 export const GROUPS_VOCABULARY = "@groups";
 /** What a catalogue item leaves for the reader to fill in. Not a vocabulary - there is
  *  nothing to choose from - but declared the same way, because it answers the same

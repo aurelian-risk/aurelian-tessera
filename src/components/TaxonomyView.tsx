@@ -6,7 +6,6 @@ import { useState } from "react";
 import type { EntityTypeDef, FieldDef, FieldType, Taxonomy } from "../domain/types";
 import { useStore } from "../domain/store";
 import { DataMenu } from "./DataMenu";
-import { VocabularySync } from "./VocabularySync";
 import { Dialog, Icon } from "./ui";
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "field";
@@ -73,7 +72,6 @@ export function TaxonomyView() {
         </div>
       </div>
 
-      <VocabularySync tax={tax} />
 
       <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 20, alignItems: "start" }}>
         {/* type list */}

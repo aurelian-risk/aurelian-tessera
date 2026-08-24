@@ -266,11 +266,15 @@ export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
     return Array.isArray(v) ? v.map(String).filter(Boolean)
       : v == null || v === "" ? [] : [String(v)];
   };
+  // Today, once for the whole run, so every date-relative rule judges against the same
+  // moment. A due date falling today is not yet past.
+  const startOfToday = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
   for (const m of tax.mustState ?? []) {
     if (!has(m.type)) continue;
     const matches = (e: EntityRecord) => m.when.every((c) => {
       const v = held(e, c.field);
       if (c.empty) return v.length === 0;
+      if (c.past) return v.some((x) => { const t = Date.parse(x); return !Number.isNaN(t) && t < startOfToday; });
       return c.values ? v.some((x) => c.values!.includes(x)) : v.length > 0;
     });
     // Records set back are normally not judged. This one rule may ask for them by name:

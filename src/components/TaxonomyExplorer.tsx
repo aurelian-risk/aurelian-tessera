@@ -19,16 +19,46 @@ import { useMemo, useState } from "react";
 import type { EntityRecord, EntityTypeDef, FieldDef, Study, Taxonomy } from "../domain/types";
 import { classificationLink, withAncestors } from "../domain/modelling";
 import { BUNDLED_FRAMEWORKS } from "../profile";
+import { catalogTargets } from "../domain/catalog";
 import { getType, optionLabel, recordTitle } from "../domain/taxonomy";
 import { EntityModal } from "./EntityModal";
 import { useActiveStudy, useStore } from "../domain/store";
 import { Icon } from "./ui";
+import { PRODUCT } from "../profile";
+import { VocabularySync } from "./VocabularySync";
 
 type View = "outline" | "classes" | "relations";
 
 const listOf = (v: unknown): string[] =>
   (Array.isArray(v) ? v.map(String) : v == null ? [] : String(v).split(","))
     .map((s) => s.trim()).filter(Boolean);
+
+/** Which of a type's fields the PUBLICATION fills, and which this product adds around it.
+ *
+ *  A reader of the outline cannot tell one from the other, and the difference is the first
+ *  thing an auditor asks: a field the publisher carries arrives filled and its values are
+ *  the publisher's to change; a field of ours is what this application keeps beside it -
+ *  the decisions, the owners, the dates. Neither is worth more, but reading them as one
+ *  thing makes the register look either more official than it is or less.
+ *
+ *  Derived, not declared. The catalogue import writes each property into the field of the
+ *  same name, which is why it needs no mapping step - so the keys the publication uses ARE
+ *  the property names it carries, and asking the bundled catalogue is asking the source. */
+function publishedKeys(tax: Taxonomy): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  for (const t of catalogTargets(tax)) {
+    // The five the reader maps by position rather than by property name.
+    const keys = new Set(["name", "ref_id", "framework", "category", "description"]);
+    for (const fw of t.bundled) for (const it of fw.items) {
+      for (const k of Object.keys(it.props ?? {})) keys.add(k);
+    }
+    // A field that declares where its values come from is the publisher's by declaration,
+    // even where no item happened to carry that property.
+    for (const f of t.type.fields) if (f.vocabulary) keys.add(f.key);
+    out.set(t.type.key, keys);
+  }
+  return out;
+}
 
 /** What a field says about itself, in one line: the type, and where it points or what it
  *  may hold. A reader of the outline wants the shape, not the help text. */
@@ -48,6 +78,7 @@ function fieldSpec(f: FieldDef): string {
 const RECORD_PREVIEW = 40;
 
 function Outline({ tax, study, q, onOpen }: { tax: Taxonomy; study: Study; q: string; onOpen: (r: EntityRecord) => void }) {
+  const published = useMemo(() => publishedKeys(tax), [tax]);
   const [open, setOpen] = useState<Set<string>>(() => new Set(tax.groups.map((g) => g.key)));
   const [openType, setOpenType] = useState<Set<string>>(new Set());
   const [openRecords, setOpenRecords] = useState<Set<string>>(new Set());
@@ -91,12 +122,20 @@ function Outline({ tax, study, q, onOpen }: { tax: Taxonomy; study: Study; q: st
                     <span className="tx-name">{t.labelPlural}</span>
                     <span className="tx-key">{t.key}</span>
                     <span className="tx-num">{t.fields.length} fields</span>
+                    {published.has(t.key) && (
+                      <span className="tx-num" title="Fields the published catalogue itself fills; the rest are what this application keeps beside them">
+                        {t.fields.filter((f) => published.get(t.key)!.has(f.key)).length} published
+                      </span>
+                    )}
                     <span className="tx-num strong">{count(t)}</span>
                   </button>
                   {tOpen && t.fields.filter((f) => q === "" || hit(f.label) || hit(f.key) || hit(t.label)).map((f) => (
                     <div key={f.key} className="tx-row tx-row-f">
                       <span className="tx-name">{f.label}</span>
                       <span className="tx-key">{f.key}</span>
+                      {published.get(t.key)?.has(f.key) && (
+                        <span className="tx-pub" title="Filled by the published catalogue - the publisher's to change">published</span>
+                      )}
                       <span className="tx-spec">{fieldSpec(f)}</span>
                     </div>
                   ))}
@@ -437,13 +476,19 @@ export function ExplorerView() {
     <div className="content">
       <div className="page-head">
         <div style={{ flex: 1 }}>
-          <div className="eyebrow">Structure</div>
-          <h1 className="grad-text">Explore</h1>
+          <div className="eyebrow">The published method</div>
+          <h1 className="grad-text">{PRODUCT.exploreLabel ?? "Explore"}</h1>
           <div className="meta" style={{ color: "var(--fg-subtle)" }}>
             {tax.name}{study ? ` · ${study.name}` : " · no study open"}
           </div>
         </div>
       </div>
+      {/* The vocabularies are the PUBLISHER'S lists, and asking the publisher whether they
+          have changed is a question about the publication - so it belongs on the page about
+          the publication, not in the schema editor beside "add a field". It stood there
+          until someone read the two pages side by side and asked why a BSI download was in
+          the internal model. */}
+      <VocabularySync tax={tax} />
       <TaxonomyExplorer tax={tax} study={study} />
     </div>
   );
