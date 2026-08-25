@@ -590,7 +590,8 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
   dc.push(`| | |`, `|---|---|`);
   dc.push(`| Document | ${PRODUCT.documentTitle ?? "Risk Analysis Report"} |`);
   if (study.organization) dc.push(`| Institution | ${study.organization} |`);
-  if (study.sector) dc.push(`| Sector | ${study.sector} |`);
+  // Only where it means something: the sector is the attack-rate exception list.
+  if (study.sector && hasQuantification(tax)) dc.push(`| Sector | ${study.sector} |`);
   dc.push(`| Generated | ${new Date().toISOString().slice(0, 10)} |`);
   if (tax.vocabularySource) {
     dc.push(`| Vocabulary | ${tax.vocabularySource.name}${tax.vocabularySource.version ? `, version ${shortVersion(tax.vocabularySource.version)}` : ""} |`);

@@ -20,7 +20,7 @@ import { SectorSection } from "./SectorSection";
 import { CatalogAdd } from "./CatalogAdd";
 import { ModellingPanel } from "./ModellingPanel";
 import { catalogTargets } from "../domain/catalog";
-import { QUANT_GROUP } from "../domain/quantModel";
+import { QUANT_GROUP, hasQuantification } from "../domain/quantModel";
 import { GraphView } from "./GraphView";
 import { CompletenessView } from "./CompletenessView";
 import { CanvasView } from "./CanvasView";
@@ -124,7 +124,7 @@ export function StudyView({ onBack }: { onBack: () => void }) {
         <button className="btn ghost sm" onClick={back}>← Studies</button>
         <div>
           <div className="title">{study.name}</div>
-          <div className="sub">{study.organization || "no organization"}{study.sector ? ` · ${study.sector}` : ""}</div>
+          <div className="sub">{study.organization || "no organization"}{study.sector && hasQuantification(tax) ? ` · ${study.sector}` : ""}</div>
         </div>
         <span className="spacer" />
         <ReportMenu tax={tax} study={study} />
@@ -171,7 +171,12 @@ export function StudyView({ onBack }: { onBack: () => void }) {
               )}
               <CopyButton getText={() => workshopMarkdown(tax, study, activeGroup.key)} />
             </div>
-            {isFirstGroup && <SectorSection study={study} color={activeGroup.color} />}
+            {/* The sector IS the attack-rate exception list, and that list only exists with
+                the quantification. Without it the panel offered a choice that changed
+                nothing: traced 2026-08-25, study.sector is read by frequency.ts for the base
+                rate, which feeds quantModel and the quantification view, and by the
+                quantitative half of the report. Nothing qualitative reads it. */}
+            {isFirstGroup && hasQuantification(tax) && <SectorSection study={study} color={activeGroup.color} />}
             {(() => {
               // Risk matrix: only for the strategic-scenario workshop (WS3).
               const mt = tax.entityTypes.find((t) => t.group === activeGroup.key

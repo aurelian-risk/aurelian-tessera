@@ -219,6 +219,9 @@ export function CalibrationView({ study, color, scope = "all" }: {
         </div>
       </Table>
 
+      {/* The exceptions themselves: a list of sector multipliers on the attack rate, which
+          nothing reads without the quantification. */}
+      {hasQuantification(tax) && (
       <Table docKey="frequency.sector" changed={differs(["frequency", "sector"])} onReset={() => resetPath(["frequency", "sector"])}>
         <div className="dial-rows">
           {f.sector.map((row: SectorRow, i: number) => (
@@ -242,6 +245,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
           </button>
         </div>
       </Table>
+      )}
 
       <Table docKey="frequency.tempo" changed={differs(["frequency", "tempo"])} onReset={() => resetPath(["frequency", "tempo"])}>
         <Band labels={["dormant", "occasional", "regular", "persistent"]} values={f.tempo} dflt={D.frequency.tempo}

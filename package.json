@@ -1,6 +1,6 @@
 {
   "name": "aurelian-tessera",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "BSI Grundschutz implemented - an offline ISMS tool for the Grundschutz++ method, in a single HTML file.",
   "type": "module",

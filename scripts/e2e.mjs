@@ -137,16 +137,18 @@ try {
     await page.screenshot({ path: `${shots}/WS${ws + 1}_${WS_LABELS[ws].replace(/\W+/g, "_")}.png` });
   }
 
-  // Sector qualifies the organization and is an input to the attack rate. It belongs to
-  // the first workshop; the value has to MATCH one of the sectors calibration.ts declares,
-  // or the note and the rate exceptions stay silently empty.
+  // The sector is the attack-rate exception list, and that list exists only with the
+  // quantification. This taxonomy declares no quant group, so the choice would change
+  // nothing - and a control that changes nothing is worse than none. Asserted at every
+  // surface it used to appear on, because removing it from one and leaving it on the others
+  // is the state this replaced.
   await openWs(WS.GC, 350);
-  ok("the sector picker sits in the first workshop", (await page.locator(".panel-head select").count()) === 1);
-  ok("...as the app's standard panel", (await page.locator(".panel.ws-accent .panel-head h3").first().innerText()) === "Sector");
-  const sectTxt = await page.locator(".sect-body").innerText();
-  ok("...and explains what is specific about the chosen sector", /operational technology|remote-maintenance/i.test(sectTxt));
-  ok("...and names the rate exception it actually triggers",
-    /applied to the attack rate/i.test(sectTxt) && /State actor ×3/.test(sectTxt));
+  ok("the first workshop offers no sector to pick",
+    (await page.locator(".panel.ws-accent .panel-head h3", { hasText: /^Sector$/ }).count()) === 0);
+  // The sample's sector is "Energy & utilities", and the institution is "Riverbend Municipal
+  // Utilities" - so the word alone proves nothing, and the value has to be asked for.
+  ok("...and the study's subtitle does not carry one either",
+    !/Energy & utilities/i.test(await page.locator(".topbar .sub").first().innerText()));
 
   // Row click expands inline detail; clicking a linked item opens the popup.
   await page.locator(".tbl tbody tr.row-clickable").first().locator(".name").click();

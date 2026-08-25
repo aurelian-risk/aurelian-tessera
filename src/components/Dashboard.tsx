@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 import { useState } from "react";
 import { useStore } from "../domain/store";
+import { hasQuantification } from "../domain/quantModel";
 import { makeSampleStudy } from "../profile";
 import { clearStorage } from "../domain/persistence";
 import { deleteDocsForStudy } from "../domain/documents";
@@ -12,6 +13,7 @@ const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2
 
 export function Dashboard({ onOpen }: { onOpen: () => void }) {
   const studies = useStore((s) => s.studies);
+  const tax = useStore((s) => s.taxonomy);
   const { createStudy, updateStudy, setActiveStudy, deleteStudy, mergeStudies, resetTaxonomy } = useStore();
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: "", organization: "", scope: "", sector: "" });
@@ -93,12 +95,16 @@ export function Dashboard({ onOpen }: { onOpen: () => void }) {
           <div className="field"><label>Organization</label>
             <input value={form.organization} onChange={(e) => setForm({ ...form, organization: e.target.value })}
               placeholder="e.g. Riverside General Hospital Trust" /></div>
+          {/* Asked only where it is used: the sector selects attack-rate exceptions, and
+              those exist only with the quantification. */}
+          {hasQuantification(tax) && (
           <div className="field"><label>Sector</label>
             <select value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })}>
               <option value="">Not set - no sector adjustment</option>
               {SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <span className="hint">Some kinds of attacker go after some sectors far more than others. Used for the base rates of the risk model; changeable later in Calibration.</span></div>
+          )}
           <div className="field"><label>Analysis perimeter / scope</label>
             <textarea value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })}
               placeholder="What is in scope? Which systems, processes, boundaries?" /></div>

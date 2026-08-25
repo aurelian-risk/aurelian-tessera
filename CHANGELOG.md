@@ -6,6 +6,17 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.6.1] - 2026-08-25
+
+### Removed
+
+- **The sector selection.** It selects the attack-rate exceptions applied to a study, and
+  those exist only with the quantification, which this product does not carry. Traced rather
+  than assumed: `study.sector` is read for the base rate of the risk model and by the
+  quantitative half of the report, and by nothing else. It was offered in the first workshop,
+  in the study dialog, in the calibration and in the report's document control, and changed
+  nothing in any of them - a control that changes nothing is worse than none.
+
 ## [0.6.0] - 2026-08-25
 
 ### Changed
