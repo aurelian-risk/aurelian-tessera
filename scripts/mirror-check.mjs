@@ -36,6 +36,9 @@ const PRIVATE = [
   [/^viz-demo\.html$/, "scratch"],
   [/^scripts\/demo-video\.mjs$/, "recording script"],
   [/^scripts\/mirror-push\.mjs$/, "the release procedure, like docs/mirror.md"],
+  // The mechanism says more about when this is worked on than the stamps it removes.
+  [/^scripts\/(stamp|stamp-test)\.mjs$/, "when this is worked on"],
+  [/^scripts\/hooks\//, "when this is worked on"],
   [/\.generated\.ts$/, "the ruleset - produced at build time, in neither repository"],
 ];
 
@@ -131,6 +134,32 @@ if (!existsSync(resolve(mirror, ".git"))) {
     { encoding: "utf8" }).split("\n").map((x) => x.trim()).filter(Boolean)
     .filter((l) => l.includes(" <") && !l.endsWith(`<${AUTHOR}>`));
   ok("...and so was every tag on it", tagged.length === 0, tagged.join(", "));
+
+  // What is published carries the hour it was written. This repository is worked on outside
+  // office hours and the history should say so rather than the opposite; a stamp inside the
+  // window is a statement about the author's week that nobody meant to publish. It is
+  // checked here rather than remembered, because a commit cannot be re-dated after a push
+  // without rewriting what is already out.
+  const WINDOW = { from: 9 * 60, to: 17 * 60 + 30 };   // Mon-Fri, local time
+  const inWindow = (iso) => {
+    const d = new Date(iso);
+    const day = d.getDay();
+    if (day === 0 || day === 6) return false;
+    const m = d.getHours() * 60 + d.getMinutes();
+    return m >= WINDOW.from && m < WINDOW.to;
+  };
+  const stamped = [
+    ...execFileSync("git", ["-C", mirror, "log", "--format=%h %aI %cI"], { encoding: "utf8" })
+      .split("\n").filter(Boolean)
+      .map((l) => { const [sha, a, c] = l.split(" "); return { what: sha, when: [a, c] }; }),
+    ...execFileSync("git", ["-C", mirror, "for-each-ref", "refs/tags",
+      "--format=%(refname:short) %(taggerdate:iso-strict)"], { encoding: "utf8" })
+      .split("\n").filter(Boolean)
+      .map((l) => { const [t, d] = l.split(" "); return { what: t, when: [d] }; }),
+  ].filter((x) => x.when.some((w) => w && inWindow(w)));
+  ok("nothing is stamped inside office hours on a weekday",
+    stamped.length === 0,
+    stamped.map((x) => `${x.what} ${new Date(x.when[0]).toLocaleString("de-DE")}`).join(", "));
 }
 
 say(problems ? `\n${problems} to answer before pushing` : "\nnothing undeclared, nothing leaked");

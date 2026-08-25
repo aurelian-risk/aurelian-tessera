@@ -149,7 +149,7 @@ and "Verteilungseffekt" do not occur in the method catalogue at all.
 
 Done, in this order:
 
-1. **`test:e2e` rewritten for this product** - 353 checks against the portable build,
+1. **`test:e2e` rewritten for this product** - 360 checks against the portable build,
    without network, driven by the position of a group in the taxonomy and by the heading of
    the section a table sits in, never by label text.
 2. **Vocabularies derived from the publication, and kept current.** `npm run sync` runs

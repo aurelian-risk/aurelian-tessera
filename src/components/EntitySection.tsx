@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy } from "../domain/types";
+import type { EntityRecord, EntityTypeDef, FieldDef, FieldType, FieldValue, Study, Taxonomy } from "../domain/types";
 import { columnFields, getType, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, setBackBlocked, titleField } from "../domain/taxonomy";
 import { foldScope, getFolds, setFolds } from "../domain/viewstate";
 import { TOOLBAR_MIN_ROWS } from "../domain/tablefilter";
@@ -16,12 +16,33 @@ const clip = (s: string, n = 90) => (s.length > n ? s.slice(0, n) + "…" : s);
 /** Records shown per incoming relation before the rest fold behind a "+n more". */
 const BACKREF_PREVIEW = 12;
 
-// The name/description column is sized as a fixed FRACTION of the table (≈ window)
-// width so it grows with the viewport, rather than a fixed pixel width. NAME_MIN is
-// only a px floor feeding the table's horizontal-scroll min-width on narrow screens.
-const NAME_PCT = 44;
+// ── How wide a table gets ────────────────────────────────────────────────────
+//
+// The name column takes whatever is left over, so it grows with the window; every other
+// column is sized by WHAT IT HOLDS. One flat width for all of them fails in both directions
+// at once: a badge column pays rent on 150px it does not use while a column of chips wraps
+// its rows. Measured at 1280px before these numbers: 13 of 28 tables scrolled sideways and
+// 38 columns were more than 60px wider than their content.
+//
+// The numbers are Aurelian Lite's measurement (harness/table-width.mjs, docs/table-width.md)
+// rather than a second guess at the same question - what each field type wants to show one
+// value on one line, chips truncated. Taking their figures is the point: two answers to one
+// question is how a shared engine drifts apart while it still looks merged.
+const COL_WIDTH: Record<FieldType, number> = {
+  number: 80,
+  boolean: 96,
+  enum: 124,
+  scale: 148,      // bars plus the longest scale label
+  text: 156,
+  textarea: 156,   // never a column today (columnFields drops it), sized for completeness
+  ref: 156,        // one chip
+  multiref: 164,   // two chips and a "+n", each chip clipped to a readable stub
+};
+/** Floor for the name column, and the only thing the table's min-width adds to the sum of
+ *  its value columns. Nothing is reserved for a trailing spacer: there is none any more. */
 const NAME_MIN = 320;
-const VALUE_COL = 150;
+const tableMinWidth = (cols: FieldDef[]) =>
+  NAME_MIN + cols.reduce((w, c) => w + COL_WIDTH[c.type], 0);
 
 function FieldValueView({ field, value, tax, study, onOpen, onToggle, toggleBlocked }:
   { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study; onOpen?: (id: string) => void;
@@ -176,24 +197,30 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
             Nothing matches. <button className="btn ghost sm" onClick={clearAll}>Clear filters</button>
           </div>
         ) : (
-          <table className="tbl" style={{ minWidth: NAME_MIN + cols.length * VALUE_COL + 56 }}>
+          <table className="tbl" style={{ minWidth: tableMinWidth(cols) }}>
+            {/* The name column takes what the value columns leave. It used to be a percentage
+                with an empty column absorbing the remainder, which left a headerless gap -
+                103px on a register with five value columns, 403px on one with three - so
+                every table ended somewhere else. Under a FIXED layout neither an auto column
+                nor `calc(100% - …)` absorbs it: the percentage does not resolve against the
+                table's width and the leftover simply stays unallocated. The table is laid out
+                automatically instead, where the widths below are hints and the name column
+                takes the rest. */}
             <colgroup>
-              <col style={{ width: `${NAME_PCT}%` }} />
-              {cols.map((c) => <col key={c.key} style={{ width: VALUE_COL }} />)}
               <col />
+              {cols.map((c) => <col key={c.key} style={{ width: COL_WIDTH[c.type] }} />)}
             </colgroup>
             <thead>
               <tr>
                 <th>{type.fields.find((f) => f.key === title)?.label ?? "Name"}</th>
                 {cols.map((c) => <th key={c.key}>{c.label}</th>)}
-                <th />
               </tr>
             </thead>
             {groups.map((g) => (
             <tbody key={g.key || "_"} className={groupField ? "grouped" : undefined}>
               {groupField && (
                 <tr className="group-row" onClick={() => toggleGroup(g.key)}>
-                  <th colSpan={cols.length + 2}>
+                  <th colSpan={cols.length + 1}>
                     <span className={"caret" + (collapsed.has(g.key) ? "" : " open")}><Icon.chevron /></span>
                     {g.key || <span className="hint">
                       {groupField.refType ? `no ${refTypeLabel(tax, groupField)} named` : `no ${groupField.label.toLowerCase()}`}
@@ -223,11 +250,10 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                         onOpen={openEntity} toggleBlocked={setBackBlocked(tax, study, r)}
                         onToggle={(f, next) => updateEntity(r.id, { ...r.values, [f.key]: next },
                           `${f.label}: ${optionLabel(f, next)}`)} /></td>)}
-                      <td />
                     </tr>
                     {isOpen && (
                       <tr className="detail-row">
-                        <td colSpan={cols.length + 2}>
+                        <td colSpan={cols.length + 1}>
                           <EntityDetail type={type} record={r} tax={tax} study={study} color={color}
                             onEdit={() => setModal({ typeKey: type.key, record: r })}
                             onDelete={() => deleteEntity(r.id)} onOpenEntity={openEntity}

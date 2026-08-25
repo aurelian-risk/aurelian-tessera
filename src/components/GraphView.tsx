@@ -7,7 +7,7 @@
 // exploring "what is connected to X", not the linear progression.
 import { useEffect, useMemo, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
-import { buildGraph, type GNode } from "../domain/graph";
+import { buildGraph, spreadOut, type GNode } from "../domain/graph";
 import { getType } from "../domain/taxonomy";
 import { EntityInfoPanel } from "./EntityInfoPanel";
 import { EntityModal } from "./EntityModal";
@@ -23,6 +23,12 @@ function shapeEl(si: number, r: number, extra: Record<string, unknown>, title: R
   if (si % 4 === 3) return <path d={`M0 ${-r * 1.15}L${r} ${r * 0.8}L${-r} ${r * 0.8}Z`} {...p}>{title}</path>;
   return <circle r={r} {...p}>{title}</circle>;
 }
+
+/** Free space around a node, half-width and half-height. A node is a dot with a label to its
+ *  right, so the space it needs is wide and shallow rather than round. */
+const CLEAR_X = 92, CLEAR_Y = 30;
+/** How much room a label takes beside its node. Only used to decide which side it goes on. */
+const LABEL_W = 172;
 
 export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
   const { nodes, links } = useMemo(() => buildGraph(tax, study), [tax, study]);
@@ -219,6 +225,49 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
     });
   }
 
+  // One label per (focus, relation): the neighbour in the middle of that fan carries it.
+  // Ninety-nine edges that all say the same thing wrote it ninety-nine times, stacked in the
+  // middle of the ring where the de-overlap below cannot reach - measured at the SCADA focus
+  // of the sample, about fifty "applies to" on top of one another.
+  //
+  // Per (focus, relation) rather than per relation: "applies to" from one focus is a
+  // different fan from "applies to" from another, and hiding both would be wrong. Middle
+  // rather than first, so the label sits inside the fan it describes instead of at its edge;
+  // the choice comes from the already-sorted neighbour list, so the same scene labels the
+  // same edge twice. Every edge keeps its relation as a <title>, so the pointer still
+  // answers for each one.
+  const labelEdge = new Map<string, string>();
+  {
+    const fans = new Map<string, string[]>();
+    for (const e of scene.neigh) {
+      for (const [fid, c] of e.conn) {
+        const key = `${fid}\u0000${[...c.rels].join(" / ")}`;
+        (fans.get(key) ?? fans.set(key, []).get(key)!).push(e.node.id);
+      }
+    }
+    for (const [key, ids] of fans) labelEdge.set(key, ids[Math.floor((ids.length - 1) / 2)]);
+  }
+
+  // Nothing above knows how many neighbours an arc has to hold, so past a certain count they
+  // land on top of each other. Relieve the crowding afterwards rather than complicate the
+  // placement: the arrangement the layout intended survives and only the overlap goes. The
+  // foci carry the structure and are pinned. Deterministic - see graph.ts.
+  //
+  // The clearance is flat, not round: a node is a dot with a label beside it. Measured at the
+  // SCADA focus of the sample before this ran - 100 nodes, one overlapping node pair, 117
+  // overlapping label pairs. A round clearance would have fixed the one and left the 117.
+  {
+    const marginX = 96, marginY = 46;
+    const laid = spreadOut(
+      [...[...fpos].map(([id, p]) => ({ id, x: p.x, y: p.y, fixed: true })),
+        ...[...pos].map(([id, p]) => ({ id, x: p.x, y: p.y }))],
+      CLEAR_X,
+      { x0: marginX, y0: marginY, x1: Math.max(marginX + 1, size.w - marginX), y1: Math.max(marginY + 1, size.h - marginY) },
+      80, CLEAR_Y,
+    );
+    for (const p of laid) if (pos.has(p.id)) pos.set(p.id, { x: p.x, y: p.y });
+  }
+
   // Left index: EVERY entity, grouped by workshop and searchable — so the whole model
   // is visible at a glance and the current focus is explicit (not an arbitrary node).
   const matches = (n: GNode) => !q.trim() || n.label.toLowerCase().includes(q.trim().toLowerCase());
@@ -270,11 +319,15 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
                 return (
                   <g key={"e-" + fid + "-" + e.node.id}>
                     <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--border-strong)" strokeWidth={1.2} strokeOpacity={0.5}
-                      markerEnd={c.out ? "url(#ego-arrow)" : undefined} markerStart={c.in ? "url(#ego-arrow)" : undefined} />
-                    <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 2} textAnchor="middle" fontSize={9.5} fill="var(--fg-subtle)"
-                      style={{ pointerEvents: "none", userSelect: "none", paintOrder: "stroke" }} stroke="var(--bg-0)" strokeWidth={3}>
-                      {[...c.rels].join(" / ")}
-                    </text>
+                      markerEnd={c.out ? "url(#ego-arrow)" : undefined} markerStart={c.in ? "url(#ego-arrow)" : undefined}>
+                      <title>{[...c.rels].join(" / ")}</title>
+                    </line>
+                    {labelEdge.get(`${fid}\u0000${[...c.rels].join(" / ")}`) === e.node.id && (
+                      <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 2} textAnchor="middle" fontSize={9.5} fill="var(--fg-subtle)"
+                        style={{ pointerEvents: "none", userSelect: "none", paintOrder: "stroke" }} stroke="var(--bg-0)" strokeWidth={3}>
+                        {[...c.rels].join(" / ")}
+                      </text>
+                    )}
                   </g>
                 );
               });
@@ -292,7 +345,10 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
               const np0 = pos.get(e.node.id); if (!np0) return null;
               const np = off(e.node.id, np0);
               const t = getType(tax, e.node.type);
-              const anchorEnd = np.x < cx;
+              // Which side the label sits on. Left of centre it reads better on the left -
+              // but a node pushed against an edge by the de-overlap would then have its label
+              // run off the sheet, so the edge decides first and the centre only otherwise.
+              const anchorEnd = np.x + LABEL_W > size.w ? true : np.x - LABEL_W < 0 ? false : np.x < cx;
               const isShared = e.conn.size > 1;
               const isInspect = inspect === e.node.id;
               return (

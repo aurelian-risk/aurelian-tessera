@@ -6,6 +6,40 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.6.0] - 2026-08-25
+
+### Changed
+
+- **A column is as wide as what it holds.** Every value column was 150px, which failed in
+  both directions at once: a badge column paid rent on width it does not use while a column
+  of chips wrapped. Measured at 1280px, the commonest window: **13 of 28 tables scrolled
+  sideways, now 4**, and columns more than 60px wider than their content went from 38 to 28.
+- **The graph relieves its own crowding.** Past a certain neighbour count the arc cannot hold
+  them and they landed on top of each other - at one focus of the example, 100 nodes with
+  **117 overlapping labels**. Now 18, and none is cut off at the edge: a label near the edge
+  turns inward. The clearance is flat rather than round, because a node is a dot with a label
+  beside it, and a round clearance parts the dots while the labels still collide. The layout
+  is deterministic and the foci do not move.
+- **A relation is written once per fan.** Ninety-nine edges all saying "applies to" wrote it
+  ninety-nine times, stacked in the middle of the ring. It is said once per focus and
+  relation now, on the middle edge of that fan; every edge still answers the pointer with its
+  own relation.
+- **A value in a register reads as a value.** Squared off it read as a button, and every one
+  being a different width then read as a fault.
+
+### Fixed
+
+- **The licence notice named a library the build does not contain.** `THIRD-PARTY-NOTICES.md`
+  listed `d3-force` from v0.4.1: declared as a dependency, imported nowhere, and not once in
+  the shipped file. Both are gone, and the notice is now checked against the built artefact -
+  every package it names has to be in there, and every dependency has to be named.
+- **The headerless column at the right of every register.** A spacer that absorbed the
+  remaining width; it was 103px wide on a register with five value columns and 403px on one
+  with three, so no two tables ended in the same place. The same filler stood in the coverage
+  matrix and the chain defence.
+- **The tables in a generated document line up with each other**, and a long register is set
+  dense on a sheet that grows to hold it rather than at prose measure.
+
 ## [0.5.1] - 2026-08-24
 
 ### Added
@@ -21,6 +55,11 @@ downloadable single-file build under
 
 ### Changed
 
+- **The tables in a generated document line up with each other.** The small ones were capped
+  at the prose measure and stood 400px short of the wide ones on the same left edge; two
+  registers read from the same records sat a few pixels apart in their shared columns; and an
+  equal share per column cramped a sentence into a quarter while a licence name got the same
+  room. Every table now has the same two edges and a column takes the width its content needs.
 - **The generated documents are set like documents.** A serif for prose and a sans for
   everything carrying data - tables, figures, the meta block - so a reader can tell at a
   glance which of the two they are looking at. A title block, sections opened by a rule, the

@@ -19,7 +19,6 @@ the name and the mark are in [`TRADEMARK.md`](TRADEMARK.md).
 | `react-dom` | 19.2.8 | MIT | Copyright (c) Meta Platforms, Inc. and affiliates. |
 | `zustand` | 5.0.14 | MIT | Copyright (c) 2019 Paul Henschel |
 | `js-yaml` | 4.3.0 | MIT | Copyright (C) 2011-2015 by Vitaly Puzrin |
-| `d3-force` | 3.0.0 | ISC | Copyright 2010-2021 Mike Bostock |
 | `pdfjs-dist` | 4.10.38 | Apache-2.0 | Copyright Mozilla Foundation and contributors |
 
 `pdfjs-dist` is Mozilla's PDF.js. It is bundled so that Word and PDF import extracts text on

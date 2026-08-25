@@ -164,7 +164,10 @@ select { cursor: pointer; }
 .row > * { flex: 1; min-width: 180px; }
 
 /* ── Tabellen ─────────────────────────────────────────────────────── */
-.tbl { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+/* Laid out automatically: the value columns keep the width their colgroup asks for and the
+   name column takes the rest, so the columns fill the table instead of leaving a headerless
+   strip at the right. */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
 .panel-body { overflow-x: auto; } /* wide tables (e.g. risk quantification) scroll instead of squashing */
 .tbl th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em;
   color: var(--fg-subtle); font-weight: 600; padding: 10px 18px; white-space: nowrap;

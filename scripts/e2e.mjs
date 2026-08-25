@@ -249,7 +249,16 @@ try {
     // It is a column, and it is empty exactly where the method says it should be.
     ok("the register shows which asset brought a requirement in",
       /Applies to assets/i.test(await sec.locator("thead").innerText()));
-    const assetCells = await sec.locator("tbody tr.row-clickable td:nth-last-child(2)").allInnerTexts().catch(() => []);
+    // Addressed by its heading, not by counting from the end: a filler column at the right
+    // of every register was removed, and a position-counted selector silently moved one
+    // column over rather than failing.
+    const assetCells = await sec.evaluate((el) => {
+      const heads = [...el.querySelectorAll("thead th")].map((h) => h.textContent.trim());
+      const i = heads.findIndex((h) => /Applies to assets/i.test(h));
+      if (i < 0) return [];
+      return [...el.querySelectorAll("tbody tr.row-clickable")]
+        .map((tr) => (tr.children[i]?.textContent ?? "").trim());
+    }).catch(() => []);
     ok("...filled for what an asset reached, empty for the practices that reach the whole domain",
       assetCells.some((c) => /SCADA|network|provider|Directory|Billing|Dial-up/i.test(c)));
     ok("...what the reading reached is in scope, saying through which asset",
@@ -715,6 +724,25 @@ try {
   ok("...numbered once, by the names the set already carries",
     !/^\s*\d+\s+A\.\d/m.test(refText)
     && (await refPage.locator(".report.numbered").count()) === 0);
+  // Tables on one sheet share both edges. They did not: the small ones were capped at the
+  // prose measure and stood 400px short of the wide ones, all on the same left edge, which
+  // reads as a mistake rather than as two kinds of object.
+  ok("...with every table on the same two edges",
+    (await refPage.evaluate(() => {
+      const t = [...document.querySelectorAll("table")].map((x) => x.getBoundingClientRect());
+      if (t.length < 2) return 999;
+      const l = t.map((b) => Math.round(b.left)), r = t.map((b) => Math.round(b.right));
+      return Math.max(...l) - Math.min(...l) + Math.max(...r) - Math.min(...r);
+    })) <= 2);
+  // Two registers read from the same records sit under one another; their shared leading
+  // columns have to line up rather than land a few pixels apart.
+  ok("...and the registers read from one record lined up with each other",
+    (await refPage.evaluate(() => {
+      const rows = [...document.querySelectorAll("table.dense tbody tr:first-child")]
+        .map((tr) => [...tr.children].slice(0, 3).map((td) => Math.round(td.getBoundingClientRect().left)));
+      if (rows.length < 2) return 999;
+      return Math.max(...rows.map((r) => Math.max(...r.map((x, i) => Math.abs(x - rows[0][i])))));
+    })) <= 1);
   ok("...fetching nothing from anywhere",
     (await refPage.locator("link[href^='http'], script[src^='http'], img[src^='http']").count()) === 0);
   await refPage.close();
@@ -1770,6 +1798,92 @@ try {
     }
     if (await blank()) { blanked = "on coming back to the study"; break; }
   }
+  // Every table in the product, counted rather than looked at. Three shapes of the same
+  // fault, and all three are invisible: a column with no heading AND nothing in it is a
+  // filler somebody left; a header row and a data row of different lengths mean a cell was
+  // removed on one side only - that is how a 96px strip survived the column it belonged to;
+  // and columns that do not add up to the table leave width nobody owns, which a fixed
+  // layout does not redistribute. Aurelian Lite found the first in two of their components
+  // after we reported ours, which is why this asks it of all of them rather than of one.
+  {
+    await page.locator(".sidebar .nav-item", { hasText: "Studies" }).click();
+    await page.waitForTimeout(250);
+    // "Studies" lands on the dashboard - re-open the study to get the workshop tabs back.
+    if (!(await page.locator(".ws-tabs").count())) {
+      await page.getByText("Riverbend Municipal Utilities").first().click();
+      await page.waitForSelector(".ws-tabs", { timeout: 10000 });
+    }
+    const wsCount = await page.locator(".ws-tabs .ws-tab:not(.plain)").count();
+    const faults = { filler: [], ragged: [], slack: [] };
+    let seen = 0;
+    for (let i = 0; i < wsCount; i++) {
+      await openWs(i, 400);
+      const found = await page.evaluate(() => {
+        const out = { filler: [], ragged: [], slack: [], n: 0 };
+        for (const t of document.querySelectorAll("table")) {
+          const head = t.querySelector("thead tr");
+          const rows = [...t.querySelectorAll("tbody tr")]
+            .filter((r) => !r.querySelector("[colspan]") && !r.classList.contains("group-row"));
+          if (!head || !rows.length) continue;
+          out.n++;
+          const name = (t.closest(".panel")?.querySelector(".panel-head h3")?.textContent
+            ?? head.textContent.trim().slice(0, 24)) || "?";
+          const heads = [...head.children];
+          heads.forEach((th, i) => {
+            if (th.textContent.trim()) return;
+            const empty = rows.every((r) => !(r.children[i]?.textContent ?? "").trim()
+              && !r.children[i]?.firstElementChild);
+            if (empty) out.filler.push(`${name} col ${i + 1}`);
+          });
+          for (const r of rows) {
+            if (r.children.length !== heads.length) {
+              out.ragged.push(`${name}: ${heads.length} th vs ${r.children.length} td`);
+              break;
+            }
+          }
+          const sum = heads.reduce((w, th) => w + th.getBoundingClientRect().width, 0);
+          const slack = Math.round(t.getBoundingClientRect().width - sum);
+          if (slack > 2) out.slack.push(`${name}: ${slack}px`);
+        }
+        return out;
+      });
+      seen += found.n;
+      for (const k of ["filler", "ragged", "slack"]) faults[k].push(...found[k]);
+    }
+    ok(`every table across ${wsCount} workshops was counted (${seen})`, seen > 20, String(seen));
+    ok("...no column is both headerless and empty", faults.filler.length === 0, faults.filler.join(", "));
+    ok("...a header row and a data row hold the same number of cells", faults.ragged.length === 0, faults.ragged.join(", "));
+    ok("...and the columns add up to the table", faults.slack.length === 0, faults.slack.join(", "));
+
+    // The workshops are not where every table lives: Documents hangs off the sidebar and
+    // was outside the sweep. Aurelian Lite found that gap in their own version of this
+    // check after we described ours.
+    //
+    // In this run it holds no table at all - a document only enters through the file
+    // picker, which is `test:corpus`, not this suite. Rather than manufacture one so the
+    // assertion has something to chew on, both admissible states are named: a table that
+    // passes the three questions, or the empty state that says why there is none. What is
+    // not admissible is neither, which is a broken view passing quietly.
+    await page.locator(".sidebar .nav-item", { hasText: "Documents" }).click();
+    await page.waitForTimeout(300);
+    const docs = await page.evaluate(() => {
+      const t = document.querySelector(".panel table, .content table");
+      if (!t) return { table: false, empty: !!document.querySelector(".empty") };
+      const head = t.querySelector("thead tr");
+      const rows = [...t.querySelectorAll("tbody tr")].filter((r) => !r.querySelector("[colspan]"));
+      const heads = [...(head?.children ?? [])];
+      const filler = heads.filter((th, i) => !th.textContent.trim()
+        && rows.every((r) => !(r.children[i]?.textContent ?? "").trim() && !r.children[i]?.firstElementChild)).length;
+      const ragged = rows.some((r) => r.children.length !== heads.length);
+      const slack = Math.round(t.getBoundingClientRect().width
+        - heads.reduce((w, th) => w + th.getBoundingClientRect().width, 0));
+      return { table: true, filler, ragged, slack };
+    });
+    ok("the documents view is either a table that holds up, or an empty state that says why",
+      docs.table ? (docs.filler === 0 && !docs.ragged && docs.slack <= 2) : docs.empty,
+      JSON.stringify(docs));
+  }
+
   ok(`the page survives ${survived} steps of working in it and navigating away`,
     !blanked && errors.length === errorsBefore,
     blanked || errors.slice(errorsBefore).join(" | "));

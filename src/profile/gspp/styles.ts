@@ -87,8 +87,13 @@ body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
 .guide { background: none; border: 0; border-left: 3px solid var(--border-strong);
   border-radius: 0; padding: 6px 0 6px 14px; }
 .guide.warn { border-left-color: var(--color-state-warning); }
+/* Round, and stated in pixels rather than through --radius-pill, which this theme squares
+   off to 2px along with everything else. Squared, a value in a column reads as a button, and
+   every one being a different width then reads as a fault; round it reads as a value, and
+   the difference in width stops being the thing you see. The rest of the product stays
+   squared - this is the one place where the shape carries meaning. */
 .badge, .chip, .lint-pill, .cal-grade, .ap-chip, .di-preset {
-  border-radius: 2px; font-family: var(--font-sans); font-size: 11px; }
+  border-radius: 999px; font-family: var(--font-sans); font-size: 11px; }
 .btn { border-radius: 2px; font-family: var(--font-display); box-shadow: none; }
 .btn.primary { box-shadow: none; }
 
@@ -188,10 +193,13 @@ body { background: #f2f3f5; }
   letter-spacing: 0.01em; }
 .report table.dense td { hyphens: auto; }
 
-/* The meta block at the head of a document: two columns, the label quiet and small. */
+/* The meta block at the head of a document: two columns, the label quiet and small. A share
+   of the sheet put 400px of nothing between a one-word label and its value; the label column
+   is only as wide as the longest label needs. */
 .report h1 ~ table:first-of-type td:first-child {
   font-family: var(--doc-sans); font-size: 11px; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--doc-quiet); width: 34%; padding-top: 7px; }
+  letter-spacing: 0.07em; color: var(--doc-quiet); width: 15em; white-space: nowrap;
+  padding-top: 7px; }
 
 /* ── Lists ─────────────────────────────────────────────────────────────────
    The contents of a set is a list of its parts, not prose. */

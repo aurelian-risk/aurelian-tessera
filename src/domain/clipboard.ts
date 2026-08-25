@@ -542,7 +542,11 @@ function treatmentSection(tax: Taxonomy, study: Study): string[] | null {
 
   const L: string[] = ["---\n", "## Risk treatment\n",
     "_Treatment decision per risk (strategic scenario). The residual risk is DERIVED from the decision and how well the risk's kill chain is already mitigated - Reduce lowers likelihood by that coverage, Share lowers gravity, Accept keeps the inherent level, Avoid removes it._\n"];
-  let tbl = `<table class="qt-tbl"><thead><tr><th>Risk</th><th>Decision</th><th>Owner</th><th>Deadline</th><th>Status</th><th>Inherent → Residual (L·G)</th></tr></thead><tbody>`;
+  // Words, not figures. Under the figures class every column but the first is set flush
+  // right, which is correct for a column of numbers and wrong for a decision, an owner and
+  // a date - they stood against the far edge of the page. Only the last column here holds
+  // figures, and it says so itself.
+  let tbl = `<table><thead><tr><th>Risk</th><th>Decision</th><th>Owner</th><th>Deadline</th><th>Status</th><th class="num">Inherent → Residual (L·G)</th></tr></thead><tbody>`;
   for (const t of treatments) {
     const risk = byId.get(t.values[refF.key] as string);
     let shift = " - ";
@@ -551,7 +555,7 @@ function treatmentSection(tax: Taxonomy, study: Study): string[] | null {
       const inh = `${scaleLabel(xF, Number(risk.values[xF.key]) || 1)}·${scaleLabel(yF, Number(risk.values[yF.key]) || 1)}`;
       shift = `${esc(inh)} → <strong>${esc(scaleLabel(xF, res.x))}·${esc(scaleLabel(yF, res.y))}</strong>`;
     }
-    tbl += `<tr><td>${risk ? esc(recordTitle(riskType, risk)) : " - "}</td><td>${cell(decF && t.values[decF.key])}</td><td>${cell(ownF && t.values[ownF.key])}</td><td>${cell(ddF && t.values[ddF.key])}</td><td>${cell(stF && t.values[stF.key])}</td><td>${shift}</td></tr>`;
+    tbl += `<tr><td>${risk ? esc(recordTitle(riskType, risk)) : " - "}</td><td>${cell(decF && t.values[decF.key])}</td><td>${cell(ownF && t.values[ownF.key])}</td><td>${cell(ddF && t.values[ddF.key])}</td><td>${cell(stF && t.values[stF.key])}</td><td class="num">${shift}</td></tr>`;
   }
   L.push(tbl + "</tbody></table>", "");
 
@@ -993,8 +997,12 @@ body { margin: 0; background: #eef0f4; color: #1c2430;
   font-family: "Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif; line-height: 1.55; }
 .report { max-width: 900px; margin: 24px auto; background: #fff; padding: 40px 48px;
   box-shadow: 0 8px 30px -12px rgba(20,30,50,0.25); border-radius: 8px; }
+/* Columns take the width their content needs. An equal share is what makes a table with one
+   prose column and three short ones look wrong: the sentence is cramped into a quarter while
+   "CC BY-SA 4.0" is given the same. The caps below keep one long cell from taking the row. */
 .report table { border-collapse: collapse; width: 100%; max-width: 100%; margin: 12px 0 18px;
-  font-size: 13px; table-layout: fixed; }
+  font-size: 13px; table-layout: auto; }
+.report td { max-width: 34em; }
 .report th, .report td { overflow-wrap: anywhere; word-break: normal; }
 .report th { text-align: left; padding: 7px 10px; border: 1px solid #c3ccd8; background: #f4f6f9; font-weight: 700; }
 .report td { padding: 7px 10px; border: 1px solid #d8dee7; vertical-align: top; }
@@ -1005,13 +1013,23 @@ body { margin: 0; background: #eef0f4; color: #1c2430;
    So the SHEET grows to its widest table and the prose keeps its measure on it - rather
    than the table hanging over the edges of a sheet it is supposed to be printed on. */
 .report:has(table.dense) { max-width: 1400px; }
-.report:has(table.dense) > *:not(table.dense) { max-width: 820px; }
+/* Prose keeps its measure; a TABLE is not prose. Capping the small ones left them 400px
+   short of the wide ones on the same sheet, all sharing a left edge - which reads as a
+   mistake rather than as two kinds of object. Every table now has the same two edges. */
+.report:has(table.dense) > *:not(table) { max-width: 820px; }
 .report table.dense th { padding: 3px 7px; font-size: 10px; letter-spacing: 0.02em; text-transform: uppercase; color: #55606f; }
 .report table.dense td { padding: 2.5px 7px; line-height: 1.35; }
 /* Auto layout sizes a column to its content, so a cap is what keeps one long list from
    taking the page; a short value still gets a narrow column. */
 .report table.dense td:first-child { max-width: 26em; }
 .report table.dense td:not(:first-child) { max-width: 14em; }
+/* Two registers read from the same records - the objects, then their protection need -
+   sit under one another, and their shared leading columns have to line up. Sized by
+   content they landed 2-3px apart, which reads as a wobble. The name column and the
+   identifier beside it are given a share; the rest differ because they are different
+   columns. */
+.report table.dense th:first-child, .report table.dense td:first-child { width: 30%; }
+.report table.dense th:nth-child(2), .report table.dense td:nth-child(2) { width: 10%; }
 .report h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
 .report h2 { font-size: 19px; margin: 30px 0 10px; padding-bottom: 6px; border-bottom: 2px solid #eceef2; }
 .report h3 { font-size: 15.5px; margin: 22px 0 10px; color: #364152; }
@@ -1069,6 +1087,9 @@ body { margin: 0; background: #eef0f4; color: #1c2430;
 .report table.qt-tbl { border-collapse: collapse; width: 100%; margin: 10px 0 6px; font-size: 12.5px; }
 .report table.qt-tbl th, .report table.qt-tbl td { border: 1px solid #e3e6ec; padding: 6px 11px; text-align: left; }
 .report table.qt-tbl thead th { background: #f6f7f9; color: #55606f; font-weight: 600; font-size: 11.5px; }
+/* Said by the column that holds figures, not by its position in the table. Positional, the
+   rule reached every table that carried this class and set columns of prose flush right. */
+.report th.num, .report td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .report table.qt-tbl td:not(:first-child), .report table.qt-tbl th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
 .report table.qt-tbl tbody tr:first-child td { font-size: 13.5px; }
 @media print {
