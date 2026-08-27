@@ -1,6 +1,6 @@
 {
   "name": "aurelian-tessera",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "description": "BSI Grundschutz implemented - an offline ISMS tool for the Grundschutz++ method, in a single HTML file.",
   "type": "module",
@@ -10,11 +10,8 @@
     "prebuild": "node scripts/bsi-sync.mjs",
     "build": "tsc -b && vite build",
     "build:llm": "tsc -b && VITE_LLM=1 vite build",
-    "mirror:dev": "node scripts/mirror.mjs development",
-    "mirror:main": "node scripts/mirror.mjs main",
     "preview": "vite preview",
     "test:e2e": "node scripts/e2e.mjs",
-    "demo": "node scripts/demo-video.mjs",
     "test:catalog": "esbuild src/domain/catalogimport.ts --bundle --format=esm --outfile=node_modules/.cache/catalogimport.mjs --log-level=error && MOD=node_modules/.cache/catalogimport.mjs node scripts/catalog-test.mjs",
     "test:audit": "rm -rf node_modules/.cache/audit && esbuild src/domain/audit.ts src/profile/index.ts --bundle --format=esm --outdir=node_modules/.cache/audit --out-extension:.js=.mjs --log-level=error && MOD_A=node_modules/.cache/audit/domain/audit.mjs MOD_S=node_modules/.cache/audit/profile/index.mjs node scripts/audit-test.mjs",
     "test:taxonomy": "esbuild src/domain/taxonomy.ts --bundle --format=esm --outfile=node_modules/.cache/taxonomy.mjs --log-level=error && MOD=node_modules/.cache/taxonomy.mjs node scripts/taxonomy-test.mjs",
@@ -29,15 +26,9 @@
     "test:method": "node scripts/method-test.mjs",
     "test:export": "rm -rf node_modules/.cache/exp && esbuild src/profile/gspp/oscalexport.ts src/domain/oscal.ts src/profile/gspp/taxonomy.ts --bundle --format=esm --outdir=node_modules/.cache/exp --out-extension:.js=.mjs --log-level=error && MOD_X=node_modules/.cache/exp/profile/gspp/oscalexport.mjs MOD_O=node_modules/.cache/exp/domain/oscal.mjs MOD_T=node_modules/.cache/exp/profile/gspp/taxonomy.mjs node scripts/gspp-export-test.mjs",
     "test:viewstate": "esbuild src/domain/viewstate.ts --bundle --format=esm --outfile=node_modules/.cache/viewstate.mjs --log-level=error && MOD_V=node_modules/.cache/viewstate.mjs node scripts/viewstate-test.mjs",
-    "test:crypto": "node harness/crypto-test.mjs",
-    "test:perf": "node harness/perf.mjs",
-    "test:sealimport": "node harness/seal-import.mjs",
-    "test:whitepage": "node harness/white-page.mjs",
-    "test:stamp": "node scripts/stamp-test.mjs",
     "test:notices": "node scripts/notices-test.mjs",
     "test:graph": "esbuild src/domain/graph.ts --bundle --format=esm --outfile=node_modules/.cache/graph/graph.mjs --log-level=error && node scripts/graph-test.mjs",
-    "mirror:check": "node scripts/mirror-check.mjs",
-    "mirror:push": "node scripts/mirror-push.mjs"
+    "mirror:check": "node scripts/mirror-check.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

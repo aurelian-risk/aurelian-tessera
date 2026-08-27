@@ -91,6 +91,16 @@ function sevColor(value: number, max: number, positive = false): string {
   return "var(--color-state-error)";
 }
 
+/** The count a button is allowed to show.
+ *
+ *  A number on a button is a statement about what pressing it does. While the button
+ *  refuses it does nothing, so there is no such statement: "Disable 4" greyed out reads as
+ *  a threat rather than a count, and where the count is itself what disables the button,
+ *  "Add 0 to study". The number is therefore bound to the same condition as `disabled`,
+ *  which the call site passes in rather than writing out a second time and drifting from.
+ *  The trailing space belongs to the number: `Add {countWhen(can, n)}selected`. */
+export const countWhen = (can: boolean, n: number): string => (can ? `${n} ` : "");
+
 export function ScaleInput({
   value, max, onChange, label,
 }: { value: number; max: number; onChange: (v: number) => void; label: string }) {

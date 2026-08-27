@@ -23,6 +23,7 @@ import { chromium } from "playwright";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { mkdirSync, readFileSync } from "node:fs";
+import { requireFreshBuild } from "./built.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const built = resolve(here, "../dist/index.html");
@@ -34,6 +35,8 @@ const file = "file://" + built;
 // carries the branch and its checks run instead. Reading the source would prove nothing:
 // a guard on a state variable leaves every string in the bundle.
 const LLM = /SmolLM2|Qwen2\.5|WebLLM/.test(readFileSync(built, "utf8"));
+requireFreshBuild(resolve(here, ".."), "the e2e run");
+
 const shots = "/tmp/gspp-e2e";
 mkdirSync(shots, { recursive: true });
 
@@ -490,6 +493,16 @@ try {
   const pick = await page.locator(".modal-lg").innerText();
   ok("the picker offers a custom measure and names the import route",
     /Create custom/i.test(pick) && /Import a framework file in Documents/i.test(pick));
+  // A number on a button states what pressing it does. Nothing is selected here, so the
+  // button does nothing, and there is nothing to state - "Add 0 selected" offers an action
+  // that is not on offer, and on a destructive control ("Disable 4", greyed) it reads as a
+  // threat. The other direction of the same rule is asserted on the import dialog further
+  // down, which is where a selection can be built up: "Add 1 selected".
+  {
+    const add = page.locator(".modal-lg-foot .btn.primary").first();
+    ok("a button that refuses carries no count", /^Add selected$/.test((await add.innerText()).trim()));
+    ok("...and it does refuse", await add.isDisabled());
+  }
   await page.locator('.modal-lg .btn.ghost[aria-label="Close"]').click().catch(() => {});
   await page.waitForTimeout(150);
 
@@ -1694,6 +1707,15 @@ try {
     (await page.locator(".modal-lg .seg-btn", { hasText: "local LLM" }).count()) > 0 === LLM);
   ok("extraction defers model loading to the Model section", (await page.locator(".modal-lg", { hasText: "managed in the" }).count()) > 0);
   ok("extract disabled until a model is loaded", await page.locator(".modal-lg button", { hasText: "Extract" }).isDisabled());
+  // Nothing has been extracted, so nothing can be added, and the button that adds says so
+  // by refusing - without also claiming a quantity. This is the reading that used to be
+  // "Add 0 to study"; the same rule is asserted on the measure picker further up.
+  {
+    const add = page.locator(".modal-lg-foot .btn.primary").filter({ hasText: /to study/ });
+    ok("the add button offers no count while there is nothing to add",
+      (await add.count()) === 1 && /^Add to study$/.test((await add.innerText()).trim()));
+    ok("...and refuses", await add.isDisabled());
+  }
   await page.screenshot({ path: `${shots}/Extraction.png` });
   await page.keyboard.press("Escape").catch(() => {});
   await page.locator(".overlay").click({ position: { x: 5, y: 5 } }).catch(() => {});
@@ -1800,6 +1822,82 @@ try {
     }
     if (await blank()) { blanked = "on coming back to the study"; break; }
   }
+  // Text a reader has to be able to read, measured where it actually sits.
+  //
+  // Three ways to get this wrong, all of which produced a number that looked like a finding:
+  //  - A computed style stays in the space it was authored in. `oklch(0.8 0.13 78)` parsed as
+  //    rgb gives "r=0.8, g=0.13, b=78", and the first attempt reported 1.00:1 for everything.
+  //    The colour is drawn on a canvas and read back instead.
+  //  - The background-color chain does not find a gradient, and this page's ground IS one, so
+  //    the chain falls through to white. The ground is taken from a photograph of the page
+  //    with the text made invisible - the pixel under the run is the ground.
+  //  - `color: transparent` does not hide an SVG glyph, which is painted with `fill`. Those
+  //    then measure against themselves at 1:1. Both are set.
+  //  - And a sample point below the photograph reads as transparent black, which looks like
+  //    the worst finding on the page and is the measurement missing it. Points outside are
+  //    skipped rather than counted.
+  //
+  // Aurelian Lite reported the warning colour as unreadable and measured their own call sites
+  // to a different answer than ours: their state colours pass because they are barely text
+  // there, and ours did not because a lint severity is a word. The difference is the method,
+  // which is why it is this one.
+  {
+    const sweep = async () => {
+      const runs = await page.evaluate(() => {
+        const out = [];
+        for (const el of document.querySelectorAll(".app *")) {
+          if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width < 4 || r.height < 4 || r.bottom < 2 || r.top > innerHeight - 2) continue;
+          if (r.right < 2 || r.left > innerWidth - 2) continue;
+          const cs = getComputedStyle(el);
+          if (cs.visibility === "hidden" || cs.opacity === "0") continue;
+          out.push({ x: Math.round(Math.min(innerWidth - 2, Math.max(2, r.x + 6))),
+            y: Math.round(r.y + r.height / 2), color: cs.color,
+            size: parseFloat(cs.fontSize), weight: Number(cs.fontWeight),
+            txt: el.textContent.trim().slice(0, 18), cls: (el.className || "").toString().split(" ")[0] });
+        }
+        return out;
+      });
+      const hide = await page.addStyleTag({ content:
+        "*, *::before, *::after { color: transparent !important; } text, tspan { fill: transparent !important; }" });
+      await page.waitForTimeout(120);
+      const png = (await page.screenshot({ clip: { x: 0, y: 0, width: 1280, height: 900 } })).toString("base64");
+      await hide.evaluate((n) => n.remove());
+      return page.evaluate(async ({ runs, png }) => {
+        const img = new Image(); img.src = "data:image/png;base64," + png; await img.decode();
+        const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
+        const g = cv.getContext("2d"); g.drawImage(img, 0, 0);
+        const c2 = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+        const toRgb = (c) => { c2.fillStyle = "#fff"; c2.fillRect(0, 0, 1, 1); c2.fillStyle = c; c2.fillRect(0, 0, 1, 1);
+          const d = c2.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; };
+        const lum = ([r, gg, b]) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+          return 0.2126 * f(r) + 0.7152 * f(gg) + 0.0722 * f(b); };
+        const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+        const out = [];
+        for (const q of runs) {
+          if (q.x < 0 || q.y < 0 || q.x >= cv.width || q.y >= cv.height) continue;
+          const d = g.getImageData(q.x, q.y, 1, 1).data;
+          if (d[3] === 0) continue;
+          const need = (q.size >= 24 || (q.size >= 18.66 && q.weight >= 700)) ? 3 : 4.5;
+          const v = ratio(toRgb(q.color), [d[0], d[1], d[2]]);
+          if (v < need) out.push(`${q.cls || "?"} ${v.toFixed(2)}:1 "${q.txt}"`);
+        }
+        return { n: runs.length, bad: [...new Set(out)] };
+      }, { runs, png });
+    };
+    let seen = 0; const poor = [];
+    for (const t of ["Checks", "Graph"]) {
+      await page.locator(".ws-tabs .ws-tab.plain", { hasText: t }).click();
+      await page.waitForTimeout(700);
+      const r = await sweep(); seen += r.n; poor.push(...r.bad);
+    }
+    await openWs(0, 600);
+    const r = await sweep(); seen += r.n; poor.push(...r.bad);
+    ok(`every run of text was measured where it sits (${seen})`, seen > 150, String(seen));
+    ok("...and each carries its own contrast", poor.length === 0, poor.slice(0, 6).join(" · "));
+  }
+
   // Every table in the product, counted rather than looked at. Three shapes of the same
   // fault, and all three are invisible: a column with no heading AND nothing in it is a
   // filler somebody left; a header row and a data row of different lengths mean a cell was
@@ -1884,6 +1982,169 @@ try {
     ok("the documents view is either a table that holds up, or an empty state that says why",
       docs.table ? (docs.filler === 0 && !docs.ragged && docs.slack <= 2) : docs.empty,
       JSON.stringify(docs));
+  }
+
+  // ── what a narrower window does to a register table ─────────────────────────
+  //
+  // Reported as "the columns squeeze unevenly". Measured rather than looked at: the value
+  // columns used to hold their exact pixel width at every window size while the name column
+  // gave up the whole reduction alone, 983px to 319. A width on a col is a floor as much as
+  // a preference. The property asserted is the one that was missing - every column of a
+  // table gives up the SAME fraction - which needs two widths to say anything at all.
+  {
+    await page.goto(file);
+    await page.waitForTimeout(800);
+    const shape = async () => page.evaluate(() => {
+      const t = [...document.querySelectorAll("table.tbl-share")]
+        .find((x) => x.querySelectorAll("thead th").length >= 4);
+      if (!t) return null;
+      const w = [...t.querySelectorAll("thead th")].map((th) => th.getBoundingClientRect().width);
+      const total = w.reduce((a, b) => a + b, 0);
+      return { share: w.map((x) => x / total), total };
+    });
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await page.waitForTimeout(500);
+    const wide = await shape();
+    await page.setViewportSize({ width: 1180, height: 1000 });
+    await page.waitForTimeout(500);
+    const narrow = await shape();
+    await page.setViewportSize({ width: 1600, height: 1000 });
+    await page.waitForTimeout(400);
+    ok("a register table is measurable at two window widths",
+      !!wide && !!narrow && narrow.total < wide.total, `${wide?.total} → ${narrow?.total}`);
+    const drift = wide && narrow
+      ? Math.max(...wide.share.map((s, i) => Math.abs(s - narrow.share[i]))) : 1;
+    ok("...and every column keeps its share of it, so the squeeze is shared",
+      drift < 0.02, `worst column moved ${(drift * 100).toFixed(1)}% of the table`);
+  }
+
+  // ── the flight, while the dock is still opening ─────────────────────────────
+  //
+  // Clicking a card flies its whole ego net into a tree, a 0.55s transition. The detail
+  // dock opens on the same click and animates max-height 0 → 40vh over 0.32s, so the
+  // scroller the flight is aimed at keeps shrinking underneath it. Aiming at the live
+  // height made every card take eleven corrections, spread over 155.5px - the first half
+  // of the flight spent chasing. Counted here rather than looked at: the eye reads that as
+  // "the cards jump", which does not say what to change.
+  {
+    // As with the block below: by here the navigation checks have left the page somewhere
+    // that is not the app. Reloading brings it back with the study still open.
+    await page.goto(file);
+    await page.waitForTimeout(900);
+    await page.locator("button, a").filter({ hasText: /^Flow$/ }).first().click();
+    await page.waitForTimeout(1400);
+    await page.evaluate(() => {
+      window.__fw = [];
+      const t0 = performance.now();
+      window.__fo = new MutationObserver((ms) => {
+        for (const m of ms) {
+          const el = m.target;
+          if (!el.dataset?.nk || !el.style?.transform) continue;
+          window.__fw.push({ k: el.dataset.nk, at: performance.now() - t0, tr: el.style.transform });
+        }
+      });
+      window.__fo.observe(document.querySelector(".flow-lanes"),
+        { attributes: true, attributeFilter: ["style"], subtree: true });
+    });
+    await page.locator(".flow-node").filter({ hasText: /Grid control/ }).first().click();
+    await page.waitForTimeout(2200);
+    const f = await page.evaluate(() => {
+      window.__fo.disconnect();
+      const by = new Map();
+      for (const e of window.__fw) { if (!by.has(e.k)) by.set(e.k, []); by.get(e.k).push(e); }
+      let targets = 0, spread = 0;
+      for (const [, list] of by) {
+        // The initial placement is one target; every later DISTINCT one is a correction,
+        // and corrections are what the running transition has to chase.
+        const ys = list.map((e) => parseFloat(/,\s*(-?[\d.]+)px/.exec(e.tr)?.[1] ?? "0"));
+        const d = [];
+        for (const y of ys) if (!d.length || Math.abs(d[d.length - 1] - y) > 0.5) d.push(y);
+        const corr = d.slice(1);
+        if (!corr.length) continue;
+        targets = Math.max(targets, corr.length);
+        spread = Math.max(spread, Math.max(...corr) - Math.min(...corr));
+      }
+      return { cards: by.size, flown: document.querySelectorAll(".ef-floating").length,
+        targets, spread: Math.round(spread * 10) / 10 };
+    });
+    ok("clicking a card flies its whole ego net", f.flown > 20 && f.cards === f.flown,
+      `${f.cards} written / ${f.flown} flying`);
+    ok("...aimed once, not re-aimed at every frame of the dock opening", f.targets <= 3,
+      `${f.targets} corrections`);
+    ok("...so nothing is chasing a target that moves", f.spread < 20, `${f.spread}px`);
+  }
+
+  // ── the attack-path sheet, on a study bigger than the sample ────────────────
+  //
+  // The sample draws thirteen boxes and says nothing about what happens at ninety. Two
+  // properties are asserted on a study grown for the purpose: boxes at the same depth do
+  // not overlap, and the sheet does not grow past what can be read as one diagram. The
+  // second is why the boxes compress: 91 boxes drew 4278px before, 2022px now.
+  {
+    const now = "2026-02-01T10:00:00.000Z";
+    const ents = [];
+    const push = (id, type, values) => ents.push({ id, type, values, createdAt: now, updatedAt: now });
+    push("ba1", "business_asset", { name: "Billing run", criticality: 3 });
+    push("sa1", "supporting_asset", { name: "Billing host", business_asset: "ba1" });
+    const CHAINS = 30, DEPTH = 3;
+    for (let c = 0; c < CHAINS; c++) {
+      push(`op${c}`, "operational_scenario", { name: `Scenario ${c + 1}`, likelihood: 3, difficulty: 2 });
+      let prev = null;
+      for (let st = 0; st < DEPTH; st++) {
+        const id = `st${c}_${st}`;
+        push(id, "kill_chain_step", { name: `Step ${st + 1} of chain ${c + 1}`, operational_scenario: `op${c}`,
+          step_order: st + 1, tactic: "Initial access",
+          ...(st === DEPTH - 1 ? { targets_asset: "sa1" } : {}), ...(prev ? { predecessors: [prev] } : {}) });
+        prev = id;
+      }
+    }
+    // The run ends wherever the last check left it, and by here that is not the app: the
+    // navigation checks above leave the page elsewhere. Reloading brings it back with the
+    // study still open, which is what the persistence is for.
+    await page.goto(file);
+    await page.waitForTimeout(900);
+    await page.locator(".topbar button", { hasText: "Export / Import" }).first().click({ timeout: 15000 });
+    await page.waitForTimeout(250);
+    await page.locator(".menu-item", { hasText: "Import data" }).click();
+    await page.waitForTimeout(400);
+    await page.locator(".modal-lg textarea").first().fill(JSON.stringify({
+      kind: "ebios-data", version: 2, studies: [{ id: "grown", name: "Grown study",
+        organization: "", scope: "", createdAt: now, updatedAt: now, entities: ents, log: [] }] }));
+    await page.locator(".modal-lg button", { hasText: "Preview pasted" }).click();
+    await page.waitForTimeout(700);
+    await page.locator(".modal-lg-foot .btn", { hasText: "Apply changes" }).first().click();
+    await page.waitForTimeout(900);
+    // The dialog leaves a fixed overlay over the page; while it stands every later click
+    // lands on it rather than on what was aimed at.
+    await page.locator('.modal-lg .btn.ghost[aria-label="Close"]').click().catch(() => {});
+    await page.keyboard.press("Escape").catch(() => {});
+    await page.waitForTimeout(300);
+    await page.locator(".topbar .brand, .topbar a, .topbar button").first().click().catch(() => {});
+    await page.waitForTimeout(500);
+    await page.locator(".card.clickable", { hasText: "Grown study" }).first().click();
+    await page.waitForTimeout(700);
+    await page.locator("button, a").filter({ hasText: /Risk Consideration/ }).first().click();
+    await page.waitForSelector(".ap-toolbar", { timeout: 15000 });
+    for (const c of await page.locator(".ap-chip").all()) await c.click();
+    await page.waitForSelector(".ap-graph", { timeout: 20000 });
+    await page.waitForTimeout(500);
+    const m = await page.evaluate(() => {
+      const g = document.querySelector(".ap-graph");
+      const boxes = [...g.querySelectorAll(".ap-node")].map((n) => n.getBoundingClientRect());
+      let ov = 0;
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i], c = boxes[j];
+        if (a.left < c.right && c.left < a.right && a.top < c.bottom && c.top < a.bottom) ov++;
+      }
+      return { n: boxes.length, ov, h: g.offsetHeight, dense: g.querySelectorAll(".ap-node.dense").length };
+    });
+    await page.screenshot({ path: `${shots}/AttackPathsGrown.png`, fullPage: false });
+    ok("a grown study draws every box it was given", m.n === CHAINS * DEPTH + 1, String(m.n));
+    ok("...with none of them overlapping", m.ov === 0, String(m.ov));
+    ok("...compressed, because one depth holds more than nine", m.dense === m.n, `${m.dense}/${m.n}`);
+    ok("...to a sheet that can still be read as one diagram", m.h < 2400, `${m.h}px`);
+    ok("...and the sheet says it compressed them rather than dropping the tactic silently",
+      (await page.locator(".ap-dense-note").count()) === 1);
   }
 
   ok(`the page survives ${survived} steps of working in it and navigating away`,

@@ -43,6 +43,8 @@ const COL_WIDTH: Record<FieldType, number> = {
 const NAME_MIN = 320;
 const tableMinWidth = (cols: FieldDef[]) =>
   NAME_MIN + cols.reduce((w, c) => w + COL_WIDTH[c.type], 0);
+/** A column's width as its share of the table it sits in. */
+const pct = (w: number, cols: FieldDef[]) => `${((w / tableMinWidth(cols)) * 100).toFixed(3)}%`;
 
 function FieldValueView({ field, value, tax, study, onOpen, onToggle, toggleBlocked }:
   { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study; onOpen?: (id: string) => void;
@@ -197,7 +199,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
             Nothing matches. <button className="btn ghost sm" onClick={clearAll}>Clear filters</button>
           </div>
         ) : (
-          <table className="tbl" style={{ minWidth: tableMinWidth(cols) }}>
+          <table className="tbl tbl-share" style={{ minWidth: tableMinWidth(cols) }}>
             {/* The name column takes what the value columns leave. It used to be a percentage
                 with an empty column absorbing the remainder, which left a headerless gap -
                 103px on a register with five value columns, 403px on one with three - so
@@ -206,9 +208,15 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                 table's width and the leftover simply stays unallocated. The table is laid out
                 automatically instead, where the widths below are hints and the name column
                 takes the rest. */}
+            {/* Shares, not pixels. A pixel width is a floor as well as a preference: the
+                value columns held their exact width at every window size and the name column
+                gave up the whole reduction alone - 983px to 319px on the first tab, while
+                nothing beside it moved. Below the table's minimum every column now gives up
+                the same fraction, because a share of the table is what each one is. The
+                minWidth above is still the floor; past it the panel scrolls. */}
             <colgroup>
-              <col />
-              {cols.map((c) => <col key={c.key} style={{ width: COL_WIDTH[c.type] }} />)}
+              <col style={{ width: pct(NAME_MIN, cols) }} />
+              {cols.map((c) => <col key={c.key} style={{ width: pct(COL_WIDTH[c.type], cols) }} />)}
             </colgroup>
             <thead>
               <tr>

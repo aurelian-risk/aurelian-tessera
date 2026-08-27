@@ -235,11 +235,37 @@ export function CanvasView({ tax, study }: { tax: Taxonomy; study: Study }) {
     // running fly transition never corrupts the result.
     const fc = flown.find((x) => x.c.dataset.nk === focused);
     if (scroller && fc) {
+      // The dock's max-height animates 0 → 40vh over 0.32s and the scroller gives up
+      // exactly that much, so the observer reports a different viewport height at every
+      // frame of it - while the cards are 0.55s into a transition toward a target derived
+      // from it. The first half of every flight is therefore spent chasing. Measured with
+      // a MutationObserver on style: 28 of 28 cards took NINE different targets in 284ms,
+      // spread over 197px.
+      //
+      // The settled height does not have to be waited for. The dock ends at its content
+      // height or 40vh, whichever is smaller, and both are readable at the first frame.
+      // Once it has settled this correction is zero, so a real window resize is unchanged.
+      const settledHeight = () => {
+        const dock = scroller.closest(".diagram-dock-layout")?.querySelector(".detail-dock");
+        if (!dock) return scroller.clientHeight;
+        const end = Math.min(dock.scrollHeight, window.innerHeight * 0.4);
+        return scroller.clientHeight - (end - dock.getBoundingClientRect().height);
+      };
+      // The observer still fires at every frame of the dock animation - it just gets the
+      // same answer each time now. That answer was being written back onto every flown
+      // card regardless: 364 transform writes across 28 cards, 84 of them byte-identical
+      // to the one before and most of the rest differing below a pixel. A style write on
+      // an element mid-transition is not free, so a delta that has not moved is dropped
+      // here rather than debounced. A timer would also have delayed the corrections a real
+      // window resize asks for, which is a problem that only exists while the dock opens.
+      let lastDelta = NaN;
       const recenter = () => {
         if (!fc.c.isConnected || !scroller.isConnected) return;
         const laneOffset = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-        const cyWanted = scroller.clientHeight / 2 - laneOffset - fc.c.offsetHeight / 2;
+        const cyWanted = settledHeight() / 2 - laneOffset - fc.c.offsetHeight / 2;
         const delta = cyWanted - (fc.dy + fc.c.offsetTop);
+        if (Math.abs(delta - lastDelta) < 0.5) return;
+        lastDelta = delta;
         for (const g of flown) g.c.style.transform = `translate(${g.dx}px, ${(g.dy + delta).toFixed(1)}px) scale(1.05)`;
       };
       const ro = new ResizeObserver(recenter);   // fires once immediately, then on every size change

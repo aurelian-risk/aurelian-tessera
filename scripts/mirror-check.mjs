@@ -15,9 +15,10 @@
 //
 // Run: npm run mirror:check          before pushing the mirror, and after every rsync
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dangling } from "./mirror-pkg.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // MIRROR= points it elsewhere - used to check the check itself against a tree that is
@@ -35,12 +36,51 @@ const PRIVATE = [
   [/^harness\//, "local probes and model harness"],
   [/^viz-demo\.html$/, "scratch"],
   [/^scripts\/demo-video\.mjs$/, "recording script"],
-  [/^scripts\/mirror-push\.mjs$/, "the release procedure, like docs/mirror.md"],
+  [/^scripts\/(mirror-push|mirror-sync)\.mjs$/, "the release and mirroring procedure, like docs/mirror.md"],
   // The mechanism says more about when this is worked on than the stamps it removes.
   [/^scripts\/(stamp|stamp-test)\.mjs$/, "when this is worked on"],
   [/^scripts\/hooks\//, "when this is worked on"],
   [/\.generated\.ts$/, "the ruleset - produced at build time, in neither repository"],
 ];
+
+/** The same list as rsync arguments, so the sync and the check cannot drift apart.
+ *
+ *  They had. The excludes in docs/mirror.md were written by hand from the PRIVATE list and
+ *  then the list grew: the timestamp hook, its script and its test, and the release
+ *  procedure were all declared private and all copied into the mirror by a sync that had
+ *  never heard of them. One list, read by both.
+ *
+ *      rsync -a --delete $(node scripts/mirror-check.mjs --excludes) ./ public/
+ *
+ *  Patterns that cannot be said as a glob are left out and named; they are the ones the
+ *  check has to catch afterwards. */
+export const EXCLUDES = [
+  "samples/*", "docs/media/*", "docs/method.md", "docs/frequency-model.md",
+  "docs/resistance-model.md", "docs/control-effect-model.md", "docs/mirror.md",
+  "CLAUDE.md", "ROADMAP.md", "harness", "viz-demo.html",
+  "scripts/demo-video.mjs", "scripts/mirror-push.mjs", "scripts/mirror-sync.mjs",
+  "scripts/stamp.mjs", "scripts/stamp-test.mjs", "scripts/hooks",
+  "src/profile/gspp/*.generated.ts",
+  ".git", "node_modules", "dist", "public", ".gitignore",
+];
+
+// One pattern per line and no quoting, so it can only be used with --exclude-from. The
+// quoted-argument form was tried and it does not survive word splitting: rsync received
+// `'public'` with the quotes and excluded nothing. Prefer scripts/mirror-sync.mjs, which
+// passes them as an array and never involves a shell.
+if (process.argv.includes("--excludes")) {
+  console.log(EXCLUDES.join("\n"));
+  process.exit(0);
+}
+
+/** Every exclude has to correspond to something the classifier calls private, or the two
+ *  are drifting again in the other direction. */
+const excludesNotPrivate = () => EXCLUDES.filter((e) => {
+  if (/^(\.git|node_modules|dist|public|\.gitignore)$/.test(e)) return false;   // build output, not secrets
+  // An exclude may name a file, a glob, or a bare directory; the classifier matches paths.
+  const probe = e.replace(/\/\*$/, "/x").replace(/\*/g, "x");
+  return classifyRaw(probe) !== "private" && classifyRaw(`${probe}/x`) !== "private";
+});
 
 /** Present in the mirror and not here. */
 const MIRROR_ONLY = [];
@@ -53,8 +93,22 @@ const SHARED = [
   /^(package|package-lock|tsconfig)\.json$/, /^(vite\.config\.ts|index\.html|\.gitignore)$/,
 ];
 
+/** Every path git knows about in `dir`, INCLUDING what is there but not yet added.
+ *
+ *  Reading only the tracked ones leaves this check blind at the one moment it is needed.
+ *  The rsync puts files into the mirror untracked; the check then sees nothing; `git add -A`
+ *  takes them in; the commit is made. On 2026-08-27 that carried four declared-private files
+ *  across - the timestamp hook, its script and its test, and the release procedure - and the
+ *  check had said "nothing leaked" ten seconds earlier. An exclude list answers the paths
+ *  somebody thought of; this reads what is actually lying there. */
+const present = (dir) =>
+  execFileSync("git", ["-C", dir, "ls-files", "--cached", "--others", "--exclude-standard"],
+    { encoding: "utf8" }).split("\n").filter(Boolean);
+
 const tracked = (dir) =>
   execFileSync("git", ["-C", dir, "ls-files"], { encoding: "utf8" }).split("\n").filter(Boolean);
+
+const classifyRaw = (p) => (PRIVATE.some(([re]) => re.test(p)) ? "private" : "other");
 
 const classify = (p) => {
   for (const [re, why] of PRIVATE) if (re.test(p)) return { cls: "private", why };
@@ -82,7 +136,7 @@ if (undeclared.length) {
 if (!existsSync(resolve(mirror, ".git"))) {
   say("\npublic/ is not a checkout here - the mirror half of this check did not run.");
 } else {
-  const there = tracked(mirror);
+  const there = present(mirror);
   const leaked = there.filter((p) => classify(p).cls === "private");
   const strays = there.filter((p) => classify(p).cls === "undeclared" && !MIRROR_ONLY.some((re) => re.test(p)));
   say(`\n${there.length} tracked in public/`);
@@ -90,7 +144,8 @@ if (!existsSync(resolve(mirror, ".git"))) {
     problems += leaked.length;
     say(`\n${leaked.length} private path${leaked.length === 1 ? "" : "s"} are IN the mirror:`);
     for (const p of leaked) say(`  ${p}  - ${classify(p).why}`);
-    say("  → git -C public rm --cached <path>, and add the exclude to docs/mirror.md.");
+    say("  → rm them from public/, and add the exclude to the rsync in docs/mirror.md.");
+    say("    (git -C public rm --cached <path> as well, where one is already committed.)");
   }
   if (strays.length) {
     problems += strays.length;
@@ -108,6 +163,18 @@ if (!existsSync(resolve(mirror, ".git"))) {
     samples.length === 1 && samples[0] === "samples/test-corpus.txt", samples.join(", ") || "empty");
   ok("the mirror's docs/media holds the still the README embeds and nothing else",
     media.length === 1 && media[0] === "docs/media/demo.webp", media.join(", ") || "empty");
+
+  // The rsync copies this repository's package.json over verbatim, and it names work that
+  // only exists here - the model harness, the mirroring machinery, the demo recording. A
+  // starter without its script is quieter than a script without its starter: the second
+  // breaks when it is called, the first is never called and nobody finds out. Nine of them
+  // stood in the published package.json before this check existed.
+  const mpkg = resolve(mirror, "package.json");
+  const gone = existsSync(mpkg) ? dangling(JSON.parse(readFileSync(mpkg, "utf8")), mirror) : [];
+  ok("every rsync exclude names something the classifier calls private",
+    excludesNotPrivate().length === 0, excludesNotPrivate().join(", "));
+  ok("every npm script in the mirror has the file it runs", gone.length === 0,
+    gone.length ? `${gone.map((g) => g.name).join(", ")} → node scripts/mirror-pkg.mjs` : undefined);
 
   // The author of a mirror commit is the PROJECT ACCOUNT, by its GitHub noreply address -
   // the same one the main stream uses, and the only kind of address GitHub attributes to an

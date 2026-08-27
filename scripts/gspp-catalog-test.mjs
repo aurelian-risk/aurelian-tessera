@@ -261,7 +261,11 @@ for (const [k, field] of [["modal_verb", "modal_verb"], ["sec_level", "sec_level
     const fw2 = GSPP_COMPONENTS;
     ok("the published implementations are in the build", fw2.items.length === 35, `${fw2.items.length} components`);
     const refs = fw2.items.flatMap((i) => (i.props?.implements ?? "").split(",").map((x) => x.trim()).filter(Boolean));
-    ok("every implementation reference resolves to a requirement identifier", refs.length === 304, `${refs.length}`);
+    // A count of what the publisher publishes, not of what this build does - so it is a
+    // measurement with a date on it, and a change here means they moved rather than we broke.
+    // 304 on 2026-08-20; 289 on 2026-08-26, when the component definitions were republished.
+    // The resolution itself is the assertion below, and it held across the change.
+    ok("the published implementations name 289 requirements between them", refs.length === 289, `${refs.length}`);
     const known = new Set(records.map((r) => r.ref_id));
     const unknown = [...new Set(refs.filter((r) => !known.has(r)))];
     ok("...and every one of them names a requirement of this catalogue", unknown.length === 0,

@@ -14,9 +14,13 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireFreshBuild } from "./built.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const artefact = resolve(root, "dist/index.html");
+// The notice is a statement about the file that ships, so it is asked of that file - and
+// only means anything if that file is the current build.
+requireFreshBuild(root, "the notice check");
 
 let pass = 0, fail = 0;
 const ok = (name, cond, detail) => {

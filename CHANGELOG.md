@@ -6,6 +6,57 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.6.2] - 2026-08-27
+
+### Fixed
+
+- **Text that could not be read.** Measured at the rendered pixel across three views, with
+  the text hidden and the ground behind each run photographed: **53 of 231 runs were below
+  the 4.5:1 that body text needs**, worst 1.73:1. Now 0. Three tokens were at fault, each
+  defined once for a dark ground and used on a light one - the four state colours, which
+  carry lint severities as words; the five workshop accents, which fail in both directions
+  at once because the same colour is white-on-button and a number on a card; and the muted
+  grey of table headers and sub-lines.
+- **A narrower window takes the same fraction off every column.** Reported as columns
+  squeezing unevenly, and measured across six window widths it was exact: the value columns
+  held 124, 148, 156 and 164 pixels at *every* size while the name column absorbed the whole
+  reduction alone, **983px down to 319**. A pixel width on a column is a floor as much as a
+  preference. The columns of a register are shares of it now. A table still stops at its own
+  minimum, past which the panel scrolls.
+- **A measure on an attack step is in use everywhere, or nowhere.** A measure that covers a
+  step could be stored as not in use if the relation was made from the record rather than
+  from the chain view: the coverage matrix and the framework radar then left it out while
+  the chain counted it. The fact that a record is held decides now, not the stored value.
+- **A button that refuses carries no count.** "Add 0 to study" stated an action that was not
+  on offer, and a count on a disabled control reads as a threat rather than a quantity. Three
+  places, one rule.
+- **The attack-path sheet stays a diagram.** Its height was linear in the tallest column and
+  nothing bounded it: a study of thirty chains drew a sheet **4278px** tall, four screens
+  for one picture. Above nine boxes in a column they carry name and state, with tactic and
+  technique on the box itself - **2022px** for the same study, and the sheet says it
+  compressed rather than letting the tactic quietly stop being there.
+- **Cards fly to where the view will be, not where it was.** Selecting a card flies its
+  neighbours into a tree over 0.55s while the detail panel below grows over 0.32s, shrinking
+  the view the flight is aimed at. Every card took **eleven corrections spread over 155.5px**;
+  the end height is derivable at the first frame, so it is now 2 corrections over 3.7px.
+
+### Added
+
+- **The management report states the seven things PERF.4.1 asks of it** - conditions,
+  successes and problems, suitability of the measures, feedback, plan status and
+  improvements, each as a field of the record rather than as advice in a help text.
+- **A check refuses to measure a build that was not made.** Eight files read
+  `dist/index.html` and nothing else, so a build that fails leaves the previous artefact and
+  every one of them reports on a file nobody asked for. They stop instead. The release push
+  is one of them: it checked that the artefact reports the version being released, which a
+  leftover of the *same* version passes.
+
+### Removed
+
+- **Nine `npm run` entries that could not run.** The published `package.json` named the
+  local model harness, the mirroring machinery and the demo recording, whose files are not
+  part of this repository.
+
 ## [0.6.1] - 2026-08-25
 
 ### Removed

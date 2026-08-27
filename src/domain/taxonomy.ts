@@ -124,13 +124,36 @@ export function reconcileTaxonomy(tax: Taxonomy): Taxonomy {
   return { ...tax, schemaVersion: TAXONOMY_SCHEMA_VERSION, entityTypes };
 }
 
+/** What a record holds in the fields dimWhen.lockedWhile names, as a list of raw values.
+ *  Empty means the record is held by nothing. */
+function heldBy(d: { lockedWhile?: string[] }, r: EntityRecord): string[] {
+  const out: string[] = [];
+  for (const key of d.lockedWhile ?? []) {
+    const v = r.values[key];
+    if (Array.isArray(v)) out.push(...v.map(String).filter(Boolean));
+    else if (v != null && v !== "") out.push(String(v));
+  }
+  return out;
+}
+
 /** Is this record present but not in play? Declared by the taxonomy (dimWhen), not decided
  *  here: which states are dormant is a property of the method. Read wherever a record's
  *  presence would otherwise be taken for participation - a measure recorded from a
  *  publisher's library but not adopted must not defend anything, and a register that shows
- *  it must not count it. */
+ *  it must not count it.
+ *
+ *  A record held by its lockedWhile field is in play whatever the stored value says.
+ *  `setBackBlocked` refuses to FLIP the switch while such a field holds something, which is
+ *  the same fact - but a refusal only guards the one control that reads it. The relation
+ *  can be made from the other end, by an editor that knows nothing about the switch, and
+ *  then the record is stored as dormant while acting all the same: excluded from coverage
+ *  and from the framework radar, and counted by the chain. One question cannot have two
+ *  answers depending on which view asks it, so the fact decides and the stored value is
+ *  read only where nothing holds the record. */
 export function isSetBack(tax: Taxonomy, r: EntityRecord): boolean {
-  return (tax.dimWhen ?? []).some((d) => d.type === r.type && d.values.includes(String(r.values[d.field] ?? "")));
+  return (tax.dimWhen ?? []).some((d) => d.type === r.type
+    && d.values.includes(String(r.values[d.field] ?? ""))
+    && !heldBy(d, r).length);
 }
 
 /** Why this record cannot be set back right now, or null. Declared through
@@ -145,9 +168,7 @@ export function setBackBlocked(tax: Taxonomy, study: Study, r: EntityRecord): st
     const t = tax.entityTypes.find((x) => x.key === r.type);
     for (const key of d.lockedWhile) {
       const f = t?.fields.find((x) => x.key === key);
-      const v = r.values[key];
-      const held = Array.isArray(v) ? v.map(String).filter(Boolean)
-        : v == null || v === "" ? [] : [String(v)];
+      const held = heldBy({ lockedWhile: [key] }, r);
       if (!held.length) continue;
       const named = (f?.type === "ref" || f?.type === "multiref")
         ? held.map((id) => {

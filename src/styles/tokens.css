@@ -73,6 +73,31 @@
 
 /* ── Light ───────────────────────────────────────────────────────── */
 .light {
+  /* The state colours are dark-first like everything else, and they are used as TEXT in 42
+     places - lint severities, the import diff, calibration notes, the break-off distribution.
+     On a light ground the dark-first values are unreadable, measured at the rendered pixels
+     rather than guessed from the stylesheet: warning 1.89:1 on white, success 2.33, info
+     2.43, error 3.13 - all under the 4.5:1 body text needs, and this product runs light by
+     default. The light values below sit between 5.5 and 5.7:1 on white and above 5:1 on the
+     page. Amber is pulled towards red as it darkens, because dark amber turns to mud; the
+     hues stay far enough apart to keep warning and error distinguishable. Fixed in the token,
+     not at the 42 call sites. */
+  /* The workshop accents carry white text on a button AND stand as text on a light card -
+     the tab counters, the nav counters, the group dots. One colour has to do both, and only
+     a mid-dark one can: at the dark-first lightness of 0.7 it is 2.63:1 in BOTH directions,
+     measured at the rendered pixel. At 0.52 it is 5.32:1 in both. The hues are untouched, so
+     the workshops keep telling each other apart. */
+  --color-workshop-1: oklch(0.52 0.14 240);
+  --color-workshop-2: oklch(0.52 0.13 68);
+  --color-workshop-3: oklch(0.52 0.15 300);
+  --color-workshop-4: oklch(0.52 0.17 25);
+  --color-workshop-5: oklch(0.52 0.13 158);
+
+  --color-state-success: oklch(0.5 0.13 158);
+  --color-state-warning: oklch(0.52 0.14 64);
+  --color-state-error: oklch(0.52 0.19 25);
+  --color-state-info: oklch(0.5 0.12 240);
+
   --bg-0: oklch(0.97 0.006 265);
   --bg-1: oklch(0.94 0.008 265);
   --app-glow-a: oklch(0.7 0.1 210 / 0.12);

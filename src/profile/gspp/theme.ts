@@ -65,7 +65,10 @@ export const THEME = {
 
     "--fg": "oklch(0.21 0.012 258)",
     "--fg-muted": "oklch(0.42 0.012 258)",
-    "--fg-subtle": "oklch(0.56 0.012 258)",
+    // 0.56 measured 4.10 to 4.48:1 on the panels and the sidebar - under the 4.5:1 body
+    // text needs, and this is the colour of every table header, hint line and subtitle.
+    // 0.53 is 4.97:1 on the page ground. Measured at the rendered pixel.
+    "--fg-subtle": "oklch(0.53 0.012 258)",
 
     "--primary": "var(--gs-governance)",
     "--primary-fg": "oklch(1 0 0)",

@@ -168,6 +168,10 @@ select { cursor: pointer; }
    name column takes the rest, so the columns fill the table instead of leaving a headerless
    strip at the right. */
 .tbl { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
+/* Where the colgroup gives every column a share, the shares have to be honoured as given:
+   under auto layout a column still grows to its widest cell and the sharing stops meaning
+   anything. Only the register tables carry this - the rest size themselves from content. */
+.tbl.tbl-share { table-layout: fixed; }
 .panel-body { overflow-x: auto; } /* wide tables (e.g. risk quantification) scroll instead of squashing */
 .tbl th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em;
   color: var(--fg-subtle); font-weight: 600; padding: 10px 18px; white-space: nowrap;
@@ -338,6 +342,12 @@ select { cursor: pointer; }
   background: color-mix(in oklch, var(--nc) 5%, var(--bg-raised)); padding: 8px 11px; box-shadow: var(--shadow, 0 1px 3px rgba(20,30,50,0.08));
   cursor: pointer; z-index: 2; transition: transform 0.12s; }
 .ap-node:hover { transform: translateY(-2px); }
+/* Many chains at the same depth: the box keeps what identifies it and drops what it can
+   say on hover, so the sheet stays one view instead of several screens. */
+.ap-node.dense { height: 52px; padding: 5px 10px; border-radius: 8px; }
+.ap-node.dense .ap-tac, .ap-node.dense .ap-tt { display: none; }
+.ap-node.dense .ap-nm { -webkit-line-clamp: 2; }
+.ap-dense-note { margin-top: 10px; font-size: 12px; color: var(--fg-muted); max-width: 720px; }
 .ap-node.choke { box-shadow: 0 0 0 2px var(--color-workshop-1, #dd9a33), 0 0 0 6px color-mix(in oklch, var(--color-workshop-1, #dd9a33) 20%, transparent); }
 .ap-dot { position: absolute; top: 8px; right: 9px; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 3px var(--bg-raised); }
 .ap-dot.ok { background: var(--color-state-success); } .ap-dot.gap { background: var(--color-state-error); }

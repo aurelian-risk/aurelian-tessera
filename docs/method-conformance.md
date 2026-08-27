@@ -120,6 +120,8 @@ Measured again 2026-08-15, after the second pass over the method catalogue.
 | `PERF.1.3` the package re-read at the institution's interval | a record of its own: what the reading took in, what it found, what was adjusted, whether it took the modelling again, and who it was agreed with. The interval is the next record's due date rather than a number, because the method leaves the interval to the institution; a due date behind us is a finding |
 | `PERF.3` audit programme, plan, independent team, report | a record of its own, checked before and after the audit |
 | `PERF.4` management report | a record of its own, drawing on the audits, carrying the last review's follow-ups |
+| `PERF.4.1.2` - `.8` the seven contents of that report | one field each, because they are seven questions: whether the conditions changed is not whether the measures still fit, and neither is whether the plan advanced. Merged into one box the report could no longer say which of them was answered |
+| `GC.2.1` the external context of the institution determined | **partly**: the external interested parties carry most of it - who outside expects something of information security here, what they need, how much weight it carries and what followed from it - and the study's scope states the boundary. What is not separately recorded is the external context *as such*, the way a single statement would put it. Whether one is wanted is a product question rather than a gap |
 | `GC.2.2` the internal context analysed | **partly**: the internal interested parties, the roles and the study's own organisation and sector carry most of it; there is no single record that says "these are our internal conditions", and whether one is wanted is a product question rather than a gap |
 | `GC.6.1` a scope, delimited comprehensibly, after the management releases it | **partly**: the study carries the scope as text, and the policy that states it is authorised by the management with the date recorded. What is not separately checkable is the release of the scope *as such* |
 | `GC.7.1.1` the business processes or information relevant to the scope | the business-process register, whose kinds are process, statutory task and information - the three the requirement names |
@@ -166,10 +168,12 @@ The method catalogue holds requirements this build does not yet answer:
 1. A set of reference documents the BSI declares for **this** method. The classic set is
    delivered and named as the classic set; what is not settled is what a Grundschutz++
    certification would ask for.
-2. And the ones the reading has not reached at all - see section 7.
+2. And the ones the reading has not reached at all - see section 7. Thirteen are left, all
+   SOLLTE, and the reading for each is written down there now.
 
 `VRB.5` and `STM.2.1.6` came off this list on 2026-08-22, `UMS.6.1`, `PERF.1.3` and the
-reference documents on 2026-08-23.
+reference documents on 2026-08-23, and the seven contents of the management report
+(`PERF.4.1.2` to `.8`) on 2026-08-26.
 
 ## 6. Findings, and what is deliberately not one
 
@@ -196,21 +200,30 @@ What changed, and why each is the method's own reading:
 ## 7. What has not been read yet
 
 `npm run test:method` measures this document against the published method catalogue rather
-than against a memory of it. First run, 2026-08-22, against catalogue version 2026-08-20:
+than against a memory of it. Measured 2026-08-26, against catalogue version 2026-08-20:
 
-**95 requirements - 76 MUSS, 19 SOLLTE, no KANN. 35 are named somewhere in this repository;
-60 are not, 45 of them MUSS.**
+**95 requirements - 76 MUSS, 19 SOLLTE, no KANN. 82 are named somewhere in this repository;
+13 are not, and none of them is a MUSS.**
 
-That number is not a defect count, and stating it as one would be wrong. A large part of
-what is unread are duties of the **institution**, not capabilities of a tool: `GC.1.1`
-"Errichtung und Aufrechterhaltung eines ISMS", `GC.2.1` "Festlegung des externen Kontextes",
-`GC.5.1` and its four sub-requirements on roles. Software does not establish an ISMS. What
-software can do is carry the record that it was established, by whom and when - and whether
-this product should is a reading that has not been written down.
+The ratchet in the test stands at **76 of 76 MUSS**. That says the reading is written down,
+not that the product carries all of it: a large part is a duty of the **institution**, not a
+capability of a tool. Software does not establish an ISMS; what it can do is carry the record
+that one was established, by whom and when.
 
-The reading belongs here, requirement by requirement, with one of three verdicts: answered
-(and how), a duty of the institution that this product records, or a duty of the institution
-that it does not touch. Until then the test asserts only that coverage does not fall.
+The first run of this test, on 2026-08-22, found 35 named and 60 not, 45 of them MUSS. That
+sentence stood here until 2026-08-26 and understated the state by 45 MUSS requirements.
+
+The thirteen still named nowhere are all SOLLTE, and they fall into two kinds:
+
+| | What it asks | Reading |
+|---|---|---|
+| `GC.3.1.2` | the responsible bodies in the institution are consulted when the compliance obligations are documented | **a duty of the institution, recorded through the procedure it belongs to.** `GC.3.1` "Verfahren und Regelungen" is in the procedure register; these four say what that procedure's text has to cover, and no tool can read a text for whether a legal department was heard |
+| `GC.3.1.3` | contractual obligations affecting the processing of information are analysed | as above, and where one produces a requirement of its own it carries the obligation it comes from (`STM.2.1.7`, field `compliance_basis`) |
+| `GC.3.1.4` | a procedure against breaches is anchored | as above |
+| `GC.10.1.1` | an external exchange on information security is anchored | **as above**, under `GC.10.1` "Kommunikationsmanagement", which is in the register |
+| `PERF.2.1` | compliance with obligations is checked at an interval and on occasion | **as above**, under `PERF.1.1` "Verfahren und Regelungen"; the interval is a parameter the institution sets |
+| `PERF.3.2.1` | one assessment scheme for audit findings | **as above**, under `PERF.3.2` "Dokumentation von Auditergebnissen". A scheme is the procedure's content; the register holds that the procedure exists and where it is written |
+| `PERF.4.1.2` … `.8` | seven contents of the management report | **answered**, 2026-08-26: seven of them, one field each - changed conditions, successes and problems, whether the measures still fit, what stakeholders said, the status of the plan, the improvements the review derived, and the audits it rests on (`.4`, through the relation, since each audit carries its own report) |
 
 The whole list is printed by the test, so it is one command rather than a document to keep
 in step by hand.

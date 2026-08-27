@@ -999,11 +999,30 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "anlass", label: "Occasion", type: "enum", options: ["Scheduled", "On occasion"], column: false },
         { key: "eignung", label: "Suitability, adequacy and effectiveness", type: "textarea",
           help: "Whether the security you set out to achieve is actually being achieved. Keep it short: this is what the management reads. (PERF.4.1)" },
-        { key: "audit", label: "Audits it rests on", type: "multiref", refType: "audit", relation: "draws on", column: false },
+        { key: "audit", label: "Audits it rests on", type: "multiref", refType: "audit", relation: "draws on", column: false,
+          help: "The audits this review reads. Each carries its own report, so naming them here is what PERF.4.1.4 asks for - the deviations, the room for improvement and the corrections already made are in the audit, not restated here. (PERF.4.1.4)" },
         { key: "kommuniziert_an", label: "Results communicated to", type: "text", column: false,
           help: "Which stakeholders were told what the audit found. The requirement is to inform them, and an audit whose result stayed with the auditor changed nothing. (PERF.3.2.2)" },
         { key: "folgemassnahmen", label: "Status of what the last review decided", type: "textarea", column: false,
           help: "What became of the decisions from the last review - done, and did they work? (PERF.4.1.1)" },
+        // PERF.4.1.2 to .8, each of them "als Ergebnis der Überprüfung in einem
+        // Managementbericht dokumentieren". Seven questions, and they are seven: whether the
+        // conditions changed is not whether the measures still fit, and neither is whether
+        // the plan advanced. Merged into one box the report can no longer say which of them
+        // was answered, which is the whole point of a review. All sit in the detail rather
+        // than in the register's columns - the table stays a list of reviews.
+        { key: "rahmenbedingungen", label: "Changed conditions", type: "textarea", column: false,
+          help: "What changed around the ISMS since the last review and what it means for it - legal, organisational, technical or economic. A change that reaches the risk consideration or the requirement package belongs here. (PERF.4.1.2)" },
+        { key: "erfolge_probleme", label: "Successes and problems", type: "textarea", column: false,
+          help: "What worked and what did not, in the security process itself - measures that took effect, objectives reached, audits passed, and against them the incidents and what they cost. (PERF.4.1.3)" },
+        { key: "eignung_massnahmen", label: "Whether the measures still fit their objectives", type: "textarea", column: false,
+          help: "Each objective against the measures meant to reach it, and the evidence that they do - audit results, incident analyses, tests. Where they do not, say whether the measure is to be changed, added to or replaced. (PERF.4.1.5)" },
+        { key: "rueckmeldungen", label: "What stakeholders said", type: "textarea", column: false,
+          help: "Feedback on security from customers, business partners, staff or the public, and what was made of it. Surveys, complaints, support requests and public reviews all count; the requirement is the assessment, not the collecting. (PERF.4.1.6)" },
+        { key: "planstatus", label: "Status of the implementation plan", type: "textarea", column: false,
+          help: "How far the measures got and which risk that actually reduced. The plan's own progress is per requirement; this is the reading across it that the management sees. (PERF.4.1.7)" },
+        { key: "verbesserungen_bericht", label: "Improvements the review derived", type: "textarea", column: false,
+          help: "What was improved because of a review: whether it was carried out, how it entered the ISMS - documented, in the risk consideration, anchored in a procedure - and whether it had the intended effect. (PERF.4.1.8)" },
         { key: "entscheidungen", label: "Decisions and resources", type: "textarea", column: false },
         { key: "massnahmenvorschlaege", label: "Proposals, prioritised, with the effort they take", type: "textarea", column: false,
           help: "What the review proposes, in order, each with a realistic estimate of what carrying it out will cost. A proposal without an estimate is a wish the management cannot decide on. (PERF.4.1.9)" },

@@ -10,7 +10,7 @@ import type { CatalogTarget } from "../domain/catalog";
 import { refsFromProps } from "../domain/catalog";
 import { useStore } from "../domain/store";
 import { EntityModal } from "./EntityModal";
-import { Icon } from "./ui";
+import { Icon, countWhen } from "./ui";
 
 /** `preset` is merged into every record created here, and `onAdded` receives the new ids.
  *  Together they are what lets the picker be opened from somewhere that already knows
@@ -106,7 +106,7 @@ export function CatalogAdd({ tax, study, target, icon, title, preset, onAdded, o
             <footer className="modal-lg-foot">
               <button className="btn ghost" onClick={() => { setPick(false); setCustom(true); }}><Icon.plus /> Create custom…</button>
               <span className="hint" style={{ flex: 1, alignSelf: "center" }}>Import a framework file in <b>Documents</b>.</span>
-              <button className="btn primary" disabled={sel.size === 0} onClick={addSelected}>Add {sel.size ? sel.size + " " : ""}selected</button>
+              <button className="btn primary" disabled={sel.size === 0} onClick={addSelected}>Add {countWhen(sel.size > 0, sel.size)}selected</button>
             </footer>
           </div>
         </div>,

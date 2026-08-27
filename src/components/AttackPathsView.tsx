@@ -14,6 +14,13 @@ import { EntityModal } from "./EntityModal";
 
 const CHAIN_COLORS = ["var(--color-workshop-4)", "var(--chainB, #7d5bd0)", "var(--color-workshop-2)", "var(--color-workshop-1)", "var(--color-workshop-5)"];
 const NW = 190, NH = 104, HGAP = 72, VGAP = 38, PAD = 28;
+/** Above this many boxes in the tallest column the sheet stops being a diagram: the top of
+ *  a chain and its target are then screens apart, and there is no view of it as a whole.
+ *  Measured on a study grown to thirty chains - 91 boxes, a sheet 4278px tall - because the
+ *  height is linear in the tallest column and nothing bounded it. From here the boxes carry
+ *  their name and their state and give up the tactic and the technique, which the box still
+ *  holds and hands over on hover. Same thirty chains: 1994px. */
+const DENSE_ROWS = 9, NH_DENSE = 52, VGAP_DENSE = 14;
 
 interface Node { id: string; kind: "step" | "asset" | "biz"; chains: Set<string>; label: string; tactic?: string; tech?: string; mit?: boolean; rec?: EntityRecord; x: number; y: number; }
 interface Edge { from: string; to: string; kind: "intra" | "cross" | "asset"; }
@@ -137,13 +144,15 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
   if (bizNodes.length) cols.push(bizNodes);
   const hasZone = suppNodes.length + bizNodes.length > 0;
   const maxRows = Math.max(1, ...cols.map((c) => (c ? c.length : 0)));
+  const dense = maxRows > DENSE_ROWS;
+  const nh = dense ? NH_DENSE : NH, vg = dense ? VGAP_DENSE : VGAP;
   const W = PAD * 2 + cols.length * NW + (cols.length - 1) * HGAP;
-  const H = PAD * 2 + maxRows * NH + (maxRows - 1) * VGAP;
+  const H = PAD * 2 + maxRows * nh + (maxRows - 1) * vg;
   cols.forEach((c, di) => {
     if (!c) return;
-    const colH = c.length * NH + (c.length - 1) * VGAP;
+    const colH = c.length * nh + (c.length - 1) * vg;
     const y0 = PAD + (H - PAD * 2 - colH) / 2;
-    c.forEach((n, ri) => { n.x = PAD + di * (NW + HGAP); n.y = y0 + ri * (NH + VGAP); });
+    c.forEach((n, ri) => { n.x = PAD + di * (NW + HGAP); n.y = y0 + ri * (nh + vg); });
   });
   const zoneX = PAD + zoneCol * (NW + HGAP) - HGAP / 2; // left edge of the target-zone band
   // choke points: a *pass-through* asset that ≥2 visible chains converge on AND that
@@ -154,7 +163,9 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
   const chokeCount = vis.filter(choke).length;
 
   const toggle = (id: string) => setShown((h) => { const n = new Set(h); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const anchor = (id: string, side: "l" | "r") => { const n = nodes.get(id)!; return { x: side === "r" ? n.x + NW : n.x, y: n.y + NH / 2 }; };
+  // The edges are drawn from the same box height the boxes are drawn at. Reading NH here
+  // while the boxes had shrunk is how a line ends up meeting nothing.
+  const anchor = (id: string, side: "l" | "r") => { const n = nodes.get(id)!; return { x: side === "r" ? n.x + NW : n.x, y: n.y + nh / 2 }; };
 
   return (
     <div className="panel ws-accent ap-wrap" style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
@@ -212,7 +223,9 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
               const col = n.kind === "biz" ? "var(--color-workshop-1)" : n.kind === "asset" ? "var(--amber-bright, #dd9a33)" : chainColor.get([...n.chains][0]!);
               const cls = "ap-node " + n.kind + (choke(n) ? " choke" : "");
               return (
-                <div key={n.id} className={cls} title={n.kind === "step" ? "Open step" : "Open asset"}
+                <div key={n.id} className={cls + (dense ? " dense" : "")}
+                  title={(n.tactic ? n.tactic + " - " : "") + n.label + (n.tech ? ` (${n.tech})` : "")
+                    + (n.kind === "step" ? " - open step" : " - open asset")}
                   style={{ left: n.x, top: n.y, width: NW, ["--nc" as string]: col }}
                   onClick={() => n.rec && setOpenRec(n.rec)}>
                   {n.kind === "step" && <span className={"ap-dot " + (n.mit ? "ok" : "gap")} />}
@@ -225,6 +238,13 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
             })}
             {hasZone && <div className="ap-zone-label" style={{ left: zoneX + 10, top: 3 }}>Target assets</div>}
           </div>
+          {/* A drawing that changed to fit says so. Without this the tactic and the
+              technique simply stop being there, and a reader has no way to tell a step
+              with no tactic recorded from one whose tactic the sheet gave up. */}
+          {dense && (
+            <div className="ap-dense-note">{maxRows} boxes side by side at one depth: they carry
+              name and state only, tactic and technique on hover. Show fewer scenarios for the full box.</div>
+          )}
         </div>
       </div>
       )}

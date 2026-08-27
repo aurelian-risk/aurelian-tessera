@@ -11,7 +11,7 @@ import { getDocText, viewTextTransient } from "../domain/documents";
 import { extractByEmbeddings, type TypeCandidates, type Candidate } from "../domain/extraction";
 import { LLM, gen, genNow } from "../domain/gen";
 import { isLoaded } from "../domain/embeddings";
-import { Icon } from "./ui";
+import { Icon, countWhen } from "./ui";
 
 export function ExtractionDialog({ onClose, initialName, docId }: { onClose: () => void; initialName?: string; docId?: string }) {
   const tax = useStore((s) => s.taxonomy);
@@ -286,7 +286,7 @@ export function ExtractionDialog({ onClose, initialName, docId }: { onClose: () 
           <span className="hint">{sel.size} selected</span>
           <span style={{ flex: 1 }} />
           <button className="btn ghost" onClick={onClose}>Cancel</button>
-          <button className="btn primary" disabled={!active || sel.size === 0} onClick={addSelected}>Add {sel.size} to study</button>
+          <button className="btn primary" disabled={!active || sel.size === 0} onClick={addSelected}>Add {countWhen(!!active && sel.size > 0, sel.size)}to study</button>
         </footer>
       </div>
     </div>,

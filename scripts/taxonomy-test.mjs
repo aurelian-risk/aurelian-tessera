@@ -16,7 +16,8 @@ import { pathToFileURL } from "node:url";
 
 const MOD = process.env.MOD;
 if (!MOD) { console.error("set MOD=<bundled taxonomy.mjs>"); process.exit(2); }
-const { DEFAULT_TAXONOMY, TAXONOMY_SCHEMA_VERSION, reconcileTaxonomy } = await import(pathToFileURL(MOD).href);
+const { DEFAULT_TAXONOMY, TAXONOMY_SCHEMA_VERSION, reconcileTaxonomy, isSetBack, setBackBlocked }
+  = await import(pathToFileURL(MOD).href);
 
 let pass = 0, fail = 0;
 const ok = (name, cond) => { cond ? (pass++, console.log("✓", name)) : (fail++, console.log("✗", name)); };
@@ -110,6 +111,69 @@ ok("...but a source the user set is not overwritten",
   fld(reconcileTaxonomy(ownSource)).vocabulary === "meine_quelle");
 if (hadVocabulary === undefined) delete defField.vocabulary; else defField.vocabulary = hadVocabulary;
 ok("the default is left as this check found it", defField.vocabulary === hadVocabulary);
+
+// ── set back, and what overrules it ──────────────────────────────────────────
+//
+// Two functions read dimWhen.lockedWhile and they have to read it the same way. The
+// refusal guards one control; the reading is what every register, chart and export asks.
+// A relation made from the other end - an editor that fills the field without going near
+// the switch - reaches a state the refusal was written to prevent, and before this the two
+// disagreed about it: the coverage matrix left the record out while the chain counted it.
+//
+// Synthetic on purpose. lockedWhile is a declaration a product may or may not make, so a
+// test that reached into the active default would assert nothing in a product that
+// declares none.
+{
+  const TAX = {
+    entityTypes: [{
+      key: "control", label: "Control", labelPlural: "Controls", fields: [
+        { key: "name", label: "Name", type: "text" },
+        { key: "scope", label: "Scope", type: "enum", options: ["not in use", "in use"] },
+        { key: "covers", label: "Covers", type: "multiref", refType: "step", relation: "covers" },
+        { key: "owner", label: "Owner", type: "text" },
+      ],
+    }, {
+      key: "step", label: "Step", labelPlural: "Steps",
+      fields: [{ key: "name", label: "Name", type: "text" }],
+    }],
+    dimWhen: [{ type: "control", field: "scope", values: ["not in use", ""], lockedWhile: ["covers"] }],
+  };
+  const step = { id: "s1", type: "step", values: { name: "Gain a foothold" } };
+  const rec = (values) => ({ id: "c1", type: "control", values });
+  const study = { entities: [step] };
+
+  ok("a control left at the dormant value is set back",
+    isSetBack(TAX, rec({ scope: "not in use", covers: [] })));
+  ok("...and one with no value at all is too, because empty is declared dormant",
+    isSetBack(TAX, rec({})));
+  ok("...while one switched on is not", !isSetBack(TAX, rec({ scope: "in use" })));
+
+  const held = rec({ scope: "not in use", covers: ["s1"] });
+  ok("a control that covers a step is in play whatever the switch says", !isSetBack(TAX, held));
+  ok("...and the switch is refused, so the two agree", !!setBackBlocked(TAX, study, held));
+  ok("...with the refusal naming what holds it, not counting it",
+    /Gain a foothold/.test(setBackBlocked(TAX, study, held) ?? ""));
+  ok("a control held only by an unsaved reference is still in play",
+    !isSetBack(TAX, rec({ scope: "not in use", covers: ["gone"] })));
+
+  // The empty forms of a multiref are the ones that used to slip through as "held".
+  ok("an empty list does not hold anything", isSetBack(TAX, rec({ scope: "not in use", covers: [] })));
+  ok("...nor a list of empty strings", isSetBack(TAX, rec({ scope: "not in use", covers: ["", ""] })));
+  ok("...nor an empty string in a single field",
+    isSetBack(TAX, rec({ scope: "not in use", covers: "" })));
+
+  // Only the named field overrules. Anything else on the record is just data.
+  ok("a field lockedWhile does not name leaves the record set back",
+    isSetBack(TAX, rec({ scope: "not in use", owner: "Security office" })));
+  ok("...and nothing holds a record whose lockedWhile field is empty",
+    !setBackBlocked(TAX, study, rec({ scope: "not in use", covers: [] })));
+
+  // A type the taxonomy says nothing about is never dormant, which is what keeps every
+  // has()-guarded reader working in a product that declares no switch at all.
+  ok("an undeclared type is never set back", !isSetBack(TAX, { id: "x", type: "step", values: {} }));
+  ok("...and a taxonomy with no dimWhen at all sets nothing back",
+    !isSetBack({ entityTypes: TAX.entityTypes }, rec({ scope: "not in use" })));
+}
 
 console.log(`\n${pass}/${pass + fail} taxonomy-migration assertions passed · ${fail} failed`);
 process.exit(fail ? 1 : 0);
