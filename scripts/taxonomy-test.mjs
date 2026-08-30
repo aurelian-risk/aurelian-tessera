@@ -16,7 +16,7 @@ import { pathToFileURL } from "node:url";
 
 const MOD = process.env.MOD;
 if (!MOD) { console.error("set MOD=<bundled taxonomy.mjs>"); process.exit(2); }
-const { DEFAULT_TAXONOMY, TAXONOMY_SCHEMA_VERSION, reconcileTaxonomy, isSetBack, setBackBlocked }
+const { DEFAULT_TAXONOMY, TAXONOMY_SCHEMA_VERSION, reconcileTaxonomy, isSetBack, setBackBlocked, toggleStates, emptyValues }
   = await import(pathToFileURL(MOD).href);
 
 let pass = 0, fail = 0;
@@ -173,6 +173,70 @@ ok("the default is left as this check found it", defField.vocabulary === hadVoca
   ok("an undeclared type is never set back", !isSetBack(TAX, { id: "x", type: "step", values: {} }));
   ok("...and a taxonomy with no dimWhen at all sets nothing back",
     !isSetBack({ entityTypes: TAX.entityTypes }, rec({ scope: "not in use" })));
+}
+
+// ── a self-reference is not a dependency ─────────────────────────────────────
+//
+// cascadeDelete follows a REQUIRED single reference: a record that cannot stand without the
+// one being deleted goes with it. Pointed at a relation a type has to ITSELF, that reading
+// is wrong - such a relation describes the type's internal structure, an order or a
+// hierarchy, not what a record is for. Aurelian Lite measured the cost when they built a
+// hull the same way: one record asked for, six taken, because a kill-chain step points at
+// the step before it.
+//
+// It does not bite here: the one self-reference in this taxonomy is a multiref, which the
+// cascade CLEARS rather than follows. This says so out loud, so that declaring a required
+// single one is a decision about what deleting should do rather than a silent change to it.
+{
+  // ONE function, asked twice. Written out a second time against a planted taxonomy it would
+  // prove that the IDEA catches such a declaration - not that the check above does, which is
+  // the whole question. Aurelian Lite had a copy here for the same reason and named it; this
+  // is their form.
+  const selfRefs = (tax) => tax.entityTypes.flatMap((t) =>
+    t.fields.filter((f) => f.type === "ref" && f.refType === t.key && f.required)
+      .map((f) => `${t.key}.${f.key}`));
+
+  const offenders = selfRefs(DEFAULT_TAXONOMY);
+  ok("no type declares a required reference to itself, which delete would follow as a dependency",
+    offenders.length === 0);
+  if (offenders.length) console.log(`    ${offenders.join(", ")} - decide what cascadeDelete should do with it first`);
+
+  // ...and the same call against a taxonomy that DOES declare one. Nothing here declares the
+  // shape, so the line above can only ever be green, and a green line proves either that the
+  // taxonomy is clean or that the check looks at nothing - indistinguishable from outside.
+  // Comes back empty and the first one is blind rather than satisfied.
+  const planted = { entityTypes: [...DEFAULT_TAXONOMY.entityTypes, {
+    key: "clause", label: "Clause", labelPlural: "Clauses", fields: [
+      { key: "name", label: "Name", type: "text" },
+      { key: "parent", label: "Part of", type: "ref", refType: "clause", required: true },
+    ],
+  }] };
+  const caught = selfRefs(planted);
+  ok("...and the same call finds one where a taxonomy declares it",
+    caught.length === 1 && caught[0] === "clause.parent", caught.join(", ") || "found nothing");
+}
+
+// ── a new record starts inside the perimeter ────────────────────────────────
+// The switch reads its FIRST option as "taken out", and emptyValues gave every enum its
+// first option - so a record was created outside the analysis, seen by no count and
+// announced by nothing. The check is written against the taxonomy's own switch rather than
+// the literal string, so it holds for a profile that words the two states differently.
+{
+  const withSwitch = DEFAULT_TAXONOMY.entityTypes.filter((t) => toggleStates(t));
+  ok("the sample taxonomy has types with a scope switch", withSwitch.length > 0, `${withSwitch.length} of ${DEFAULT_TAXONOMY.entityTypes.length}`);
+  const wrong = withSwitch.filter((t) => {
+    const st = toggleStates(t);
+    return emptyValues(t)[st.field.key] !== st.on;
+  });
+  ok("a new record starts in the perimeter, not out of it",
+    wrong.length === 0, wrong.map((t) => `${t.key}: ${emptyValues(t)[toggleStates(t).field.key]}`).join(", "));
+  // ...and the check would notice: an ordinary enum still takes its first option.
+  const plain = DEFAULT_TAXONOMY.entityTypes.flatMap((t) => (t.fields || [])
+    .filter((f) => f.type === "enum" && !f.toggle && f.options?.length)
+    .map((f) => [t, f]));
+  ok("...while an ordinary enum keeps its first option",
+    plain.length > 0 && plain.every(([t, f]) => emptyValues(t)[f.key] === f.options[0]),
+    `${plain.length} plain enum field(s)`);
 }
 
 console.log(`\n${pass}/${pass + fail} taxonomy-migration assertions passed · ${fail} failed`);

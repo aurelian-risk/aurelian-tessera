@@ -347,6 +347,12 @@ select { cursor: pointer; }
 .ap-node.dense { height: 52px; padding: 5px 10px; border-radius: 8px; }
 .ap-node.dense .ap-tac, .ap-node.dense .ap-tt { display: none; }
 .ap-node.dense .ap-nm { -webkit-line-clamp: 2; }
+/* The relations a scope change would touch. Compact, because the list is the argument and
+   a reader is comparing it against their own study, not reading prose. */
+.scope-list { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.7; }
+.scope-list li { color: var(--fg-muted); }
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
 .ap-dense-note { margin-top: 10px; font-size: 12px; color: var(--fg-muted); max-width: 720px; }
 .ap-node.choke { box-shadow: 0 0 0 2px var(--color-workshop-1, #dd9a33), 0 0 0 6px color-mix(in oklch, var(--color-workshop-1, #dd9a33) 20%, transparent); }
 .ap-dot { position: absolute; top: 8px; right: 9px; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 3px var(--bg-raised); }
@@ -629,7 +635,10 @@ select { cursor: pointer; }
 .flow-layout { display: flex; gap: 16px; align-items: flex-start; }
 .graph-main, .flow-main { flex: 1; min-width: 0; }
 .flow-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.flow-scroll { overflow: auto; max-height: calc(100vh - 210px); }
+.flow-scroll { overflow: auto; max-height: calc(100vh - 210px); cursor: grab; overscroll-behavior: contain; }
+.flow-scroll.panning { cursor: grabbing; user-select: none; }
+/* A card keeps the pointer it is meant to receive; only the ground is draggable. */
+.flow-scroll [data-nk], .flow-scroll .lane-header { cursor: default; }
 .flow-lanes { position: relative; display: flex; gap: 10px; padding-bottom: 16px; min-height: 460px; }
 .ribbons { position: absolute; inset: 0; z-index: 10; pointer-events: none; overflow: visible; width: 100%; height: 100%; }
 .flow-side { flex: none; width: 330px; position: sticky; top: 84px; align-self: flex-start; }
@@ -660,7 +669,15 @@ select { cursor: pointer; }
 .lane-add:hover { background: var(--bg-hover); color: var(--fg); }
 /* No overflow/height cap: cards must be able to fly out of their column during
  * the FLIP flight without being clipped or hidden behind neighbouring lanes. */
-.lane-body { display: flex; flex-direction: column; gap: 6px; padding: 8px 3px 4px; }
+/* THE COLUMN BEGINS BELOW THE MASK, not eight pixels below the heading.
+   The header row is 34px and the mask over it is opaque to 44 and fades out at 60, so a body
+   that starts at 42 puts its first row INSIDE the fade before anything has been scrolled -
+   measured at rest, 24 boxes in this study and 12 in Aurelian Lite's, which is where this
+   engine comes from. The top row read as already sliding away under the heading.
+   The clearance is reserved in the layout, so it holds without anything having to correct
+   it afterwards; scrolling still carries rows under the headings, which is what a sticky
+   heading is for. Measured after: the first row at 68px, gap 34, nothing inside the fade. */
+.lane-body { display: flex; flex-direction: column; gap: 6px; padding: 34px 3px 4px; }
 .lane-empty { color: var(--fg-subtle); font-size: 11px; text-align: center; padding: 12px 0; }
 
 .flow-node { position: relative; display: block; width: 100%; text-align: left; border: 1.5px solid var(--border);
@@ -668,8 +685,18 @@ select { cursor: pointer; }
 .flow-node.z0 { z-index: 0; }
 .flow-node.z30 { z-index: 30; }
 /* ── ef-* copied 1:1 from the parent app's globals.css ──────────────── */
-.ef-card { transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease, filter 0.4s ease,
+/* THE FLIGHT ONLY RUNS AT 1:1. The cards are moved with `transform` inside a container
+   scaled by CSS `zoom`, and away from 100% the two do not agree: the cards were carried far
+   past their place and snapped back when the move ended - threefold at 0.35, and exactly
+   right at 1.0, which is how it was reported. The ribbons looked correct throughout because
+   they are drawn from getBoundingClientRect, which reports where the card BELONGS rather
+   than where it is being shown; measuring that value is why this took so long to find.
+   Zoomed, the cards simply take their place. The animation is worth having, but not at the
+   price of the arrangement appearing to be thrown about. */
+.ef-card { transition: opacity 0.4s ease, filter 0.4s ease,
   box-shadow 0.4s ease, border-color 0.4s ease, background 0.4s ease; will-change: transform, translate, box-shadow; }
+.flow-lanes.ef-fly .ef-card { transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease,
+  filter 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease, background 0.4s ease; }
 .ef-orphan { opacity: 0.22; filter: grayscale(0.85); }
 .ef-dimmed { opacity: 0.12; filter: grayscale(0.6); }
 .ef-pop { box-shadow: 0 16px 34px -8px rgba(0, 0, 0, 0.62), 0 5px 12px rgba(0, 0, 0, 0.42); }
@@ -1742,3 +1769,32 @@ button.tx-row:hover { background: var(--bg-hover, rgba(127,127,127,0.07)); }
 /* A switch that would contradict something else in the study is refused, and says why. */
 .cell-toggle.locked { cursor: not-allowed; opacity: 0.72; }
 .cell-toggle.locked:hover { border-color: var(--border); }
+
+/* The two dialogs that say what a change would take with it. Each entry is a box carrying
+   the record, its type and the field it hangs on - a sentence would say the same and be
+   read less carefully. From Aurelian Lite, with the traversal they read. */
+.dep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.dep { display: flex; flex-direction: column; gap: 2px; padding: 8px 11px; border-radius: 9px;
+  border: 1px solid var(--border); background: var(--bg-hover); }
+.dep b { font-size: 12.5px; font-weight: 600; color: var(--fg); line-height: 1.35; }
+.dep span { font-size: 11px; color: var(--fg-muted); }
+.dep.block { border-color: color-mix(in oklch, var(--color-state-warning) 55%, var(--border));
+  background: color-mix(in oklch, var(--color-state-warning) 12%, transparent); }
+.dep.carry { border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+  background: color-mix(in oklch, var(--primary) 10%, transparent); }
+.dep.weak { border-style: dashed; }
+.dep.more { align-items: center; justify-content: center; color: var(--fg-subtle); font-size: 12px; }
+.btn.warn:hover { color: var(--fg); border-color: color-mix(in oklch, var(--color-state-warning) 50%, transparent); background: color-mix(in oklch, var(--color-state-warning) 10%, transparent); }
+.scope-dlg { height: auto; max-height: 88vh; }
+.scope-dlg .modal-lg-body { padding-top: 14px; flex: 0 1 auto; }
+.scope-name { font-weight: 700; color: var(--fg); }
+.scope-lead { margin: 0 0 14px; font-size: 13.5px; color: var(--fg-muted); }
+.scope-lead.warn { color: var(--color-state-warning); font-weight: 600; }
+.scope-h { margin: 16px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--fg-subtle); font-weight: 600; }
+
+.chip.gone, .tbl .chip.gone {
+  color: var(--color-state-error);
+  background: color-mix(in oklch, var(--color-state-error) 16%, transparent);
+  border-color: color-mix(in oklch, var(--color-state-error) 45%, transparent);
+  text-decoration: line-through; text-decoration-thickness: 1px; }

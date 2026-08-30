@@ -118,6 +118,17 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
   // is set back rather than hidden - a register you cannot see cannot be extended.
   dimWhen: [
     { type: "requirement", field: "scope", values: ["out of scope", ""] },
+    // The analysis objects, one rule for all of them, mirroring the parent: a record can
+    // leave the perimeter and keep its judgement. An empty value is not "out" here - these
+    // are in the study because something put them there, so silence means in scope.
+    { type: "business_asset", field: "scope", values: ["out of scope"] },
+    { type: "supporting_asset", field: "scope", values: ["out of scope"] },
+    { type: "feared_event", field: "scope", values: ["out of scope"] },
+    { type: "risk_origin", field: "scope", values: ["out of scope"] },
+    { type: "strategic_scenario", field: "scope", values: ["out of scope"] },
+    { type: "operational_scenario", field: "scope", values: ["out of scope"] },
+    { type: "kill_chain_step", field: "scope", values: ["out of scope"] },
+    { type: "risk_treatment", field: "scope", values: ["out of scope"] },
     // A procedure the institution owes and has not written is present and dimmed, not
     // absent: recording what is still owed is the point of the register. A fresh record
     // carries no status yet, so empty reads the same way.
@@ -580,6 +591,8 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         // why it was chosen is what an auditor asks for first.
         { key: "begruendung", label: "Rationale for the category", type: "textarea",
           help: "Why this class and not another. Whoever checks the package reads this to see whether the choice holds. (Leitfaden 3.4.2)" },
+        { key: "scope", label: "In scope", type: "enum", options: ["out of scope", "in scope"], toggle: true,
+          help: "Whether this record is part of the perimeter under analysis. Out of scope keeps the record and its judgement, and takes it out of every count, chart and figure." },
       ],
     },
     {
@@ -590,6 +603,8 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "business_asset", label: "Affects", type: "ref", refType: "business_asset", relation: "affects" },
         { key: "impact", label: "Security objective", type: "enum", options: ["Confidentiality", "Integrity", "Availability", "Authenticity"] },
         { key: "severity", label: "Severity", type: "scale", scaleLabels: GRAVITY },
+        { key: "scope", label: "In scope", type: "enum", options: ["out of scope", "in scope"], toggle: true,
+          help: "Whether this record is part of the perimeter under analysis. Out of scope keeps the record and its judgement, and takes it out of every count, chart and figure." },
       ],
     },
     {
@@ -727,6 +742,8 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "parameter_values", label: "Parameters as set", type: "textarea", column: false,
           help: "What this institution set, and by whose decision. A requirement whose parameters are unset is not yet a requirement of this institution." },
         { key: "relevance", label: "Relevance", type: "scale", scaleLabels: SCALE },
+        { key: "scope", label: "In scope", type: "enum", options: ["out of scope", "in scope"], toggle: true,
+          help: "Whether this record is part of the perimeter under analysis. Out of scope keeps the record and its judgement, and takes it out of every count, chart and figure." },
       ],
     },
     {
@@ -739,6 +756,8 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "threats", label: "Elementary threats", type: "text" , column: false },
         { key: "likelihood", label: "Likelihood", type: "scale", scaleLabels: LIKELIHOOD },
         { key: "gravity", label: "Impact", type: "scale", scaleLabels: GRAVITY },
+        { key: "scope", label: "In scope", type: "enum", options: ["out of scope", "in scope"], toggle: true,
+          help: "Whether this record is part of the perimeter under analysis. Out of scope keeps the record and its judgement, and takes it out of every count, chart and figure." },
       ],
     },
     {
@@ -746,9 +765,19 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       fields: [
         { key: "name", label: "Name", type: "text", required: true },
         { key: "description", label: "Description", type: "textarea" },
+        // NOT required, and that is a decision rather than an omission. A required single
+        // reference makes the engine treat the record as a fragment without its target:
+        // deleting the threat scenario would delete this one and its steps, and taking the
+        // threat scenario out of scope would take them with it. Aurelian Lite declares it
+        // required and gets that cascade; this method does not, because an attack scenario
+        // is written down as something observed and keeps standing when the threat scenario
+        // above it is revised or withdrawn. Deleting therefore empties this field and says
+        // so, rather than removing the record - see the delete dialog.
         { key: "strategic_scenario", label: "Threat scenario", type: "ref", refType: "strategic_scenario", relation: "realises" },
         { key: "likelihood", label: "Likelihood", type: "scale", scaleLabels: LIKELIHOOD },
         { key: "difficulty", label: "Skill required", type: "scale", scaleLabels: SCALE },
+        { key: "scope", label: "In scope", type: "enum", options: ["out of scope", "in scope"], toggle: true,
+          help: "Whether this record is part of the perimeter under analysis. Out of scope keeps the record and its judgement, and takes it out of every count, chart and figure." },
       ],
     },
     {
@@ -756,12 +785,16 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
       fields: [
         { key: "name", label: "Name", type: "text", required: true },
         { key: "description", label: "Description", type: "textarea" },
+        // Not required either, for the same reason and with the same consequence: a step
+        // outlives the scenario it was written under. See the note on strategic_scenario.
         { key: "operational_scenario", label: "Attack scenario", type: "ref", refType: "operational_scenario", relation: "belongs to" , column: false },
         { key: "step_order", label: "Step", type: "number" },
         { key: "tactic", label: "Tactic", type: "enum", options: TACTICS },
         { key: "technique", label: "Technique", type: "text" , column: false },
         { key: "targets_asset", label: "Asset attacked", type: "ref", refType: "supporting_asset", relation: "attacks" },
         { key: "predecessors", label: "Preceded by", type: "multiref", refType: "kill_chain_step", relation: "requires" , column: false },
+        { key: "scope", label: "In scope", type: "enum", options: ["out of scope", "in scope"], toggle: true,
+          help: "Whether this record is part of the perimeter under analysis. Out of scope keeps the record and its judgement, and takes it out of every count, chart and figure." },
       ],
     },
 
@@ -777,6 +810,8 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "deadline", label: "Due", type: "text" , column: false },
         { key: "status", label: "Status", type: "enum", options: TREAT_STATUS },
         { key: "justification", label: "Rationale", type: "textarea", help: "You do not list measures here. A measure acts on an attack step, and the residual risk follows from that." },
+        { key: "scope", label: "In scope", type: "enum", options: ["out of scope", "in scope"], toggle: true,
+          help: "Whether this record is part of the perimeter under analysis. Out of scope keeps the record and its judgement, and takes it out of every count, chart and figure." },
       ],
     },
 

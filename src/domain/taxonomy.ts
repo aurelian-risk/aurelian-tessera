@@ -49,7 +49,14 @@ export function emptyValues(t: EntityTypeDef): Record<string, FieldValue> {
       case "boolean": v[f.key] = false; break;
       case "multiref": v[f.key] = []; break;
       case "ref": v[f.key] = null; break;
-      case "enum": v[f.key] = f.options?.[0] ?? ""; break;
+      // A NEW RECORD IS IN THE PERIMETER. For an ordinary enum the first option is a fair
+      // default, but a two-state switch reads its FIRST option as "taken out" - so this
+      // created every record outside the analysis, where no count, chart or figure would
+      // ever see it, and nothing said so. The switch defaults to its second state; every
+      // other enum keeps the first.
+      case "enum":
+        v[f.key] = (f.toggle && f.options?.length === 2 ? f.options[1] : f.options?.[0]) ?? "";
+        break;
       default: v[f.key] = "";
     }
   }
@@ -195,4 +202,18 @@ export function inPlayField(tax: Taxonomy, typeKey: string): { field: FieldDef; 
   const field = t?.fields.find((f) => f.key === d.field);
   const on = field?.options?.[1];
   return field && on ? { field, on } : null;
+}
+
+/** The two-state field a type is switched by, if it declares one. */
+export function toggleField(t: EntityTypeDef): FieldDef | undefined {
+  return t.fields.find((f) => f.toggle && f.type === "enum" && f.options?.length === 2);
+}
+
+/** A type's switch and the two values it stands on: `off` is the first option, `on` the
+ *  second, as the toggle contract says. Null for a type without a switch, so a caller can
+ *  spread the result and stay generic. */
+export function toggleStates(t: EntityTypeDef): { field: FieldDef; on: string; off: string } | null {
+  const f = toggleField(t);
+  const [off, on] = f?.options ?? [];
+  return f && on && off ? { field: f, on, off } : null;
 }

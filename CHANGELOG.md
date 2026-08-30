@@ -6,6 +6,58 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.6.3] - 2026-08-30
+
+### Added
+
+- **A record can leave the perimeter without being deleted.** Mid-analysis a scenario turns
+  out not to apply, or assets leave the scope. The judgement about them is part of the
+  record, so they are set aside rather than removed: still there, out of every count, chart
+  and figure. The switch says first what that costs - what cannot stand without the record
+  and goes with it, what still points at it and refuses, what merely loses one reason of
+  several. Measured on the example study: **34 of 1101 records raise a question, 19 refuse**.
+  A refusal is a judgement about the perimeter, not an impossibility, so it can be
+  overruled - and then what stood in the way goes too, and whatever stands in *its* way
+  after that.
+- **Deleting asks first, and says what the survivors lose.** It used to happen without a
+  word. On the example study **309 of 1101 deletions affect something else**: four take
+  another record with them, 308 empty a reference somewhere. Those records now carry a red
+  mark where the link was, read back out of the change log, instead of reading as though
+  they had never pointed anywhere.
+
+### Changed
+
+- **The flow chart can be pulled back from and dragged.** The sheet is far larger than the
+  window it sits in - measured on the example study, **4838 x 62861px against 1256 x 790**.
+  The wheel zooms, dragging the ground pans, and the view travels to the card that was
+  clicked instead of the card being moved to the view. Every ribbon end stays on its card
+  throughout a zoom, within a pixel over fifty frames.
+- **The registers of a workshop stand on one grid.** Their columns were each a share of that
+  table's own preferred width, so the five registers of the first workshop put their edges
+  at 461/640/864, at 373/556/747 and at 678/942 - nothing lined up with anything. Every
+  value column is a whole number of units of the table now and is laid from the right, so
+  the switches and badges that end each register stand in the same place. It holds at every
+  window width: with a floor per register, the widest stepped out below 1440px.
+- **The first row of a lane begins below the heading, not behind it.** The mask over the
+  header row fades out at 60px and the lane body started at 42, so the top card of every
+  lane sat inside the fade before anything had been scrolled - 24 of them.
+- **Text that could not be read.** Measured at the rendered pixel across three views: 53 of
+  231 runs below the 4.5:1 that body text needs, worst 1.73:1. Now 0.
+
+### Fixed
+
+- **A measure on an attack step counts as in use everywhere, or nowhere.** The coverage
+  matrix and the framework radar left it out while the chain counted it.
+- **Cards flew to where the view had been, not where it would be.** Selecting flies the
+  neighbours over 0.55s while the panel below grows over 0.32s, shrinking the view they are
+  aimed at: every card took eleven corrections spread over 155px. Now two, over 4px.
+- **A dialog opened inside a long register was drawn far off screen** - at y=49265 in a
+  window 900px high. `position: fixed` does not mean the window when an ancestor carries a
+  filter.
+- **A new record started outside the perimeter**, seen by no count, and nothing said so.
+- **A button that refuses carries no count.** "Add 0 to study" stated an action that was not
+  on offer.
+
 ## [0.6.2] - 2026-08-27
 
 ### Fixed

@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldType, FieldValue, Study, Taxonomy } from "../domain/types";
-import { columnFields, getType, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, setBackBlocked, titleField } from "../domain/taxonomy";
+import { columnFields, getType, isSetBack, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, setBackBlocked, titleField } from "../domain/taxonomy";
 import { foldScope, getFolds, setFolds } from "../domain/viewstate";
+import { scopeChange, deleteChange } from "../domain/scope";
 import { TOOLBAR_MIN_ROWS } from "../domain/tablefilter";
 import { TableTools, refTypeLabel, useNameOf, useTableFilter } from "./TableTools";
 import { useStore } from "../domain/store";
 import { ChangeHistoryModal, IntegrityBadge } from "./ChangeHistoryModal";
-import { entryOf } from "../domain/audit";
+import { deletedRefs, entryOf } from "../domain/audit";
 import { EntityModal } from "./EntityModal";
-import { Icon, ScaleBadge, ScaleBars } from "./ui";
+import { Icon, Overlay, ScaleBadge, ScaleBars, useDismissOnEscape } from "./ui";
 
 const clip = (s: string, n = 90) => (s.length > n ? s.slice(0, n) + "…" : s);
 
@@ -28,29 +29,84 @@ const BACKREF_PREVIEW = 12;
 // rather than a second guess at the same question - what each field type wants to show one
 // value on one line, chips truncated. Taking their figures is the point: two answers to one
 // question is how a shared engine drifts apart while it still looks merged.
-const COL_WIDTH: Record<FieldType, number> = {
-  number: 80,
-  boolean: 96,
-  enum: 124,
-  scale: 148,      // bars plus the longest scale label
-  text: 156,
-  textarea: 156,   // never a column today (columnFields drops it), sized for completeness
-  ref: 156,        // one chip
-  multiref: 164,   // two chips and a "+n", each chip clipped to a readable stub
-};
+/* The pixel widths that used to sit here (number 80, enum 124, scale 148, text 156,
+   multiref 164) are what the unit counts below are rounded from: they were right about the
+   RATIOS and wrong to be pixels, which is what gave every table a grid of its own. */
 /** Floor for the name column, and the only thing the table's min-width adds to the sum of
  *  its value columns. Nothing is reserved for a trailing spacer: there is none any more. */
 const NAME_MIN = 320;
-const tableMinWidth = (cols: FieldDef[]) =>
-  NAME_MIN + cols.reduce((w, c) => w + COL_WIDTH[c.type], 0);
-/** A column's width as its share of the table it sits in. */
-const pct = (w: number, cols: FieldDef[]) => `${((w / tableMinWidth(cols)) * 100).toFixed(3)}%`;
 
-function FieldValueView({ field, value, tax, study, onOpen, onToggle, toggleBlocked }:
-  { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study; onOpen?: (id: string) => void;
+/** ONE GRID FOR EVERY REGISTER IN A WORKSHOP.
+ *
+ *  A width in pixels, or a share of the table's OWN preferred width, gives each table a
+ *  grid of its own: on the first workshop the five registers put their column edges at
+ *  461/640/864, at 373/556/747 and at 678/942, and nothing lines up with anything. The
+ *  tables are all the same width, so the fix is to measure the columns in the same unit for
+ *  all of them - a percentage of the table rather than of what that table happens to hold.
+ *
+ *  Every value column is a whole number of units and is laid from the RIGHT, so every
+ *  boundary in every register falls on the same ladder, and two registers ending in the
+ *  same kind of column - the in-force and established switches, say - put those switches
+ *  in the same place. The name column takes what is left, which is why it is the one that
+ *  differs: it is the remainder, not a measurement.
+ *
+ *  The unit is set by the worst case rather than by taste. The widest register here carries
+ *  five value columns worth 19 units; at 4% that leaves 24% of the table, 301px, for the
+ *  name - about the floor at which a requirement title is still worth reading. */
+const UNIT = 4;
+const COL_UNITS: Record<FieldType, number> = {
+  number: 2, boolean: 2,          // a figure or a tick
+  enum: 3, scale: 3,              // a badge, or bars and their label
+  text: 4, textarea: 4, ref: 4, multiref: 4,   // words, a chip, or chips and a "+n"
+};
+const gridUnits = (cols: FieldDef[]) => cols.reduce((u, c) => u + COL_UNITS[c.type], 0);
+/** A value column: whole units of the table. */
+const pctOf = (c: FieldDef) => `${(COL_UNITS[c.type] * UNIT).toFixed(3)}%`;
+/** The name column: whatever the value columns leave, so their edges stay on the ladder.
+ *  Where a register carries so many columns that nothing sensible is left, it keeps a floor
+ *  and the table overflows its panel instead - the min-width above already says so. */
+const pctName = (cols: FieldDef[]) => `${Math.max(18, 100 - gridUnits(cols) * UNIT).toFixed(3)}%`;
+/** The floor, measured on the same ladder rather than as a second opinion in pixels.
+ *
+ *  A register that reaches ITS floor while the others still have room leaves the shared
+ *  grid, and that is what breaks the alignment on a narrow window: measured across the five
+ *  registers of the first workshop, they are identical at 1600 and 1440, one steps out at
+ *  1280, and three different widths at 1150. Deriving the floor from the units keeps the
+ *  order of that sensible - a register with more columns needs more room, and by how much
+ *  is now the same arithmetic as the columns themselves. */
+const UNIT_MIN = 40;
+/** ...and it is the WORKSHOP's floor, not this register's.
+ *
+ *  A floor per register is why the alignment held at 1600 and 1440 and fell apart below:
+ *  the widest register reached its own floor while the others still had room, stepped out
+ *  of the shared width, and from there its columns were on a ladder of a different size.
+ *  Measured at 1150: five registers at 820, 806, 1060, 860 and 860.
+ *
+ *  The floor is therefore the widest register of the same group - the same workshop the
+ *  reader is looking at - so they all reach it together and none leaves the others behind.
+ *  The cost is that a register of three columns keeps the width of one with six and scrolls
+ *  where it would have fitted; that is the trade, and it is taken because the columns
+ *  standing under each other is what the whole grid is for. */
+const groupFloor = (tax: Taxonomy, group: string | undefined) => {
+  const peers = tax.entityTypes.filter((t) => (t.group ?? "") === (group ?? ""));
+  const units = peers.length ? Math.max(...peers.map((t) => gridUnits(columnFields(t)))) : 0;
+  return NAME_MIN - 20 + units * UNIT_MIN;
+};
+
+function FieldValueView({ field, value, tax, study, recordId, onOpen, onToggle, toggleBlocked }:
+  { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study; recordId?: string;
+    onOpen?: (id: string) => void;
     onToggle?: (field: FieldDef, next: string) => void;
     /** Why the switch may not be flipped right now, if it may not - see setBackBlocked. */
     toggleBlocked?: string | null }) {
+  // A reference whose target was deleted leaves a hole: the field is emptied and the record
+  // reads as if it never pointed anywhere. The log still knows what stood there, so the gap
+  // is shown rather than left silent - in the colour of something that is gone, not of
+  // something merely quiet.
+  const lost = recordId ? (deletedRefs(study.log, recordId).get(field.key) ?? []) : [];
+  const gonePill = (x: { id: string; title: string }) => (
+    <span className="chip gone" key={"gone-" + x.id} title={`${x.title} - deleted`}>{x.title}</span>
+  );
   const nameOf = (id: string) => {
     const r = study.entities.find((e) => e.id === id);
     const t = r && getType(tax, r.type);
@@ -75,6 +131,13 @@ function FieldValueView({ field, value, tax, study, onOpen, onToggle, toggleBloc
           </button>
         );
       }
+      // A two-state field is never unset. Silence means the first state is NOT in force -
+      // `isSetBack` reads it that way, every count reads it that way - so a read-only view
+      // has to say so too. Rendered without a switch (the row detail passes no onToggle) an
+      // untouched record showed a dash, which reads as "not decided" for something the study
+      // has already decided.
+      if (field.toggle && field.options?.length === 2)
+        return <span className="badge">{optionLabel(field, field.options[String(value ?? "") !== field.options[0] ? 1 : 0])}</span>;
       return value ? <span className="badge" title={String(value)}>{optionLabel(field, String(value))}</span> : <span className="hint"> - </span>;
     }
     case "scale": {
@@ -84,14 +147,16 @@ function FieldValueView({ field, value, tax, study, onOpen, onToggle, toggleBloc
     case "boolean":
       return <span className="badge">{value ? "yes" : "no"}</span>;
     case "ref":
-      return typeof value === "string" && value ? chip(value) : <span className="hint"> - </span>;
+      if (typeof value === "string" && value) return chip(value);
+      return lost.length ? <>{lost.map(gonePill)}</> : <span className="hint"> - </span>;
     case "multiref": {
       const ids = Array.isArray(value) ? (value as string[]) : [];
-      if (!ids.length) return <span className="hint"> - </span>;
+      if (!ids.length) return lost.length ? <div className="multi">{lost.map(gonePill)}</div> : <span className="hint"> - </span>;
       // Compact in the table: first two, then a count - the full list is in the row detail.
       return (
         <div className="multi">
           {ids.slice(0, 2).map(chip)}
+          {lost.map(gonePill)}
           {ids.length > 2 && <span className="chip more" title={ids.map(nameOf).join(", ")}>+{ids.length - 2}</span>}
         </div>
       );
@@ -127,6 +192,9 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const updateEntity = useStore((s) => s.updateEntity);
   const dimmed = useMemo(() => dimPredicate(tax, type.key), [tax, type.key]);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // The scope switch is the only way in or out of the perimeter now, so the dialog that
+  // knows what hangs on a record belongs beside the switch rather than in the row detail.
+  const [scopeAsk, setScopeAsk] = useState<EntityRecord | null>(null);
   const [modal, setModal] = useState<{ typeKey: string; record: EntityRecord | null } | null>(null);
   const foldKey = `${study.id}:${type.key}`;
   const [open, setOpen] = useState(() => !folded.has(foldKey));
@@ -167,6 +235,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const openEntity = (id: string) => { const r = study.entities.find((e) => e.id === id); if (r) setModal({ typeKey: r.type, record: r }); };
 
   return (
+    <>
     <div className={"panel ws-accent" + (open ? "" : " folded")} style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
       <div className="panel-head">
         {/* The heading is the switch: a workshop holding several registers of a thousand
@@ -199,7 +268,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
             Nothing matches. <button className="btn ghost sm" onClick={clearAll}>Clear filters</button>
           </div>
         ) : (
-          <table className="tbl tbl-share" style={{ minWidth: tableMinWidth(cols) }}>
+          <table className="tbl tbl-share" style={{ minWidth: groupFloor(tax, type.group) }}>
             {/* The name column takes what the value columns leave. It used to be a percentage
                 with an empty column absorbing the remainder, which left a headerless gap -
                 103px on a register with five value columns, 403px on one with three - so
@@ -215,8 +284,8 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                 the same fraction, because a share of the table is what each one is. The
                 minWidth above is still the floor; past it the panel scrolls. */}
             <colgroup>
-              <col style={{ width: pct(NAME_MIN, cols) }} />
-              {cols.map((c) => <col key={c.key} style={{ width: pct(COL_WIDTH[c.type], cols) }} />)}
+              <col style={{ width: pctName(cols) }} />
+              {cols.map((c) => <col key={c.key} style={{ width: pctOf(c) }} />)}
             </colgroup>
             <thead>
               <tr>
@@ -254,10 +323,23 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                           <div className="desc">{clip(r.values.description)}</div>
                         )}
                       </td>
-                      {cols.map((c) => <td key={c.key}><FieldValueView field={c} value={r.values[c.key] ?? null} tax={tax} study={study}
+                      {cols.map((c) => <td key={c.key}><FieldValueView field={c} value={r.values[c.key] ?? null} tax={tax} study={study} recordId={r.id}
                         onOpen={openEntity} toggleBlocked={setBackBlocked(tax, study, r)}
-                        onToggle={(f, next) => updateEntity(r.id, { ...r.values, [f.key]: next },
-                          `${f.label}: ${optionLabel(f, next)}`)} /></td>)}
+                        onToggle={(f, next) => {
+                          // Out of the perimeter is the direction with consequences: what
+                          // cannot stand without this record goes too, and what would be
+                          // left pointing at it has to be named. Coming back IN never
+                          // conflicts with anything, so that stays one click. And where
+                          // nothing hangs off the record the dialog would have nothing to
+                          // say, so it does not appear.
+                          const out = next === f.options?.[0];
+                          const ch = out ? scopeChange(tax, study, r.id) : null;
+                          if (ch && (ch.carried.length > 1 || ch.blocked.length || ch.weakened.length)) {
+                            setScopeAsk(r);
+                            return;
+                          }
+                          updateEntity(r.id, { ...r.values, [f.key]: next }, `${f.label}: ${optionLabel(f, next)}`);
+                        }} /></td>)}
                     </tr>
                     {isOpen && (
                       <tr className="detail-row">
@@ -278,8 +360,196 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
         )}
       </div>}
 
+      {scopeAsk && <ScopeDialog record={scopeAsk} tax={tax} study={study} onClose={() => setScopeAsk(null)} />}
       {modal && <EntityModal type={getType(tax, modal.typeKey)!} tax={tax} study={study} record={modal.record} onClose={() => setModal(null)} />}
     </div>
+    </>
+  );
+}
+
+/** What disabling a record would do, shown before it is done.
+ *
+ *  Three lists, no prose: what is in use here (and therefore refuses), what goes with it,
+ *  what stays with one reason fewer. Each entry is a box carrying the record, its type and
+ *  the field it hangs on - a sentence would say the same and be read less carefully. */
+function ScopeDialog({ record, tax, study, onClose }:
+  { record: EntityRecord; tax: Taxonomy; study: Study; onClose: () => void }) {
+  const setScope = useStore((s) => s.setScope);
+  const change = scopeChange(tax, study, record.id);
+  const inPlay = !isSetBack(tax, record);
+  const typeOf = (r: EntityRecord) => getType(tax, r.type)?.label ?? r.type;
+  const title = (r: EntityRecord) => { const t = getType(tax, r.type); return t ? recordTitle(t, r) : r.id; };
+  useDismissOnEscape(true, onClose);
+
+  const boxes = (items: { record: EntityRecord; note?: string }[], tone: string, cap = 10) => (
+    <div className="dep-grid">
+      {items.slice(0, cap).map((x, i) => (
+        <div className={"dep " + tone} key={`${x.record.id}-${i}`}>
+          <b>{title(x.record)}</b>
+          <span>{typeOf(x.record)}{x.note ? ` · ${x.note}` : ""}</span>
+        </div>
+      ))}
+      {items.length > cap && <div className={"dep " + tone + " more"}>+{items.length - cap} more</div>}
+    </div>
+  );
+
+  const others = change.carried.filter((r) => r.id !== record.id);
+  const blocked = change.blocked.map((b) => ({ record: b.record, note: b.field }));
+  const weak = change.weakened.map((w) => ({ record: w.record,
+    note: w.left === 0 ? `${w.field}: none left` : `${w.field}: ${w.left} other${w.left === 1 ? "" : "s"}` }));
+
+  return (
+    <Overlay onClose={onClose}>
+      <div className="modal-lg scope-dlg" style={{ maxWidth: 620 }} onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-lg-head">
+          <h3>{inPlay ? "Disable" : "Enable"} <span className="scope-name">{title(record)}</span></h3>
+        </div>
+        <div className="modal-lg-body">
+          {!inPlay ? (
+            <p className="scope-lead">Counts again everywhere.</p>
+          ) : blocked.length ? (
+            <>
+              <p className="scope-lead warn">Currently in use by {blocked.length} record{blocked.length === 1 ? "" : "s"}</p>
+              {boxes(blocked, "block")}
+              {/* Standing in the way is a judgement about the perimeter, not a technical
+                  impossibility - so it can be overruled, the way a delete can. What it
+                  costs is said first: the ones in the way go too, and whatever stands in
+                  THEIR way after that, or the same contradiction reappears one step out. */}
+              {/* Says what the number on the button means, and nothing else. The count is
+                  larger than the list above because taking those out can be refused in
+                  turn, and that refusal is lifted with them. */}
+              <p className="scope-lead">Taking it out anyway takes
+                {blocked.length === 1 ? " that one" : ` those ${blocked.length}`} with it
+                — {change.forced.length} records in all.</p>
+            </>
+          ) : (
+            <>
+              {others.length > 0 && (
+                <>
+                  <p className="scope-h">Disabled with it ({others.length})</p>
+                  {boxes(others.map((r) => ({ record: r })), "carry")}
+                </>
+              )}
+              {weak.length > 0 && (
+                <>
+                  {/* Not "still used elsewhere": some of these lose their last link in the
+                      field named and keep standing for another reason entirely. "Affected"
+                      is what they have in common; the box says the rest. */}
+                  <p className="scope-h">Also affected ({weak.length})</p>
+                  {boxes(weak, "weak", 6)}
+                </>
+              )}
+              {!others.length && !weak.length && <p className="scope-lead">Nothing else is affected.</p>}
+              {!change.possible && <p className="scope-lead warn">A type involved has no switch in this taxonomy.</p>}
+            </>
+          )}
+        </div>
+        <div className="modal-lg-foot">
+          <span className="spacer" />
+          <button className="btn ghost sm" onClick={onClose}>Cancel</button>
+          {inPlay && blocked.length > 0 && change.possible && (
+            <button className="btn sm danger" onClick={() => {
+              setScope(change.forced.map((r) => r.id), false,
+                `Out of scope with ${change.forced.length - 1} dependent record${change.forced.length === 2 ? "" : "s"}, over ${blocked.length} in use`);
+              onClose();
+            }}>
+              <Icon.ban /> Out of scope anyway ({change.forced.length})
+            </button>
+          )}
+          {/* Not shown beside the override: a dead button next to a live one asks the reader
+              to work out why one of them is grey. Where the refusal cannot be lifted at all -
+              a type without a switch - it stays, disabled, because then there IS nothing else. */}
+          {!(inPlay && blocked.length > 0 && change.possible) && (
+          <button className={"btn sm " + (inPlay ? "danger" : "primary")}
+            disabled={inPlay && (blocked.length > 0 || !change.possible)}
+            onClick={() => {
+              if (inPlay) setScope(change.carried.map((r) => r.id), false, others.length ? `Disabled with ${others.length} dependent record${others.length === 1 ? "" : "s"}` : "Disabled");
+              else setScope([record.id], true, "Enabled");
+              onClose();
+            }}>
+            {/* The count is what WILL happen; with the action refused there is nothing to
+                count, and a disabled button reading "Disable 4" reads like a threat. */}
+            {inPlay ? <><Icon.ban /> Disable{others.length && !blocked.length ? ` ${change.carried.length}` : ""}</> : "Enable"}
+          </button>
+          )}
+        </div>
+      </div>
+    </Overlay>
+  );
+}
+
+// Deleting asks the same question as disabling and answers it destructively. The warning
+// and the store read the SAME traversal (domain/scope.ts), so what is listed here is what
+// will happen - a warning derived separately would eventually describe something else.
+function DeleteDialog({ record, tax, study, onConfirm, onClose }:
+  { record: EntityRecord; tax: Taxonomy; study: Study; onConfirm: () => void; onClose: () => void }) {
+  const change = deleteChange(tax, study, record.id);
+  const typeOf = (r: EntityRecord) => getType(tax, r.type)?.label ?? r.type;
+  const title = (r: EntityRecord) => { const t = getType(tax, r.type); return t ? recordTitle(t, r) : r.id; };
+  useDismissOnEscape(true, onClose);
+
+  const boxes = (items: { record: EntityRecord; note?: string }[], tone: string, cap = 10) => (
+    <div className="dep-grid">
+      {items.slice(0, cap).map((x, i) => (
+        <div className={"dep " + tone} key={`${x.record.id}-${i}`}>
+          <b>{title(x.record)}</b>
+          <span>{typeOf(x.record)}{x.note ? ` · ${x.note}` : ""}</span>
+        </div>
+      ))}
+      {items.length > cap && <div className={"dep " + tone + " more"}>+{items.length - cap} more</div>}
+    </div>
+  );
+
+  const others = change.removed.filter((r) => r.id !== record.id);
+  const lost = [
+    ...change.cleared.map((c) => ({ record: c.record, note: `${c.field}: emptied` })),
+    ...change.shortened.map((c) => ({ record: c.record,
+      note: c.left === 0 ? `${c.field}: none left` : `${c.field}: ${c.left} left` })),
+  ];
+
+  return (
+    <Overlay onClose={onClose}>
+      <div className="modal-lg scope-dlg" style={{ maxWidth: 620 }} onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-lg-head">
+          <h3>Delete <span className="scope-name">{title(record)}</span></h3>
+        </div>
+        <div className="modal-lg-body">
+          {others.length > 0 ? (
+            <>
+              <p className="scope-lead warn">Deleted with it ({others.length}) — this cannot be undone</p>
+              {boxes(others.map((r) => ({ record: r })), "block")}
+            </>
+          ) : lost.length > 0 ? (
+            <p className="scope-lead">This record alone is deleted.</p>
+          ) : null}
+          {lost.length > 0 && (
+            <>
+              {/* These keep standing; what they lose is the LINK to the record being
+                  deleted. "Loses a reference to it" read as though the deleted record were
+                  losing something - the relation the wrong way round, over a list of other
+                  records. The subject has to be the list. */}
+              <p className="scope-h">These stay, and lose their link to it ({lost.length})</p>
+              {boxes(lost, "weak", 6)}
+            </>
+          )}
+          {/* Say what WILL happen, not two things that will not. "Nothing else is deleted.
+              Nothing else is affected." is a pair of negations followed by advice, and a
+              reader looking at it learns nothing about their own study. */}
+          {!others.length && !lost.length && (
+            <p className="scope-lead">Nothing in the study refers to it. Deleting removes
+              this one record, and the deletion is recorded.</p>
+          )}
+          <p className="scope-lead">To keep the record and its judgement out of the figures, disable it instead.</p>
+        </div>
+        <div className="modal-lg-foot">
+          <span className="spacer" />
+          <button className="btn ghost sm" onClick={onClose}>Cancel</button>
+          <button className="btn sm danger" onClick={() => { onConfirm(); onClose(); }}>
+            <Icon.trash /> Delete{others.length ? ` ${change.removed.length}` : ""}
+          </button>
+        </div>
+      </div>
+    </Overlay>
   );
 }
 
@@ -290,6 +560,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
   onEdit: () => void; onDelete: () => void; onOpenEntity: (id: string) => void; extra?: ReactNode;
 }) {
   const [histOpen, setHistOpen] = useState(false);
+  const [delAsk, setDelAsk] = useState(false);
   const [openRels, setOpenRels] = useState<Set<string>>(new Set());
   const title = titleField(type);
   const scalarFields = type.fields.filter((f) => f.key !== title && f.type !== "textarea" && f.type !== "ref" && f.type !== "multiref");
@@ -333,8 +604,14 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
       <div className="detail-actions">
         <span className="d-sub" style={{ margin: 0, flex: 1 }}>Details</span>
         <button className="btn sm" style={{ background: `color-mix(in oklch, ${color} 20%, transparent)`, borderColor: `color-mix(in oklch, ${color} 45%, transparent)`, color: "var(--fg)" }} onClick={onEdit}><Icon.edit /> Edit</button>
-        <button className="btn sm danger" onClick={onDelete}><Icon.trash /> Delete</button>
+        {/* No second door into the perimeter. Scope is one state with one rule, and the
+            switch in the table carries it - including the dialog, when something hangs on
+            the record. A button here would be the same field with a different name and a
+            different rule, which is what it had become. */}
+        <button className="btn sm danger" onClick={() => setDelAsk(true)}><Icon.trash /> Delete</button>
       </div>
+      {delAsk && <DeleteDialog record={record} tax={tax} study={study}
+        onConfirm={onDelete} onClose={() => setDelAsk(false)} />}
       {record.source && <div className="ent-source" style={{ marginBottom: 8 }} title="Extracted from this source"><Icon.doc /> {record.source}</div>}
       {descFields.map((f) => {
         const v = record.values[f.key];
@@ -358,7 +635,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
         {otherScalars.map((f) => (
           <div className="d-item" key={f.key}>
             <span className="d-k">{f.label}</span>
-            <div className="d-v"><FieldValueView field={f} value={record.values[f.key] ?? null} tax={tax} study={study} /></div>
+            <div className="d-v"><FieldValueView field={f} value={record.values[f.key] ?? null} tax={tax} study={study} recordId={record.id} /></div>
           </div>
         ))}
         {relFields.map((f) => {

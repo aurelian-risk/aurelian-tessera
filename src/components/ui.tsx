@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 // Dependency-free UI primitives (icons, dialog, scale, multi-select).
+import { createPortal } from "react-dom";
 import { useEffect, type ReactNode } from "react";
 
 const P = (d: string) => (
@@ -8,6 +9,7 @@ const P = (d: string) => (
 );
 export const Icon = {
   plus: () => P("M12 5v14M5 12h14"),
+  ban: () => P("M12 3a9 9 0 100 18 9 9 0 000-18zM5.6 5.6l12.8 12.8"),
   trash: () => (
     <svg className="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -54,6 +56,23 @@ export const Icon = {
       <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.6-3.6" /></svg>
   ),
 };
+
+/** The backdrop every dialog here shares. It used to take the click and ignore the key:
+ *  ten dialogs swallowed Escape, while the three menus beside them closed on it. The
+ *  dismissal belongs to the backdrop, not to each dialog's own copy of it. */
+export function Overlay({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  useDismissOnEscape(true, onClose);
+  // THROUGH A PORTAL, because `position: fixed` does not always mean the window. An
+  // ancestor carrying transform, filter or BACKDROP-FILTER becomes the containing block for
+  // fixed descendants, and this overlay is rendered inside a panel that has one. Measured:
+  // pressing Delete deep in a register 62000px tall drew the dialog at y=49265 in a window
+  // 900px high - not clipped, simply somewhere else. The other modals here already portal
+  // for the same reason; this one was carried over without it.
+  return createPortal(
+    <div className="overlay" onMouseDown={onClose}>{children}</div>,
+    document.body,
+  );
+}
 
 export function Dialog({
   title, subtitle, children, onClose, wide,
@@ -228,3 +247,4 @@ export function MultiSelect({
     </div>
   );
 }
+

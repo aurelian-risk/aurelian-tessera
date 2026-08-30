@@ -43,8 +43,14 @@ export function buildAge(root) {
   return { art, missing: false, behind: src - statSync(art).mtimeMs };
 }
 
-/** Stop the caller unless dist/index.html is the build of the sources beside it.
- *  Exit code 2, so a runner can tell "did not measure" from "measured and failed". */
+/** Stop the caller unless dist/index.html is the build of the sources beside it, and hand
+ *  back the path to it. Exit code 2, so a runner can tell "did not measure" from "measured
+ *  and failed".
+ *
+ *  Returning the path is Aurelian Lite's addition, made when they adopted this: their flow
+ *  matrix writes `const dist = requireFreshBuild(process.cwd())`, which reads as one act
+ *  rather than a guard and then a path assembled again beside it. Their rewrite dropped
+ *  buildAge, which the release push here reads, so only the return value comes back. */
 export function requireFreshBuild(root, what = "this check") {
   const r = buildAge(root);
   if (r.missing) {
@@ -58,4 +64,5 @@ export function requireFreshBuild(root, what = "this check") {
       + " previous build. Run npm run build and read its output.");
     process.exit(2);
   }
+  return r.art;
 }
