@@ -3,7 +3,8 @@
 // the schema (entity types + fields) followed by the data (entities with
 // relationships resolved to names). Paste into an LLM chat as grounded context.
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy } from "./types";
-import { columnFields, getType, recordTitle, scaleLabel, scaleMax } from "./taxonomy";
+import { t as tr, tParts } from "./i18n";
+import { columnFields, fieldLabel, getType, groupDescription, groupLabel, optionLabel, recordTitle, scaleLabel, scaleMax, typeLabel, typeLabelPlural } from "./taxonomy";
 import { shortVersion } from "./vocabulary";
 import { PRODUCT } from "../profile";
 import { deriveInputs, hasQuantification, meanOf } from "./quantModel";
@@ -37,7 +38,21 @@ const DENSE_ROWS = 20;
 const cell = (s: string): string =>
   s.replace(/\|/g, "/").replace(/\s*\n+\s*/g, " ").trim();
 
-function valueMd(f: FieldDef, v: FieldValue, tax: Taxonomy, study: Study): string {
+/** What this product calls the document it produces, in the language it is shown in.
+ *
+ *  `Product.documentTitle` is authored once and cannot be two things at once; the lookup is
+ *  where a second language belongs, and the authored title stays the fallback. */
+const documentTitle = () => tr("product.documentTitle", PRODUCT.documentTitle ?? "Risk Analysis Report");
+
+/** A value as a document prints it.
+ *
+ *  `type` decides whether an enum is READ or printed as stored, and the two callers want
+ *  opposite things. A report is shown in the language being worked in, so it passes the
+ *  type and gets the reading - and a value the publisher owns still prints as published,
+ *  because the German table answers those with the stored value itself. A delivered
+ *  document passes none: it names its own words through `opts.values`, and what it does not
+ *  name has to stay exactly as the file carries it. */
+function valueMd(f: FieldDef, v: FieldValue, tax: Taxonomy, study: Study, type?: EntityTypeDef): string {
   const nameOf = (id: string) => {
     const r = study.entities.find((e) => e.id === id);
     const t = r && getType(tax, r.type);
@@ -46,10 +61,10 @@ function valueMd(f: FieldDef, v: FieldValue, tax: Taxonomy, study: Study): strin
   if (v == null || v === "") return " - ";
   switch (f.type) {
     case "scale": return typeof v === "number" ? scaleLabel(f, v) : String(v);
-    case "boolean": return v ? "yes" : "no";
+    case "boolean": return v ? tr("ui.report.yes", "yes") : tr("ui.report.no", "no");
     case "ref": return typeof v === "string" ? nameOf(v) : " - ";
     case "multiref": return Array.isArray(v) && v.length ? (v as string[]).map(nameOf).join(", ") : " - ";
-    default: return String(v);
+    default: return f.type === "enum" && type && typeof v === "string" ? optionLabel(f, v, type) : String(v);
   }
 }
 
@@ -66,6 +81,9 @@ export function workshopMarkdown(tax: Taxonomy, study: Study, groupKey: string):
   if (study.scope) L.push(`**Scope:** ${study.scope}`);
   L.push("");
 
+  // AUTHORED, deliberately: this block goes to a language model, which has to see the
+  // taxonomy as it is declared - the keys it must emit and the labels they carry - not a
+  // reading of them in whatever language the reader happens to work in.
   L.push("## Schema (valid taxonomy for this workshop)");
   for (const t of types) {
     L.push(`### ${t.label} \`${t.key}\``);
@@ -105,7 +123,10 @@ export function registerMarkdown(tax: Taxonomy, study: Study, typeKey: string,
     ? opts.fields.map((k) => t.fields.find((f) => f.key === k)).filter((f): f is FieldDef => !!f)
     : null;
   const L: string[] = [];
-  const name = (f: FieldDef) => opts?.labels?.[f.key] ?? f.label;
+  // The caller's own name first - that is how a delivered document keeps its fixed German
+  // whatever language the application is being worked in - and otherwise the lookup, so a
+  // report follows the reader. Read off the declaration, both were English.
+  const name = (f: FieldDef) => opts?.labels?.[f.key] ?? fieldLabel(f, t);
   const shown = (f: FieldDef, e: EntityRecord) => {
     const v = valueMd(f, e.values[f.key] ?? null, tax, study);
     const m = opts?.values?.[f.key];
@@ -113,7 +134,7 @@ export function registerMarkdown(tax: Taxonomy, study: Study, typeKey: string,
     // A multiref renders as a joined list, so each part is looked up on its own.
     return v.split(", ").map((x) => m[x] ?? x).join(", ");
   };
-  L.push(`${"#".repeat(opts?.level ?? 3)} ${opts?.heading ?? t.labelPlural} (${items.length})`);
+  L.push(`${"#".repeat(opts?.level ?? 3)} ${opts?.heading ?? typeLabelPlural(t)} (${items.length})`);
   if (items.length === 0) { L.push("_none_", ""); return L.join("\n"); }
 
   // Past a dozen the register is read across its rows, not one card at a time - the same
@@ -127,7 +148,7 @@ export function registerMarkdown(tax: Taxonomy, study: Study, typeKey: string,
     // the field is wanted in the document, just not as a column.
     const cols = (picked ?? columnFields(t).slice(0, TABLE_COLS))
       .filter((f) => f.key !== titleKey && f.type !== "textarea");
-    L.push(`| ${opts?.labels?.[titleKey] ?? t.label} | ${cols.map(name).join(" | ")} |`);
+    L.push(`| ${opts?.labels?.[titleKey] ?? typeLabel(t)} | ${cols.map(name).join(" | ")} |`);
     L.push(`|${" --- |".repeat(cols.length + 1)}`);
     for (const e of items) {
       const cells = cols.map((f) => cell(shown(f, e)));
@@ -225,7 +246,7 @@ function scaleBarsSvg(type: EntityTypeDef, rec: EntityRecord): string | null {
   scales.forEach((f, i) => {
     const v = Number(rec.values[f.key] ?? 1), max = scaleMax(f), c = barColor(v, max, f.polarity === "positive");
     const cy = PAD + i * rowH + rowH / 2;
-    p.push(`<text x="${PAD}" y="${cy + 4}" font-size="11.5" fill="${HEX.muted}">${esc(mm(f.label, 24))}</text>`);
+    p.push(`<text x="${PAD}" y="${cy + 4}" font-size="11.5" fill="${HEX.muted}">${esc(mm(fieldLabel(f), 24))}</text>`);
     p.push(`<rect x="${PAD + labelW}" y="${cy - 4}" width="${barW}" height="8" rx="4" fill="${HEX.track}"/>`);
     p.push(`<rect x="${PAD + labelW}" y="${cy - 4}" width="${Math.max(6, barW * v / max).toFixed(1)}" height="8" rx="4" fill="${c}"/>`);
     p.push(`<text x="${PAD + labelW + barW + 9}" y="${cy + 4}" font-size="11" fill="${HEX.ink}">${esc(mm(scaleLabel(f, v), 16))}</text>`);
@@ -264,7 +285,7 @@ function assetHeatmapSection(tax: Taxonomy, study: Study): string | null {
     const c = barColor(t.v, max, false);
     p.push(`<rect x="${PAD}" y="${y}" width="${W - 2 * PAD}" height="${headH}" rx="8" fill="${c}" fill-opacity="0.16" stroke="${c}" stroke-opacity="0.5"/>`);
     p.push(`<text x="${PAD + 12}" y="${y + 19}" font-size="13" font-weight="600" fill="${HEX.ink}">${esc(mm(recordTitle(biz, t.e), 46))}</text>`);
-    const right = `${scaleLabel(critF, t.v)}${supp ? ` · ${t.sup.length} ${t.sup.length === 1 ? supp.label.toLowerCase() : supp.labelPlural.toLowerCase()}` : ""}`;
+    const right = `${scaleLabel(critF, t.v)}${supp ? ` · ${t.sup.length} ${t.sup.length === 1 ? typeLabel(supp).toLowerCase() : typeLabelPlural(supp).toLowerCase()}` : ""}`;
     p.push(`<text x="${W - PAD - 12}" y="${y + 19}" text-anchor="end" font-size="11" font-weight="600" fill="${c}">${esc(mm(right, 40))}</text>`);
     let sy = y + headH;
     for (const sa of t.sup) {
@@ -357,7 +378,7 @@ function threatRadarSvg(tax: Taxonomy, study: Study): string | null {
     sub: catF ? String(a.values[catF.key] ?? "") : undefined,
     values: scales.map((f) => (Number(a.values[f.key] ?? 1) - 1) / Math.max(1, scaleMax(f) - 1)),
   }));
-  return radarSvg(scales.map((f) => f.label), series);
+  return radarSvg(scales.map((f) => fieldLabel(f)), series);
 }
 
 /** Framework-coverage radar: share of each framework's requirements fulfilled. */
@@ -540,8 +561,8 @@ function treatmentSection(tax: Taxonomy, study: Study): string[] | null {
   const ddF = treatType.fields.find((f) => f.key === "deadline"), stF = treatType.fields.find((f) => f.key === "status");
   const cell = (v: FieldValue | undefined) => esc(v == null || v === "" ? " - " : String(v));
 
-  const L: string[] = ["---\n", "## Risk treatment\n",
-    "_Treatment decision per risk (strategic scenario). The residual risk is DERIVED from the decision and how well the risk's kill chain is already mitigated - Reduce lowers likelihood by that coverage, Share lowers gravity, Accept keeps the inherent level, Avoid removes it._\n"];
+  const L: string[] = ["---\n", `## ${tr("ui.report.risk-treatment", "Risk treatment")}\n`,
+    `_${tr("ui.report.treatment-decision-per-risk", "Treatment decision per risk (strategic scenario). The residual risk is DERIVED from the decision and how well the risk's kill chain is already mitigated - Reduce lowers likelihood by that coverage, Share lowers gravity, Accept keeps the inherent level, Avoid removes it.")}_\n`];
   // Words, not figures. Under the figures class every column but the first is set flush
   // right, which is correct for a column of numbers and wrong for a decision, an owner and
   // a date - they stood against the far edge of the page. Only the last column here holds
@@ -572,11 +593,11 @@ function treatmentSection(tax: Taxonomy, study: Study): string[] | null {
 
 export function reportMarkdown(tax: Taxonomy, study: Study): string {
   const L: string[] = [];
-  L.push(`# ${study.name} - ${PRODUCT.documentTitle ?? "Risk Analysis Report"}`);
+  L.push(`# ${study.name} - ${documentTitle()}`);
   const meta: string[] = [];
-  if (study.organization) meta.push(`**Organization:** ${study.organization}`);
-  if (study.scope) meta.push(`**Scope:** ${study.scope}`);
-  meta.push(`**Generated:** ${new Date().toISOString().slice(0, 10)}`);
+  if (study.organization) meta.push(`**${tr("ui.report.organization", "Organization")}:** ${study.organization}`);
+  if (study.scope) meta.push(`**${tr("ui.report.scope", "Scope")}:** ${study.scope}`);
+  meta.push(`**${tr("ui.report.generated", "Generated")}:** ${new Date().toISOString().slice(0, 10)}`);
   L.push(meta.join("  \n"));
   L.push("");
 
@@ -585,22 +606,22 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
   // Document control. A concept handed to an auditor has to state what it was made from
   // and what has happened to it since - the vocabulary it works to, and the change record
   // with its integrity. Both are already held; not printing them was the omission.
-  L.push("## Document control\n");
+  L.push(`## ${tr("ui.report.document-control", "Document control")}\n`);
   const dc: string[] = [];
   dc.push(`| | |`, `|---|---|`);
-  dc.push(`| Document | ${PRODUCT.documentTitle ?? "Risk Analysis Report"} |`);
+  dc.push(`| ${tr("ui.report.document", "Document")} | ${documentTitle()} |`);
   if (study.organization) dc.push(`| Institution | ${study.organization} |`);
   // Only where it means something: the sector is the attack-rate exception list.
   if (study.sector && hasQuantification(tax)) dc.push(`| Sector | ${study.sector} |`);
-  dc.push(`| Generated | ${new Date().toISOString().slice(0, 10)} |`);
+  dc.push(`| ${tr("ui.report.generated", "Generated")} | ${new Date().toISOString().slice(0, 10)} |`);
   if (tax.vocabularySource) {
-    dc.push(`| Vocabulary | ${tax.vocabularySource.name}${tax.vocabularySource.version ? `, version ${shortVersion(tax.vocabularySource.version)}` : ""} |`);
+    dc.push(`| ${tr("ui.report.vocabulary", "Vocabulary")} | ${tax.vocabularySource.name}${tax.vocabularySource.version ? `, version ${shortVersion(tax.vocabularySource.version)}` : ""} |`);
   }
   const log = study.log ?? [];
   if (log.length) {
     const editors = [...new Set(log.map((e) => e.editor).filter(Boolean))];
     const last = log[log.length - 1];
-    dc.push(`| Change record | ${log.length} entries, ${editors.length} editor${editors.length === 1 ? "" : "s"}, last ${String(last?.ts ?? "").slice(0, 10)} |`);
+    dc.push(`| ${tr("ui.report.change-record", "Change record")} | ${log.length} entries, ${editors.length} editor${editors.length === 1 ? "" : "s"}, last ${String(last?.ts ?? "").slice(0, 10)} |`);
   }
   L.push(dc.join("\n"));
   L.push("");
@@ -608,8 +629,8 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
   if (log.length) {
     const updates = log.filter((e) => e.kind === "update" && e.comment).slice(-12);
     if (updates.length) {
-      L.push("### Changes of record\n");
-      L.push("| Date | Editor | Record | Reason |");
+      L.push(`### ${tr("ui.report.changes-of-record", "Changes of record")}\n`);
+      L.push(`| ${tr("ui.report.date", "Date")} | ${tr("ui.report.editor", "Editor")} | ${tr("ui.report.record", "Record")} | ${tr("ui.report.reason", "Reason")} |`);
       L.push("|---|---|---|---|");
       for (const e of updates) {
         L.push(`| ${String(e.ts).slice(0, 10)} | ${e.editor} | ${(e.title ?? "").replace(/\|/g, "/")} | ${(e.comment ?? "").replace(/\|/g, "/")} |`);
@@ -618,23 +639,23 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
     }
   }
 
-  L.push("## Overview\n");
+  L.push(`## ${tr("ui.report.overview", "Overview")}\n`);
   for (const t of tax.entityTypes) {
     const n = study.entities.filter((e) => e.type === t.key).length;
-    if (n) L.push(`- **${t.labelPlural}:** ${n}`);
+    if (n) L.push(`- **${typeLabelPlural(t)}:** ${n}`);
   }
   L.push("");
 
   const svg = riskMatrixSvg(tax, study);
   if (svg) {
-    L.push("## Risk matrix\n");
+    L.push(`## ${tr("ui.report.risk-matrix", "Risk matrix")}\n`);
     L.push(`<div align="center">${svg}</div>`);
     L.push("");
   }
 
   const flow = attackFlowSvg(tax, study);
   if (flow) {
-    L.push("## Attack paths (origin -> action -> result)\n");
+    L.push(`## ${tr("ui.report.attack-paths-origin-action", "Attack paths (origin -> action -> result)")}\n`);
     L.push(`<div align="center">${flow}</div>`);
     L.push("");
   }
@@ -644,7 +665,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
   if (attackerType) {
     const actors = study.entities.filter((e) => e.type === attackerType.key);
     if (actors.length) {
-      L.push("## Threat landscape & attacker profiles\n");
+      L.push(`## ${tr("ui.report.threat-landscape-attacker-profiles", "Threat landscape & attacker profiles")}\n`);
       const radar = threatRadarSvg(tax, study);
       if (radar) { L.push(`<div align="center">${radar}</div>`); L.push(""); }
       for (const a of actors) {
@@ -689,8 +710,8 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
     const types = tax.entityTypes.filter((t) => t.group === g.key);
     if (!types.some((t) => study.entities.some((e) => e.type === t.key))) continue;
     L.push("---\n");
-    L.push(`## ${g.label}`);
-    if (g.description) L.push(`_${g.description}._\n`);
+    L.push(`## ${groupLabel(g)}`);
+    { const d = groupDescription(g); if (d) L.push(`_${d}._\n`); }
     for (const t of types) {
       if (kcStepType && t.key === kcStepType.key) continue;   // nested under its op scenario instead
       // A concept states what applies. What was examined and set aside is a decision of the
@@ -702,8 +723,9 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
       if (!items.length) continue;
       const titleKey = t.titleField ?? "name";
       const descF = t.fields.find((f) => f.type === "textarea");
-      L.push(`### ${t.labelPlural} (${items.length})\n`);
-      if (left > 0) L.push(`_${left} not printed: decided not to apply here._\n`);
+      L.push(`### ${typeLabelPlural(t)} (${items.length})\n`);
+      if (left > 0) L.push(`_${tParts("ui.report.n-not-printed", "{0} not printed: decided not to apply here.")
+        .map((x) => (typeof x === "number" ? String(left) : x)).join("")}_\n`);
 
       // A register is not read one card at a time. Past a dozen records the account of
       // each is noise and the comparison between them is the point - which requirement
@@ -712,10 +734,10 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
       // rather than a statement about this institution.
       if (items.length > CARD_LIMIT) {
         const cols = columnFields(t).slice(0, TABLE_COLS);
-        L.push(`| ${t.label} | ${cols.map((f) => f.label).join(" | ")} |`);
+        L.push(`| ${typeLabel(t)} | ${cols.map((f) => fieldLabel(f, t)).join(" | ")} |`);
         L.push(`|${" --- |".repeat(cols.length + 1)}`);
         for (const e of items) {
-          const cells = cols.map((f) => cell(valueMd(f, e.values[f.key] ?? null, tax, study)));
+          const cells = cols.map((f) => cell(valueMd(f, e.values[f.key] ?? null, tax, study, t)));
           L.push(`| ${cell(recordTitle(t, e))} | ${cells.join(" | ")} |`);
         }
         L.push("");
@@ -730,14 +752,14 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
         for (const f of t.fields) {
           if (f.key === titleKey || f.key === descF?.key) continue;
           const raw = e.values[f.key];
-          const val = valueMd(f, raw ?? null, tax, study);
+          const val = valueMd(f, raw ?? null, tax, study, t);
           if (val === " - ") continue;
           if (f.type === "scale" && typeof raw === "number") {
             // Encode the level so the HTML report can draw a mini level bar: (n/m)
             // for "higher = worse" scales, [n/m] for "higher = better" (positive).
             const br = f.polarity === "positive" ? `[${raw}/${scaleMax(f)}]` : `(${raw}/${scaleMax(f)})`;
-            attrs.push(`**${f.label}:** ${val} ${br}`);
-          } else attrs.push(`**${f.label}:** ${val}`);
+            attrs.push(`**${fieldLabel(f, t)}:** ${val} ${br}`);
+          } else attrs.push(`**${fieldLabel(f, t)}:** ${val}`);
         }
         if (attrs.length) L.push(attrs.map((a) => `- ${a}`).join("\n"));
         if (kcStepType && t.key === kcOpKey) { const kc = kcStepsHtml(e); if (kc) L.push(kc); }
@@ -814,7 +836,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
       && study.entities.some((s) => s.type === stepType.key && s.values[parentF.key] === e.id));
     if (ops.length) {
       L.push("---\n");
-      L.push("## Kill-chain mitigation coverage\n");
+      L.push(`## ${tr("ui.report.kill-chain-mitigation-coverage", "Kill-chain mitigation coverage")}\n`);
       for (const op of ops) {
         const steps = study.entities.filter((e) => e.type === stepType.key && e.values[parentF.key] === op.id)
           .sort((a, b) => Number(a.values[orderF.key] || 0) - Number(b.values[orderF.key] || 0));
@@ -839,7 +861,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
   const fwRadar = frameworkRadarSvg(tax, study);
   if (fwRadar) {
     L.push("---\n");
-    L.push("## Compliance coverage\n");
+    L.push(`## ${tr("ui.report.compliance-coverage", "Compliance coverage")}\n`);
     L.push(`<div align="center">${fwRadar}</div>`);
     L.push("");
   }
@@ -860,7 +882,7 @@ export function reportMarkdown(tax: Taxonomy, study: Study): string {
  *  product that declares an export writes its own content and ends with this, so the notice
  *  cannot be forgotten in the second document by being written out by hand in the first. */
 export function documentCredits(words?: Partial<CreditWords>): string[] {
-  const w = { ...CREDIT_WORDS_EN, ...words };
+  const w = { ...creditWords(), ...words };
   const L: string[] = [];
   if (PRODUCT.attribution?.length) {
     L.push(`## ${w.heading}\n`);
@@ -882,11 +904,19 @@ export type CreditWords = {
   heading: string; content: string; holder: string; licence: string; changes: string;
   none: string; generated: (name: string, tagline: string) => string;
 };
-const CREDIT_WORDS_EN: CreditWords = {
-  heading: "Sources and terms", content: "Content", holder: "Rights holder",
-  licence: "Licence", changes: "Changes", none: "none",
-  generated: (n, t) => `Generated with ${n} - ${t}, offline.`,
-};
+// Through the lookup rather than a table per language here: a caller may still pass its own
+// words - a delivered document does, because its wording is fixed whatever the reader works
+// in - and everything else follows the language on screen.
+const creditWords = (): CreditWords => ({
+  heading: tr("ui.report.sources-and-terms", "Sources and terms"),
+  content: tr("ui.report.content", "Content"),
+  holder: tr("ui.report.rights-holder", "Rights holder"),
+  licence: tr("ui.report.licence", "Licence"),
+  changes: tr("ui.report.changes", "Changes"),
+  none: tr("ui.report.none", "none"),
+  generated: (n, t) => tParts("ui.report.generated-with", "Generated with {0} - {1}, offline.")
+    .map((p) => (p === 0 ? n : p === 1 ? t : p)).join(""),
+});
 
 // ── Print-ready HTML report ──────────────────────────────────────────────
 // Many users have no Markdown viewer, so we also render the report to a fully
@@ -1118,7 +1148,7 @@ body { margin: 0; background: #eef0f4; color: #1c2430;
 /** Full self-contained, print-ready HTML report (opens in a new tab). */
 export function reportHtml(tax: Taxonomy, study: Study): string {
   return documentHtml(reportMarkdown(tax, study),
-    `${study.name} - ${PRODUCT.documentTitle ?? "Risk Analysis Report"}`, { className: "numbered" });
+    `${study.name} - ${documentTitle()}`, { className: "numbered" });
 }
 
 /** Markdown as a print-ready page: the report's stylesheet, the product's on top, and

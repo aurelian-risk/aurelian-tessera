@@ -6,6 +6,7 @@ import type { Product } from "../../domain/types";
 export const PRODUCT: Product = {
   name: "Aurelian Lite",
   tagline: "Structured cyber risk analysis",
+  language: "en",
   mark: "Aurelian",
   source: "github.com/aurelian-risk/aurelian-lite",
 };

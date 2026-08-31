@@ -7,8 +7,9 @@
 // asset reached by more than one visible chain (i.e. attacks continue through it, so
 // it is not merely a shared final target) is highlighted as a choke point.
 import { useMemo, useState } from "react";
+import { t as tr } from "../domain/i18n";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
-import { getType, recordTitle } from "../domain/taxonomy";
+import { getType, recordTitle, typeLabel } from "../domain/taxonomy";
 import { foldScope, getFolds, setFolds } from "../domain/viewstate";
 import { EntityModal } from "./EntityModal";
 
@@ -87,7 +88,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
       if (n) { n.chains.add(chain); return; }
       const t = getType(tax, rec.type);
       nodes.set(rec.id, { id: rec.id, kind, chains: new Set([chain]), label: t ? recordTitle(t, rec) : rec.id,
-        tactic: t?.label ?? "", rec, x: 0, y: 0 });
+        tactic: t ? typeLabel(t) : "", rec, x: 0, y: 0 });
     };
     for (const s of steps) {
       const tid = targetF ? s.values[targetF.key] : undefined;
@@ -109,7 +110,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
     return { nodes, edges, ops, chainColor, chainName, stepType };
   }, [tax, study]);
 
-  if (!model) return <div className="empty" style={{ padding: "60px 24px" }}>No kill-chain steps yet - model an operational scenario's kill chain to see its attack paths.</div>;
+  if (!model) return <div className="empty" style={{ padding: "60px 24px" }}>{tr('ui.attackpaths.no-kill-chain-steps', "No kill-chain steps yet - model an operational scenario's kill chain to see its attack paths.")}</div>;
 
   const { nodes, edges, ops, chainColor, chainName } = model;
   const visibleChain = (id: string) => shown.has(id);
@@ -171,8 +172,8 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
     <div className="panel ws-accent ap-wrap" style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
       <button className="panel-head ap-head" onClick={toggleCollapsed} aria-expanded={!collapsed}>
         <svg className={"ap-chevron" + (collapsed ? "" : " open")} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
-        <h3>Attack paths</h3>
-        <span className="panel-sub">read-only projection of all kill chains onto the target assets</span>
+        <h3>{tr('ui.attackpaths.attack-paths', 'Attack paths')}</h3>
+        <span className="panel-sub">{tr('ui.attackpaths.read-only-projection-of', 'read-only projection of all kill chains onto the target assets')}</span>
         <span className="spacer" />
         {chokeCount > 0 && <span className="ap-choketag">{chokeCount} choke point{chokeCount === 1 ? "" : "s"}</span>}
       </button>
@@ -180,7 +181,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
       <div className="panel-body ap-body">
 
       <div className="ap-toolbar">
-        <span className="ap-tb-label">Chains</span>
+        <span className="ap-tb-label">{tr('ui.attackpaths.chains', 'Chains')}</span>
         {ops.map((o) => (
           <button key={o.id} className={"ap-chip" + (visibleChain(o.id) ? "" : " off")} onClick={() => toggle(o.id)}>
             <span className="sw" style={{ background: chainColor.get(o.id) }} />{chainName.get(o.id)}
@@ -189,7 +190,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
       </div>
 
       {vis.length === 0 ? (
-        <div className="empty" style={{ padding: "44px 16px", textAlign: "center" }}>Toggle a scenario above to display its attack path, then add more to see where they converge.</div>
+        <div className="empty" style={{ padding: "44px 16px", textAlign: "center" }}>{tr('ui.attackpaths.toggle-a-scenario-above', 'Toggle a scenario above to display its attack path, then add more to see where they converge.')}</div>
       ) : (
       <div className="ap-stage">
         <div className="ap-scroll">
@@ -236,7 +237,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
                 </div>
               );
             })}
-            {hasZone && <div className="ap-zone-label" style={{ left: zoneX + 10, top: 3 }}>Target assets</div>}
+            {hasZone && <div className="ap-zone-label" style={{ left: zoneX + 10, top: 3 }}>{tr('ui.attackpaths.target-assets', 'Target assets')}</div>}
           </div>
           {/* A drawing that changed to fit says so. Without this the tactic and the
               technique simply stop being there, and a reader has no way to tell a step
@@ -252,8 +253,8 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
       <div className="ap-legend">
         <span className="it"><span className="ap-dot ok" style={{ position: "static" }} /> step mitigated</span>
         <span className="it"><span className="ap-dot gap" style={{ position: "static" }} /> coverage gap</span>
-        <span className="it"><span className="k kc" /> kill-chain link</span>
-        <span className="it"><span className="k dash" /> cross-chain link</span>
+        <span className="it"><span className="k kc" /> {tr('ui.attackpaths.kill-chain-link', 'kill-chain link')}</span>
+        <span className="it"><span className="k dash" /> {tr('ui.attackpaths.cross-chain-link', 'cross-chain link')}</span>
         <span className="it"><span className="k dot" /> reaches asset</span>
         <span className="it"><span className="sw choke" /> choke point</span>
       </div>
@@ -261,7 +262,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
       <div className="ap-note">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.5v.01" /></svg>
         <div>
-          <strong>Choke points</strong> are assets that more than one kill chain has to pass through to reach its target.
+          <strong>{tr('ui.attackpaths.choke-points', 'Choke points')}</strong> are assets that more than one kill chain has to pass through to reach its target.
           Because several attack paths converge on them, a single control placed there mitigates multiple scenarios at once -
           making them the highest-leverage place to invest. Toggle scenarios on one at a time to build up the picture; click any node to open the underlying step or asset.
         </div>

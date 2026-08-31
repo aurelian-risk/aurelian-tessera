@@ -1,6 +1,6 @@
 {
   "name": "aurelian-tessera",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "private": true,
   "description": "BSI Grundschutz implemented - an offline ISMS tool for the Grundschutz++ method, in a single HTML file.",
   "type": "module",
@@ -29,7 +29,11 @@
     "test:viewstate": "esbuild src/domain/viewstate.ts --bundle --format=esm --outfile=node_modules/.cache/viewstate.mjs --log-level=error && MOD_V=node_modules/.cache/viewstate.mjs node scripts/viewstate-test.mjs",
     "test:notices": "node scripts/notices-test.mjs",
     "test:graph": "esbuild src/domain/graph.ts --bundle --format=esm --outfile=node_modules/.cache/graph/graph.mjs --log-level=error && node scripts/graph-test.mjs",
-    "mirror:check": "node scripts/mirror-check.mjs"
+    "mirror:check": "node scripts/mirror-check.mjs",
+    "test:profilewords": "rm -rf node_modules/.cache/words && esbuild src/domain/i18n.ts src/domain/words.ts src/profile/gspp/taxonomy.ts src/profile/gspp/words.ts --bundle --format=esm --splitting --outdir=node_modules/.cache/words --out-extension:.js=.mjs --define:import.meta.env={\\\"VITE_LLM\\\":\\\"1\\\"} --log-level=error && MOD_T=node_modules/.cache/words/profile/gspp/taxonomy.mjs MOD_W=node_modules/.cache/words/profile/gspp/words.mjs MOD_E=node_modules/.cache/words/domain/words.mjs node scripts/profile-words-test.mjs",
+    "test:i18n": "rm -rf node_modules/.cache/i18n && esbuild src/domain/i18n.ts src/domain/taxonomy.ts --bundle --splitting --format=esm --outdir=node_modules/.cache/i18n --out-extension:.js=.mjs --log-level=error && MOD_I=node_modules/.cache/i18n/i18n.mjs MOD_T=node_modules/.cache/i18n/taxonomy.mjs node scripts/i18n-test.mjs",
+    "test:words": "rm -rf node_modules/.cache/words && esbuild src/profile/index.ts src/domain/lint.ts src/profile/ebios/sample.ts src/domain/words.ts --bundle --splitting --format=esm --outdir=node_modules/.cache/words --out-extension:.js=.mjs --define:import.meta.env={\\\"VITE_LLM\\\":\\\"1\\\"} --log-level=error && MOD_P=node_modules/.cache/words/profile/index.mjs MOD_L=node_modules/.cache/words/domain/lint.mjs MOD_S=node_modules/.cache/words/profile/ebios/sample.mjs MOD_W=node_modules/.cache/words/domain/words.mjs node scripts/words-test.mjs",
+    "test:sample": "rm -rf node_modules/.cache/sample && esbuild src/profile/gspp/sample.ts src/profile/gspp/sample.de.ts src/profile/gspp/taxonomy.ts src/domain/i18n.ts src/profile/gspp/oscalexport.ts --bundle --splitting --format=esm --outdir=node_modules/.cache/sample --out-extension:.js=.mjs --log-level=error && MOD_S=node_modules/.cache/sample/profile/gspp/sample.mjs MOD_T=node_modules/.cache/sample/profile/gspp/taxonomy.mjs MOD_I=node_modules/.cache/sample/domain/i18n.mjs MOD_D=node_modules/.cache/sample/profile/gspp/sample.de.mjs MOD_X=node_modules/.cache/sample/profile/gspp/oscalexport.mjs node scripts/sample-test.mjs"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

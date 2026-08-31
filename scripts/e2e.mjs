@@ -244,6 +244,19 @@ try {
     ok("every row carries the switch, engaged where the reading reached it",
       (await sec.locator(".cell-toggle").count()) === 1001
       && (await sec.locator(".cell-toggle.on").count()) === 392);
+    // A record whose scope was never SET reads as in play - `isSetBack`, every count and
+    // the read-only badge all read silence that way. The switch read it as the first
+    // option instead, so 24 records of this study stood in their register saying "out of
+    // scope" while every figure counted them in, and one press then sent them the way they
+    // already were, so the dialog that says what a record takes with it never opened.
+    // Requirements all carry a stored value, which is why counting them missed it.
+    {
+      const assets = section("Assets");
+      const n = await assets.locator("tbody tr.row-clickable").count();
+      const on = await assets.locator(".cell-toggle.on").count();
+      ok(`a record with no scope stored reads as in play (${on} of ${n})`, n > 0 && on === n);
+      ok("...and none of them is dimmed", (await assets.locator("tbody tr.row-dim").count()) === 0);
+    }
     const off = sec.locator("tbody tr.row-dim .cell-toggle").first();
     await off.click();
     await page.waitForTimeout(500);
@@ -417,7 +430,11 @@ try {
   const mc = await page.locator(".panel:has(.mc-ring)").innerText();
   ok("realisation shows what becomes of an attempt", /blocked/i.test(mc) && /detected in time/i.test(mc) && /reaches the objective/i.test(mc));
   ok("the ring counts attempts, not coverage", /attempts stopped/i.test(mc) && !/residual gap/i.test(mc));
-  ok("the ring says how many steps block and how many detect", /steps block an attacker/i.test(mc) && /detect him/i.test(mc));
+  // Both halves agree with their own count now, so the pattern has to allow either form:
+  // one detecting step reads "1 detects him", and read as a fixed phrase it looked like a
+  // missing sentence.
+  ok("the ring says how many steps block and how many detect",
+    /steps blocks? an attacker/i.test(mc) && /detects? him/i.test(mc));
   ok("kill-chain mitigation counts defended steps, not merely covered ones",
     (await page.locator(".tbl .badge", { hasText: /\d+\/\d+ defended/ }).count()) === 2);
   ok("the tactic heatmap carries a colour key", (await page.locator(".hm-key .hm-key-bar i").count()) >= 4);

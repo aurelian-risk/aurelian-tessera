@@ -2,8 +2,9 @@
 // Popup showing one entity's hash-chained change history. Reused from the entity
 // table (opened on click) and the timeline (clicking a row).
 import { createPortal } from "react-dom";
+import { t as tr, tParts } from "../domain/i18n";
 import type { ChangeEntry, EntityRecord, FieldValue, Study, Taxonomy } from "../domain/types";
-import { getType, recordTitle, scaleLabel } from "../domain/taxonomy";
+import { fieldLabel, getType, recordTitle, scaleLabel, typeNameOf } from "../domain/taxonomy";
 import { entryOf, verifyLog } from "../domain/audit";
 import { Icon } from "./ui";
 
@@ -26,7 +27,10 @@ export function changeActionText(tax: Taxonomy, study: Study, e: EntityRecord | 
   if (entry.kind === "delete") return "deleted";
   const ch = entry.changes ?? [];
   const typeKey = e?.type ?? entry.entityType;
-  const label = (k: string) => getType(tax, typeKey)?.fields.find((x) => x.key === k)?.label ?? k;
+  const label = (k: string) => {
+    const t = getType(tax, typeKey), f = t?.fields.find((x) => x.key === k);
+    return f ? fieldLabel(f, t) : k;
+  };
   const verb = entry.kind === "import" ? "imported" : "updated";
   if (!ch.length) return verb;
   if (ch.length === 1 && e) {
@@ -48,12 +52,17 @@ export function IntegrityBadge({ study, entityId }: { study: Study; entityId?: s
       : entityId && v.drifted.includes(entityId) ? "drift"
         : entityId && v.untracked.includes(entityId) ? "untracked"
           : !entityId && !v.ok ? "drift" : "ok";
-  const text = { ok: "integrity verified", chain: "log altered", drift: "changed outside the app", untracked: "not in the log" }[state];
+  const text = { ok: tr("ui.changehistory.integrity-verified", "integrity verified"),
+    chain: tr("ui.changehistory.log-altered", "log altered"),
+    drift: tr("ui.changehistory.changed-outside-the-app", "changed outside the app"),
+    untracked: tr("ui.changehistory.not-in-the-log", "not in the log") }[state];
   const title = {
-    ok: "Hash chain intact and matching the data",
-    chain: `Hash chain broken at entry ${v.brokenAt ?? "?"} - an entry was altered, removed or reordered`,
-    drift: "The values no longer match what the log last recorded - the file was edited outside the application. Re-import it and confirm the changes to re-establish the chain.",
-    untracked: "The log knows nothing about this record - it was added to the file from outside. Re-import it and confirm to take it into the log.",
+    ok: tr("ui.changehistory.hash-chain-intact-and", "Hash chain intact and matching the data"),
+    chain: tParts("ui.changehistory.hash-chain-broken-at",
+      "Hash chain broken at entry {0} - an entry was altered, removed or reordered")
+      .map((p) => (typeof p === "number" ? String(v.brokenAt ?? "?") : p)).join(""),
+    drift: tr("ui.changehistory.the-values-no-longer", "The values no longer match what the log last recorded - the file was edited outside the application. Re-import it and confirm the changes to re-establish the chain."),
+    untracked: tr("ui.changehistory.the-log-knows-nothing", "The log knows nothing about this record - it was added to the file from outside. Re-import it and confirm to take it into the log."),
   }[state];
   return <span className={"hist-chain " + (state === "ok" ? "ok" : "bad")} title={title}>{text}</span>;
 }
@@ -67,10 +76,10 @@ export function ChangeHistoryModal({ tax, study, record, onClose }:
       <div className="modal-lg" style={{ maxWidth: 560 }} onMouseDown={(e) => e.stopPropagation()}>
         <header className="modal-lg-head">
           <div style={{ flex: 1 }}>
-            <div className="dialog-sub" style={{ margin: 0 }}>Change history · {type?.label ?? record.type}</div>
+            <div className="dialog-sub" style={{ margin: 0 }}>Change history · {typeNameOf(tax, record.type)}</div>
             <h2 style={{ fontSize: 19 }}>{type ? recordTitle(type, record) : record.id}</h2>
           </div>
-          <button className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon.close /></button>
+          <button className="btn ghost sm" onClick={onClose} aria-label={tr('ui.changehistory.close', 'Close')}><Icon.close /></button>
         </header>
         <div className="modal-lg-body">
           <div className="hist-head" style={{ marginBottom: 10 }}>
@@ -78,7 +87,7 @@ export function ChangeHistoryModal({ tax, study, record, onClose }:
             <IntegrityBadge study={study} entityId={record.id} />
           </div>
           {history.length === 0 ? (
-            <div className="hint">No changes recorded yet.</div>
+            <div className="hint">{tr('ui.changehistory.no-changes-recorded-yet', 'No changes recorded yet.')}</div>
           ) : (
             <ul className="hist-list">
               {[...history].reverse().map((h, i) => (

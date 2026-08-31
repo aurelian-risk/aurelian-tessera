@@ -71,7 +71,16 @@ body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
 .tbl { border: 1px solid var(--border-strong); font-family: var(--font-display); font-size: 12.5px; }
 .tbl th { border: 1px solid var(--border-strong); border-bottom-color: var(--fg-subtle); background: var(--bg-hover);
   text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 700;
-  font-style: italic; text-align: center; padding: 6px 8px; }
+  font-style: italic; text-align: center; padding: 6px 8px;
+  /* The engine keeps a heading on one line and ends it in an ellipsis. That fits a language
+     whose words are short: at 1280px four English headings ran out of their column and
+     fifteen German ones, and the column is a fixed share of the table, so the room does not
+     grow. "Eintrittswahrscheinlichkeit" has no shorter synonym - it read
+     "Eintrittswahrscheinl…" - so the line has to break instead. Hyphenation splits a
+     compound where the language allows; the page carries lang="de", which is what the
+     browser reads to know where that is. */
+  white-space: normal; overflow: visible; text-overflow: clip;
+  overflow-wrap: break-word; hyphens: auto; vertical-align: bottom; }
 .tbl td { border: 1px solid var(--hairline); padding: 6px 8px; }
 /* A wide register scrolls inside its own section. The engine clips the panel to round its
    corners; with square corners there is nothing to round, and the clip was what cut the
@@ -80,7 +89,21 @@ body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
 .panel-body { overflow-x: auto; }
 .tbl tbody tr:hover td { background: var(--bg-hover); }
 .tbl .name { font-weight: 600; }
-.tbl td .chip, .tbl td .badge { white-space: normal; overflow-wrap: anywhere; }
+/* A chip carries a record's name - arbitrary text, often long - and may break anywhere
+   rather than push the column out. A badge carries a VALUE from a fixed vocabulary, and
+   "anywhere" lets its word shrink to one character: inside the flex badge that put the
+   scale bars beside "hoc h" and "kriti sch". "break-word" keeps the word whole and breaks
+   only one that genuinely does not fit. English never showed it - "high" fits. */
+/* max-width is what makes the break rule bite. A pill sizes itself to its content, so a
+   long word never "does not fit" - the pill simply grows, and at 1500px the German reading
+   of the ISB role stood 242px wide in a 138px cell, over the column beside it. Held to the
+   cell, the same word wraps. */
+.tbl td .chip { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+/* "break-word" breaks at render but leaves a flex item's min-content width at the whole
+   word, so the pill grew instead: the German reading of the ISB role stood 242px wide in a
+   138px cell. "anywhere" is the one that lets it shrink - and the rung's name is held whole
+   by .scale-lbl, which is why it can be used here now. */
+.tbl td .badge { white-space: normal; overflow-wrap: anywhere; hyphens: auto; max-width: 100%; }
 
 /* ── Notes and labels ───────────────────────────────────────────────── */
 /* A note is set as a marginal remark with a rule, not as a tinted box. */

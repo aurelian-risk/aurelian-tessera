@@ -3,8 +3,9 @@
 // taxonomy - independent of WHICH taxonomy. The taxonomy itself is a product
 // decision and lives in src/profile.
 import type {
-  EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy,
+  EntityRecord, EntityTypeDef, FieldDef, FieldValue, GroupDef, Study, Taxonomy,
 } from "./types";
+import { t as tr, tList as trList } from "./i18n";
 import { DEFAULT_TAXONOMY, TAXONOMY_SCHEMA_VERSION } from "../profile";
 
 export { DEFAULT_TAXONOMY, TAXONOMY_SCHEMA_VERSION };
@@ -69,23 +70,80 @@ export function validateRecord(t: EntityTypeDef, values: Record<string, FieldVal
     const v = values[f.key];
     const empty =
       v == null || v === "" || (Array.isArray(v) && v.length === 0);
-    if (empty) return `"${f.label}" is required.`;
+    if (empty) return `"${fieldLabel(f)}" is required.`;
   }
   return null;
 }
 
-/** What to show for an enum value: the field's label for it, or the value itself. */
-export function optionLabel(f: FieldDef, value: string): string {
+// ── What a reader is shown ───────────────────────────────────────────────────
+// Every string the taxonomy carries is looked up before it is shown, so a product can
+// give it its own wording without the taxonomy being touched: Grundschutz++ says
+// "Zielobjekt" where this says "Supporting Asset", and the stored key, the export and
+// the seal do not notice. The contract, and the key scheme, are in docs/i18n.md.
+//
+// Reading a label directly is what these replace. It still works and still compiles,
+// which is why they are named after what they return rather than after the lookup: a
+// call site that says `fieldLabel(f)` reads the same as `fieldLabel(f)` did.
+
+/** A field's key alone is not unique - "name" and "description" occur in most types - so
+ *  a caller that has the type in hand gets a key that can be answered per type, and one
+ *  that does not falls back to the wording shared across types. */
+/** The keys a field's vocabulary may be written under, most specific first: the one scoped
+ *  to this type, then the one shared by every type declaring a field of that key. Shared is
+ *  right where the word is the same everywhere (a rung named "low"), scoped where it is not
+ *  (five types declare a `status`, and no two mean the same by it). */
+const keysFor = (f: FieldDef, t: EntityTypeDef | undefined, part: string): string[] =>
+  t ? [fieldKey(f, t, part), `field.${f.key}.${part}`] : [`field.${f.key}.${part}`];
+
+const fieldKey = (f: FieldDef, t: EntityTypeDef | undefined, part: string): string =>
+  t ? `field.${t.key}.${f.key}.${part}` : `field.${f.key}.${part}`;
+const fieldLookup = (f: FieldDef, t: EntityTypeDef | undefined, part: string, authored: string): string => {
+  const scoped = t ? tr(fieldKey(f, t, part), "") : "";
+  return scoped || tr(`field.${f.key}.${part}`, authored);
+};
+
+export const typeLabel = (t: EntityTypeDef): string => tr(`type.${t.key}.label`, t.label);
+export const typeLabelPlural = (t: EntityTypeDef): string => tr(`type.${t.key}.plural`, t.labelPlural);
+export const groupLabel = (g: GroupDef): string => tr(`group.${g.key}.label`, g.label);
+export const groupDescription = (g: GroupDef): string | undefined =>
+  g.description == null ? undefined : tr(`group.${g.key}.description`, g.description);
+export const fieldLabel = (f: FieldDef, t?: EntityTypeDef): string => fieldLookup(f, t, "label", f.label);
+export const fieldHelp = (f: FieldDef, t?: EntityTypeDef): string | undefined =>
+  f.help == null ? undefined : fieldLookup(f, t, "help", f.help);
+/** How a reference reads in a sentence — "affects", "covers". Falls back to the field's
+ *  own label, which is what every call site did by hand. */
+export const fieldRelation = (f: FieldDef, t?: EntityTypeDef): string =>
+  f.relation ? fieldLookup(f, t, "relation", f.relation) : fieldLabel(f, t);
+
+/** What to show for an enum value: this language's reading, the one the taxonomy carries,
+ *  or the value itself.
+ *
+ *  `optionLabels` is itself a translation into ONE language, fixed when the file was
+ *  written, so a product with two languages moves it into the table for the language it
+ *  was written in. It stays here as the authored fallback. */
+export function optionLabel(f: FieldDef, value: string, t?: EntityTypeDef): string {
   const i = f.options?.indexOf(value) ?? -1;
-  return (i >= 0 ? f.optionLabels?.[i] : undefined) ?? value;
+  if (i < 0) return value;
+  const list = trList(keysFor(f, t, "options"), f.optionLabels);
+  return list?.[i] ?? f.optionLabels?.[i] ?? value;
+}
+
+/** The shown name of a type given only its KEY: this language's reading, or the key
+ *  itself where the taxonomy has no such type - a record whose type was removed still has
+ *  to say something. Six call sites wrote `getType(tax, k)?.label ?? k`, and every one of
+ *  them read past the translation because `.label` is the authored word. */
+export function typeNameOf(tax: Taxonomy, key: string): string {
+  const t = getType(tax, key);
+  return t ? typeLabel(t) : key;
 }
 
 export function scaleMax(f: FieldDef): number {
   return f.scaleLabels?.length ?? 4;
 }
 
-export function scaleLabel(f: FieldDef, value: number): string {
-  return f.scaleLabels?.[value - 1] ?? String(value);
+export function scaleLabel(f: FieldDef, value: number, t?: EntityTypeDef): string {
+  const list = trList(keysFor(f, t, "scale"), f.scaleLabels);
+  return list?.[value - 1] ?? f.scaleLabels?.[value - 1] ?? String(value);
 }
 
 /** Additively bring a stored taxonomy in line with the default one: enum fields whose
@@ -157,6 +215,16 @@ function heldBy(d: { lockedWhile?: string[] }, r: EntityRecord): string[] {
  *  and from the framework radar, and counted by the chain. One question cannot have two
  *  answers depending on which view asks it, so the fact decides and the stored value is
  *  read only where nothing holds the record. */
+/** Which option of a two-state field is in force, for a value that may be unset.
+ *
+ *  SILENCE IS NOT THE FIRST OPTION. `isSetBack` reads an unset field as not set back, and
+ *  so does every count, every report section and the read-only badge. A switch that read it
+ *  the other way showed 24 records of the example study as "out of scope" while every
+ *  figure counted them in - and its click then sent them the way they already were, so the
+ *  dialog that asks what a record takes with it never appeared. One rule, one place. */
+export const inForce = (field: FieldDef, value: unknown): 0 | 1 =>
+  String(value ?? "") === field.options?.[0] ? 0 : 1;
+
 export function isSetBack(tax: Taxonomy, r: EntityRecord): boolean {
   return (tax.dimWhen ?? []).some((d) => d.type === r.type
     && d.values.includes(String(r.values[d.field] ?? ""))

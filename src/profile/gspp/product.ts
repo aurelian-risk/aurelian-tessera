@@ -16,6 +16,10 @@ import { referenceDocumentsHtml } from "./referencedocs";
 export const PRODUCT: Product = {
   name: "Aurelian Tessera++",
   tagline: "BSI Grundschutz implemented",
+  // The method is published in German and the institutions that apply it work in German.
+  // What a reader's browser asks for still wins; this is what answers when it asks for
+  // something no table here has.
+  language: "de",
   mark: "Aurelian Tessera",
   source: "github.com/aurelian-risk/aurelian-tessera",
   // The read-only view of the model is where a reader goes to see the BSI's own structure -

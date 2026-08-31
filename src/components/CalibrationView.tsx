@@ -8,6 +8,7 @@
 // in the app, which is why each table carries its question and its provenance next to
 // the inputs rather than in documentation somewhere else.
 import { useState } from "react";
+import { t as tr } from "../domain/i18n";
 import type { Study } from "../domain/types";
 import { useStore } from "../domain/store";
 import {
@@ -52,15 +53,15 @@ function Table({ docKey, changed, onReset, children }: {
         </h3>
         <div className="cal-head-act">
           <button className="cal-why" onClick={() => setWhy((v) => !v)}>{why ? "less" : "why these numbers"}</button>
-          <button className={"cal-reset" + (changed ? "" : " off")} onClick={onReset}>reset this table</button>
+          <button className={"cal-reset" + (changed ? "" : " off")} onClick={onReset}>{tr('ui.calibration.reset-this-table', 'reset this table')}</button>
         </div>
       </header>
       <p className="cal-q">{doc.question}</p>
       {why && (
         <div className="cal-why-box">
-          <p><b>What it changes.</b> {doc.effect}</p>
-          {doc.source && <p><b>Source.</b> {doc.source}</p>}
-          <p><b>How the default was arrived at.</b> {doc.origin}</p>
+          <p><b>{tr('ui.calibration.what-it-changes', 'What it changes.')}</b> {doc.effect}</p>
+          {doc.source && <p><b>{tr('ui.calibration.source', 'Source.')}</b> {doc.source}</p>}
+          <p><b>{tr('ui.calibration.how-the-default-was', 'How the default was arrived at.')}</b> {doc.origin}</p>
         </div>
       )}
       <div className="cal-body">{children}</div>
@@ -159,8 +160,8 @@ export function CalibrationView({ study, color, scope = "all" }: {
       <span className="spacer" />
       <span className="hint">
         {all
-          ? "parameter adjustment - the settings the figures are computed from"
-          : "parameter adjustment - what a measure is worth, and what layers of them add"}
+          ? tr("ui.calibration.parameter-adjustment-the-settings", "parameter adjustment - the settings the figures are computed from")
+          : tr("ui.calibration.parameter-adjustment-what-a", "parameter adjustment - what a measure is worth, and what layers of them add")}
       </span>
       <span className={"badge" + (changedInScope ? "" : " off")}>changed</span>
       <button className="btn sm" onClick={() => setOpen(!open)}>{open ? "Close" : "Adjust"}</button>
@@ -185,8 +186,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
               + " Stored with the study and included in every export of it."}
         </p>
         <p>
-          Each table is graded by its basis: <b>measured</b> is a published figure with the
-          derivation documented, <b>derived</b> adds a stated assumption, <b>judgement</b>{" "}
+          {tr('ui.calibration.each-table-is-graded', 'Each table is graded by its basis:')} <b>measured</b> {tr('ui.calibration.is-a-published-figure', 'is a published figure with the derivation documented,')} <b>derived</b> {tr('ui.calibration.adds-a-stated-assumption', 'adds a stated assumption,')} <b>judgement</b>{" "}
           means no published figure answers the question. &quot;Why these numbers&quot;
           shows the source and the derivation.
         </p>
@@ -203,7 +203,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
       </div>
 
       {all && <>
-      <h2 className="cal-part">How often a scenario is attempted</h2>
+      <h2 className="cal-part">{tr('ui.calibration.how-often-a-scenario', 'How often a scenario is attempted')}</h2>
 
       <Table docKey="frequency.baseRate" changed={differs(["frequency", "baseRate"]) || differs(["frequency", "baseRateDefault"])}
         onReset={() => resetPaths(["frequency", "baseRate"], ["frequency", "baseRateDefault"])}>
@@ -236,12 +236,12 @@ export function CalibrationView({ study, color, scope = "all" }: {
               </span>
               <Dial name={`${row.actor} attacking ${row.sector}`} value={row.factor} dflt={1} lo={0.2} hi={4} step={0.05} kind="mult"
                 onChange={(n) => put(["frequency", "sector", i, "factor"], n)} />
-              <button className="cal-del" title="Remove this exception"
+              <button className="cal-del" title={tr('ui.calibration.remove-this-exception', 'Remove this exception')}
                 onClick={() => put(["frequency", "sector"], f.sector.filter((_x: SectorRow, k: number) => k !== i))}>×</button>
             </div>
           ))}
           <button className="cal-add" onClick={() => put(["frequency", "sector"], [...f.sector, { actor: actors[0], sector: SECTORS[0], factor: 1.5 }])}>
-            + add an exception
+            {tr('ui.calibration.add-an-exception', '+ add an exception')}
           </button>
         </div>
       </Table>
@@ -266,7 +266,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
             value={f.targetPull.noMatch} dflt={D.frequency.targetPull.noMatch} lo={0.2} hi={4} step={0.05} kind="mult"
             onChange={(n) => put(["frequency", "targetPull", "noMatch"], n)} />
         </div>
-        <p className="cal-sub">No objectives modelled - the actor&apos;s relevance rating stands in:</p>
+        <p className="cal-sub">{tr('ui.calibration.no-objectives-modelled-the', "No objectives modelled - the actor's relevance rating stands in:")}</p>
         <Band labels={["unlikely", "possible", "likely", "very likely"]} values={f.targetPull.byRelevance}
           dflt={D.frequency.targetPull.byRelevance} lo={0.2} hi={4} step={0.05} kind="mult"
           onChange={(i, n) => put(["frequency", "targetPull", "byRelevance", i], n)} />
@@ -293,7 +293,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
           onChange={(i, n) => put(["frequency", "likelihoodBands", i], n)} />
       </Table>
 
-      <h2 className="cal-part">What an attempt is up against</h2>
+      <h2 className="cal-part">{tr('ui.calibration.what-an-attempt-is', 'What an attempt is up against')}</h2>
 
       <Table docKey="demand.entry" changed={differs(["demand", "entry"]) || differs(["demand", "grantedAccess"])}
         onReset={() => resetPaths(["demand", "entry"], ["demand", "entryDefault"], ["demand", "grantedAccess"])}>
@@ -323,7 +323,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
           <DialRow name="Spread either side of the derived bar" value={d.spread} dflt={D.demand.spread}
             lo={0} hi={0.5} step={0.01} kind="pct" onChange={(n) => put(["demand", "spread"], n)} />
         </div>
-        <p className="cal-sub">Tactics that count as having to stay inside:</p>
+        <p className="cal-sub">{tr('ui.calibration.tactics-that-count-as', 'Tactics that count as having to stay inside:')}</p>
         <div className="cal-chips">
           {TACTIC_NAMES.map((t) => {
             const on = d.dwellTactics.includes(t);
@@ -339,7 +339,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
 
       <Table docKey="demand.tooling" changed={differs(["demand", "tooling"]) || differs(["demand", "toolingByTactic"])}
         onReset={() => resetPaths(["demand", "tooling"], ["demand", "toolingByTactic"])}>
-        <p className="cal-sub">By tactic - used where a technique is not listed below:</p>
+        <p className="cal-sub">{tr('ui.calibration.by-tactic-used-where', 'By tactic - used where a technique is not listed below:')}</p>
         <div className="seg-grid">
           {Object.keys(d.toolingByTactic).sort((a, b) => d.toolingByTactic[b] - d.toolingByTactic[a] || a.localeCompare(b)).map((t) => (
             <div className="seg-row" key={t}>
@@ -383,21 +383,18 @@ export function CalibrationView({ study, color, scope = "all" }: {
       </Table>
       </>}
 
-      {all && <h2 className="cal-part">What a measure is worth, and what a loss costs</h2>}
+      {all && <h2 className="cal-part">{tr('ui.calibration.what-a-measure-is', 'What a measure is worth, and what a loss costs')}</h2>}
 
       <Table docKey="effect.depth"
         changed={["levelWeight", "statusWeight", "controlCeiling", "prevention"].some((k) => differs(["effect", k]))}
         onReset={() => resetPaths(["effect", "levelWeight"], ["effect", "statusWeight"], ["effect", "controlCeiling"], ["effect", "prevention"])}>
         <p className="cal-lead">
-          Everything below rests on one idea. An attack needs a certain level of skill to get
-          past a step, and a security measure raises that level. Skill is expressed as a rank
-          among attackers - &quot;better than 84% of them&quot;. The higher the level a step
-          demands, the fewer attempts clear it.
+          {tr('ui.calibration.everything-below-rests-on', 'Everything below rests on one idea. An attack needs a certain level of skill to get past a step, and a security measure raises that level. Skill is expressed as a rank among attackers - "better than 84% of them". The higher the level a step demands, the fewer attempts clear it.')}
         </p>
         <DepthCurve effect={e} capability={cal.adversary.capability[2] ?? cal.adversary.capability[0]}
           spread={d.spread} levels={levelLabels} level={lvl} onLevel={setLvl} />
         <p className="cal-sub">
-          How much a measure counts at each stage of its roll-out, against a finished one:
+          {tr('ui.calibration.how-much-a-measure', 'How much a measure counts at each stage of its roll-out, against a finished one:')}
         </p>
         <Band labels={levelLabels} values={e.levelWeight} dflt={D.effect.levelWeight}
           lo={0} hi={1} step={0.01} kind="mult" onChange={(i, n) => put(["effect", "levelWeight", i], n)} />
@@ -450,8 +447,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
           </div>
         ))}
         <p className="cal-sub">
-          Preventive measures are the fifth class; what they are worth is set in the
-          defence-in-depth table above, because it depends on how many sit on a step.
+          {tr('ui.calibration.preventive-measures-are-the', 'Preventive measures are the fifth class; what they are worth is set in the defence-in-depth table above, because it depends on how many sit on a step.')}
         </p>
       </Table>
 
@@ -469,7 +465,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
             </div>
           </div>
         ))}
-        <p className="cal-sub">Chance that a loss event drags a follow-on loss with it:</p>
+        <p className="cal-sub">{tr('ui.calibration.chance-that-a-loss', 'Chance that a loss event drags a follow-on loss with it:')}</p>
         <Band labels={SEVERITY} values={mg.cascadeLikelihood.map((b: Band2) => b.mode)}
           dflt={D.magnitude.cascadeLikelihood.map((b) => b.mode)} lo={0} hi={1} step={0.01} kind="pct"
           onChange={(i, n) => put(["magnitude", "cascadeLikelihood", i, "mode"], n)} />
@@ -478,8 +474,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
 
       {all && (
         <div className="cal-foot">
-          The taxonomy defines which fields exist; the calibration defines how their values
-          become numbers.
+          {tr('ui.calibration.the-taxonomy-defines-which', 'The taxonomy defines which fields exist; the calibration defines how their values become numbers.')}
         </div>
       )}
       </div>

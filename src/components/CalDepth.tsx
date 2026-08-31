@@ -12,6 +12,7 @@
 // simulation to within a few tenths of a point, without noise and cheaply enough to
 // redraw while a dial is being dragged.
 import type { Band, EffectCalibration } from "../domain/calibration";
+import { t as tr } from "../domain/i18n";
 
 const W = 430, H = 182, PL = 34, PR = 12, PT = 16, PB = 40;
 const GRID = 256;
@@ -80,7 +81,7 @@ export function DepthCurve({ effect, capability, spread, levels, level, onLevel,
   return (
     <div className="depth">
       <div className="depth-switch">
-        <span>Implementation</span>
+        <span>{tr('ui.caldepth.implementation', 'Implementation')}</span>
         {levels.map((l, i) => (
           <button key={l} type="button" className={"cal-seg-b" + (i === level ? " on" : "")}
             onClick={() => onLevel(i)}>{l}</button>
@@ -116,16 +117,16 @@ export function DepthCurve({ effect, capability, spread, levels, level, onLevel,
           <text key={p.n} x={x(p.n)} y={H - 21} textAnchor="middle" fontSize="9" fill="var(--fg-subtle)">{p.n}</text>
         ))}
         <text x={(PL + W - PR) / 2} y={H - 10} textAnchor="middle" fontSize="8.5" fill="var(--fg-subtle)">
-          measures on the same step
+          {tr('ui.caldepth.measures-on-the-same', 'measures on the same step')}
         </text>
         <text x={(PL + W - PR) / 2} y={H - 1} textAnchor="middle" fontSize="8" fill="var(--fg-subtle)">
-          for an attack that by itself needs someone better than half of all attackers, tried by a capable one
+          {tr('ui.caldepth.for-an-attack-that', 'for an attack that by itself needs someone better than half of all attackers, tried by a capable one')}
         </text>
       </svg>
 
       <p className="depth-key">
-        <span className="depth-k1" style={{ background: accent }} /> of every 100 attempts, how many get through
-        <span className="depth-k2" /> how well the step is protected
+        <span className="depth-k1" style={{ background: accent }} /> {tr('ui.caldepth.of-every-attempts-how', 'of every 100 attempts, how many get through')}
+        <span className="depth-k2" /> {tr('ui.caldepth.how-well-the-step', 'how well the step is protected')}
       </p>
       <p className="depth-note">
         {eff <= 0

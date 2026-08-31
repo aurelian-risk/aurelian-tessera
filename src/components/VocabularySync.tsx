@@ -9,6 +9,8 @@
 // looked at rather than inside a dialogue about importing requirements - the two are
 // different errands, and one of them is the reason someone opens this page.
 import { useState } from "react";
+import { t as tr } from "../domain/i18n";
+import { Sentence } from "./Sentence";
 import type { Taxonomy } from "../domain/types";
 import { fetchPublishedCatalog, type PublishedCatalog } from "../domain/frameworks";
 import { looksLikeOscal, parseOscalCatalog } from "../domain/oscal";
@@ -61,7 +63,7 @@ export function VocabularySync({ tax }: { tax: Taxonomy }) {
   return (
     <div className="panel vocab-sync" style={{ marginBottom: 18 }}>
       <div className="panel-head">
-        <h3>Vocabularies</h3>
+        <h3>{tr('ui.vocabularysync.vocabularies', 'Vocabularies')}</h3>
         <span className="spacer" />
         {PUBLISHED_CATALOGS.map((pc) => (
           <button key={pc.key} className="btn sm vocab-check" disabled={!!busy} onClick={() => check(pc)}>
@@ -76,8 +78,12 @@ export function VocabularySync({ tax }: { tax: Taxonomy }) {
             either visible from the button or a rule that belongs in the documentation. */}
         <div className="guide">
           {src
-            ? <>From <b>{src.name}</b>{src.version ? `, version ${shortVersion(src.version)}` : ""}, taken {src.at.slice(0, 10)}. Checking adds what the publisher has added since.</>
-            : <>Checking asks the publisher for the current lists and adds what is new.</>}
+            ? <Sentence k="ui.vocabularysync.from-source-taken-on"
+                en="From {0}{1}, taken {2}. Checking adds what the publisher has added since."
+                parts={[<b>{src.name}</b>,
+                        src.version ? tr("ui.vocabularysync.version", ", version ") + shortVersion(src.version) : "",
+                        src.at.slice(0, 10)]} />
+            : <>{tr('ui.vocabularysync.checking-asks-the-publisher', 'Checking asks the publisher for the current lists and adds what is new.')}</>}
         </div>
 
         {plan && (

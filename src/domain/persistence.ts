@@ -114,7 +114,17 @@ function download(filename: string, content: string, format: Format): void {
   URL.revokeObjectURL(url);
 }
 
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ebios";
+/** A study's name as a file name. Anything outside a-z0-9 became a hyphen, which is right
+ *  for punctuation and wrong for a letter: "Netzführung" saved as "netzf-hrung" and
+ *  "Sécurité" as "s-curit". The letters are folded to their ASCII form first - the German
+ *  ones the way German transliterates them, the rest by dropping the diacritic. */
+const FOLD: Record<string, string> = { ä: "ae", ö: "oe", ü: "ue", ß: "ss" };
+/** Exported because a product writes file names too - Grundschutz++ names its OSCAL
+ *  delivery after the study - and two of these drift apart at the first correction. */
+export const slug = (s: string) => s.toLowerCase()
+  .replace(/[äöüß]/g, (c) => FOLD[c])
+  .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+  .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ebios";
 
 export type ExportWhat = "bundle" | "taxonomy" | "data";
 

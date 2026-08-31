@@ -2,6 +2,7 @@
 // Import / export popover: full data-layer swap. Export a bundle (taxonomy +
 // data), data-only or taxonomy-only, as JSON or YAML. Import any of them.
 import { useState } from "react";
+import { t as tr } from "../domain/i18n";
 import { knownKeys } from "../domain/keys";
 import type { Study } from "../domain/types";
 import { useStore } from "../domain/store";
@@ -58,7 +59,7 @@ export function DataMenu({ studyScope, label = "Data" }: { studyScope?: Study; l
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
           <div className="menu-pop">
-            <div className="menu-label">Format</div>
+            <div className="menu-label">{tr('ui.datamenu.format', 'Format')}</div>
             <div className="seg">
               {(["yaml", "json"] as Format[]).map((f) => (
                 <button key={f} className={"seg-btn" + (format === f ? " on" : "")} onClick={() => setFormat(f)}>
@@ -68,16 +69,16 @@ export function DataMenu({ studyScope, label = "Data" }: { studyScope?: Study; l
             </div>
             {canEncrypt && (
               <>
-                <div className="menu-label">Protection</div>
+                <div className="menu-label">{tr('ui.datamenu.protection', 'Protection')}</div>
                 <div className="seg">
-                  <button className={"seg-btn" + (encrypt === "off" ? " on" : "")} onClick={() => setEncrypt("off")}>None</button>
-                  <button className={"seg-btn" + (encrypt === "password" ? " on" : "")} onClick={() => setEncrypt("password")}>Password</button>
+                  <button className={"seg-btn" + (encrypt === "off" ? " on" : "")} onClick={() => setEncrypt("off")}>{tr('ui.datamenu.none', 'None')}</button>
+                  <button className={"seg-btn" + (encrypt === "password" ? " on" : "")} onClick={() => setEncrypt("password")}>{tr('ui.datamenu.password', 'Password')}</button>
                   <button className={"seg-btn" + (encrypt === "keys" ? " on" : "")} disabled={!ring.length}
                     title={ring.length ? "Encrypt to the keys you have named" : "No keys named yet - name one in the Timeline's seal panel first"}
-                    onClick={() => setEncrypt("keys")}>Key</button>
+                    onClick={() => setEncrypt("keys")}>{tr('ui.datamenu.key', 'Key')}</button>
                 </div>
                 {encrypt === "password" && (
-                  <input className="menu-pw" type="password" autoComplete="new-password" placeholder="Password (AES-256)"
+                  <input className="menu-pw" type="password" autoComplete="new-password" placeholder={tr('ui.datamenu.password-aes', 'Password (AES-256)')}
                     value={password} onChange={(e) => setPassword(e.target.value)} onClick={(e) => e.stopPropagation()} />
                 )}
                 {encrypt === "keys" && (
@@ -89,24 +90,24 @@ export function DataMenu({ studyScope, label = "Data" }: { studyScope?: Study; l
                         <span>{k.name}</span><span className="mono menu-to-kid">{k.kid}</span>
                       </label>
                     ))}
-                    <span className="menu-hint">Each of them opens it with their own key. The list of recipients is readable in the file - that is what lets someone see whether it is for them.</span>
+                    <span className="menu-hint">{tr('ui.datamenu.each-of-them-opens', 'Each of them opens it with their own key. The list of recipients is readable in the file - that is what lets someone see whether it is for them.')}</span>
                   </div>
                 )}
               </>
             )}
             <div className="menu-label">Export {studyScope ? "(this study)" : "(everything)"}</div>
             <button className="menu-item" onClick={() => doExport("bundle")}>
-              <Icon.download /> Portable session <span className="menu-hint">taxonomy + data + docs + settings</span>
+              <Icon.download /> {tr('ui.datamenu.portable-session', 'Portable session')} <span className="menu-hint">{tr('ui.datamenu.taxonomy-data-docs-settings', 'taxonomy + data + docs + settings')}</span>
             </button>
             <button className="menu-item" onClick={() => doExport("data")}>
               <Icon.download /> {studyScope ? "This study" : "Studies"} <span className="menu-hint">data only</span>
             </button>
             <button className="menu-item" onClick={() => doExport("taxonomy")}>
-              <Icon.schema /> Taxonomy <span className="menu-hint">schema only</span>
+              <Icon.schema /> {tr('ui.datamenu.taxonomy', 'Taxonomy')} <span className="menu-hint">schema only</span>
             </button>
             <div className="menu-sep" />
             <button className="menu-item" onClick={() => { setOpen(false); setImporting(true); }}>
-              <Icon.upload /> Import data… <span className="menu-hint">file or paste</span>
+              <Icon.upload /> {tr('ui.datamenu.import-data', 'Import data…')} <span className="menu-hint">{tr('ui.datamenu.file-or-paste', 'file or paste')}</span>
             </button>
           </div>
         </>

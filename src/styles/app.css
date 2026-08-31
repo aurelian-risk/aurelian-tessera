@@ -184,7 +184,11 @@ select { cursor: pointer; }
    extended, and one that shows everything at equal weight cannot be read. */
 .tbl tbody tr.row-dim td { opacity: 0.45; }
 /* A two-state field as a switch: one press, and the state is the colour. */
-.cell-toggle { font: inherit; font-size: 11px; cursor: pointer; padding: 3px 9px;
+/* Same rule as the badge: a pill in a table cell may not grow past its column. It carries
+   one word of the vocabulary, which in German is "im Geltungsbereich", so it wraps at a
+   hyphenation point instead of standing over the column beside it. */
+.cell-toggle { font: inherit; font-size: 11px; cursor: pointer; padding: 3px 9px; max-width: 100%;
+  hyphens: auto; overflow-wrap: normal;
   border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--bg-hover);
   color: var(--fg-subtle); transition: background 0.12s var(--ease), color 0.12s var(--ease), border-color 0.12s var(--ease); }
 .cell-toggle:hover { border-color: var(--border-strong); color: var(--fg); }
@@ -405,8 +409,19 @@ select { cursor: pointer; }
 /* ── Badges / Chips ───────────────────────────────────────────────── */
 .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: var(--radius-pill);
   font-size: 11.5px; font-weight: 600; background: var(--bg-hover); color: var(--fg-muted);
-  border: 1px solid var(--hairline); white-space: nowrap; }
-.badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+  border: 1px solid var(--hairline); white-space: nowrap;
+  /* AN ELEMENT THAT REFUSES TO WRAP MUST REFUSE TO GROW. Without the cap this one did the
+     opposite: "existenzbedrohend" measured 175px inside a 113px cell and was drawn over the
+     column beside it - 21 of them at 1024px. Capping alone is not enough either, because a
+     flex item's automatic minimum is its content, which is what carried it out here. */
+  max-width: 100%; min-width: 0; }
+.badge .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+/* The rung's name breaks INSIDE the badge rather than pushing it through the side of the
+   cell - but ONLY where the language has a hyphenation point. Measured with `break-word`
+   instead: the bars claim their width first, the label was left about 60px, and it came out
+   as "wah rsch ein lich". `hyphens: auto` puts the break at "wahr-schein-lich" and leaves a
+   word it cannot hyphenate whole, to be clipped by the cap above rather than shredded. */
+.badge .scale-lbl { white-space: normal; overflow-wrap: normal; hyphens: auto; min-width: 0; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 8px;
   font-size: 12px; background: var(--bg-hover); color: var(--fg); border: 1px solid var(--border); }
 .chip button { background: none; border: none; color: var(--fg-subtle); cursor: pointer; padding: 0;
@@ -417,7 +432,13 @@ select { cursor: pointer; }
 .chip.clickable:hover { background: color-mix(in oklch, var(--primary) 16%, var(--bg-hover)); border-color: color-mix(in oklch, var(--primary) 40%, var(--border)); }
 .chip.clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .chip .chip-lbl { color: inherit; }
-.scale { display: inline-flex; gap: 3px; }
+.scale { display: inline-flex; gap: 3px; flex: none; }
+/* In a table cell the bars give way to the word. Four bars and their gaps take 41px of a
+   122px column, which is what pushed the rung's name onto a second line: at 26px the name
+   has 15px more and "kritisch" fits beside them again. Only in a cell - the detail view has
+   the room and reads better with the larger bars. */
+.tbl .badge .scale { gap: 2px; }
+.tbl .badge .scale i { width: 5px; }
 .scale i { width: 8px; height: 13px; border-radius: 3px; background: var(--border-strong);
   display: inline-block; font-style: normal; transition: background 0.15s; }
 .scale i.on { background: var(--sev, var(--primary)); box-shadow: 0 0 8px -1px var(--sev, var(--primary)); }
@@ -1798,3 +1819,15 @@ button.tx-row:hover { background: var(--bg-hover, rgba(127,127,127,0.07)); }
   background: color-mix(in oklch, var(--color-state-error) 16%, transparent);
   border-color: color-mix(in oklch, var(--color-state-error) 45%, transparent);
   text-decoration: line-through; text-decoration-thickness: 1px; }
+
+/* The language picker stands beside the theme switch and has to read as its equal: the same
+   marker, the same gap, the same height. Measured before this rule: its text began 15px
+   further in and the row was 10px taller, because a select carries a line box of its own. */
+.nav-lang { cursor: pointer; }
+.nav-lang select {
+  flex: 1; min-width: 0; appearance: none;
+  background: transparent; border: 0; padding: 0;
+  color: inherit; font: inherit; line-height: 16px; height: 16px; cursor: pointer;
+}
+.nav-lang select:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+.nav-lang option { color: var(--fg); background: var(--bg-elev); }

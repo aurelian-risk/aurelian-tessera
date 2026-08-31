@@ -2,7 +2,7 @@
 // Derives a node/edge graph from a study's generic entities, using the
 // taxonomy's ref/multiref fields as relationships.
 import type { EntityRecord, Study, Taxonomy } from "./types";
-import { getType, recordTitle, refFields } from "./taxonomy";
+import { fieldRelation, getType, recordTitle, refFields } from "./taxonomy";
 
 export interface GNode {
   id: string;
@@ -46,7 +46,9 @@ export function buildGraph(tax: Taxonomy, study: Study): { nodes: GNode[]; links
     const t = getType(tax, r.type);
     if (!t) continue;
     for (const f of refFields(t)) {
-      const rel = f.relation ?? f.label;
+      // Through the lookup, not off the declaration: this is the word on every edge of
+      // the graph and in its legend, and read raw it stayed English in a German study.
+      const rel = fieldRelation(f, t);
       const v = r.values[f.key];
       const targets = f.type === "multiref" ? (Array.isArray(v) ? v : []) : v ? [v] : [];
       for (const target of targets) {

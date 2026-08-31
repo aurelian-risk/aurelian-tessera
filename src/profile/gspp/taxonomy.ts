@@ -527,6 +527,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
   // dependencies itself - 67 `required` edges over 59 requirements - so the rule is
   // followed rather than asserted.
   dependsOn: {
+    id: "dependency-unmet",
     type: "requirement", field: "required", idField: "ref_id",
     statusField: "umsetzung", doneValue: "ja",
     title: "Requirements reported implemented while what they rest on is not",

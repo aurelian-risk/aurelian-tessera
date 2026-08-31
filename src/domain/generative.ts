@@ -10,6 +10,7 @@
 // entity-neutral, no hard-coded types or examples.
 import type { EntityTypeDef, FieldValue, Taxonomy } from "./types";
 import type { TypeCandidates, Candidate } from "./extraction";
+import { typeLabelPlural } from "./taxonomy";
 import { getUserModels } from "./modelRegistry";
 
 type Progress = { status?: string; text?: string; progress?: number; file?: string; tokens?: number; chunk?: number; chunks?: number };
@@ -302,6 +303,6 @@ export async function extractByLLM(tax: Taxonomy, text: string, model: GenModel,
     out.set(t.key, arr);
   }
   return tax.entityTypes
-    .map((t) => ({ typeKey: t.key, label: t.labelPlural, candidates: out.get(t.key) ?? [] }))
+    .map((t) => ({ typeKey: t.key, label: typeLabelPlural(t), candidates: out.get(t.key) ?? [] }))
     .filter((tc) => tc.candidates.length > 0);
 }

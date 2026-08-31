@@ -5,6 +5,7 @@
 // haptic distribution inputs. The Monte-Carlo (annual loss / ALE + loss-exceedance
 // curve) recomputes live; an inherent<->residual toggle shows what the controls buy.
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { t as tr } from "../domain/i18n";
 import { createPortal } from "react-dom";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
 import { getType, recordTitle, scaleLabel, scaleMax } from "../domain/taxonomy";
@@ -52,17 +53,17 @@ export function QuantificationView({ tax, study, color }: { tax: Taxonomy; study
   return (
     <div className="panel ws-accent" style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
       <div className="panel-head">
-        <h3>Quantitative risk</h3>
+        <h3>{tr('ui.quantification.quantitative-risk', 'Quantitative risk')}</h3>
         <span className="badge">{ops.length}</span>
         <span className="spacer" />
-        <span className="hint" style={{ marginRight: 8 }}>opt-in per scenario</span>
+        <span className="hint" style={{ marginRight: 8 }}>{tr('ui.quantification.opt-in-per-scenario', 'opt-in per scenario')}</span>
         <div style={{ position: "relative" }}>
-          <button className="btn sm" disabled={!available.length} onClick={() => setAdding((v) => !v)}><Icon.plus /> Add scenario</button>
+          <button className="btn sm" disabled={!available.length} onClick={() => setAdding((v) => !v)}><Icon.plus /> {tr('ui.quantification.add-scenario', 'Add scenario')}</button>
           {adding && available.length > 0 && (
             <>
               <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setAdding(false)} />
               <div className="menu-pop" style={{ width: 320 }}>
-                <div className="menu-label">Add a scenario to quantify</div>
+                <div className="menu-label">{tr('ui.quantification.add-a-scenario-to', 'Add a scenario to quantify')}</div>
                 {available.map((o) => (
                   <button className="menu-item" key={o.id} onClick={() => { toggleQuantScenario(o.id, true); setAdding(false); }}>
                     <Icon.plus /> {String(o.values.name ?? "Scenario")}
@@ -76,8 +77,8 @@ export function QuantificationView({ tax, study, color }: { tax: Taxonomy; study
       <div className="panel-body" style={{ padding: "6px 18px 12px" }}>
         {ops.length === 0 ? (
           <div className="empty" style={{ padding: "26px 8px" }}>
-            <h3>No scenarios quantified yet</h3>
-            Quantification is opt-in - it derives a monetary annual-loss figure only for the scenarios you choose. Use <b>Add scenario</b> to pick the operational scenarios to quantify.
+            <h3>{tr('ui.quantification.no-scenarios-quantified-yet', 'No scenarios quantified yet')}</h3>
+            {tr('ui.quantification.quantification-is-opt-in', 'Quantification is opt-in - it derives a monetary annual-loss figure only for the scenarios you choose. Use')} <b>{tr('ui.quantification.add-scenario', 'Add scenario')}</b> {tr('ui.quantification.to-pick-the-operational', 'to pick the operational scenarios to quantify.')}
           </div>
         ) : ops.map((op, i) => {
           const isOpen = open === i;
@@ -88,7 +89,7 @@ export function QuantificationView({ tax, study, color }: { tax: Taxonomy; study
                   <span className={"caret" + (isOpen ? " open" : "")}><Icon.chevron /></span>
                   <span className="qt-acc-name">{String(op.values.name ?? "Scenario")}</span>
                 </button>
-                <button className="qt-acc-rm" title="Remove from quantification" onClick={() => toggleQuantScenario(op.id, false)}><Icon.close /></button>
+                <button className="qt-acc-rm" title={tr('ui.quantification.remove-from-quantification', 'Remove from quantification')} onClick={() => toggleQuantScenario(op.id, false)}><Icon.close /></button>
               </div>
               {isOpen && <QuantTree tax={tax} study={study} op={op} color={color} />}
             </div>
@@ -188,19 +189,19 @@ function QuantTree({ tax, study, op, color }: { tax: Taxonomy; study: Study; op:
           <div className={"qt-risk-v mono" + (computing ? " computing" : "")}>{result ? fmtVal(result.ale.mean, "money") : "…"}</div>
           {result && <div className="qt-risk-sub mono">P50 {fmtVal(result.ale.p50, "money")} · P90 {fmtVal(result.ale.p90, "money")} · P99 {fmtVal(result.ale.p99, "money")}</div>}
           <div className="qt-toggle">
-            <button className={"seg-btn" + (!residual ? " on" : "")} onClick={() => setResidual(false)}>Inherent (no controls)</button>
-            <button className={"seg-btn" + (residual ? " on" : "")} onClick={() => setResidual(true)}>Residual (with controls)</button>
+            <button className={"seg-btn" + (!residual ? " on" : "")} onClick={() => setResidual(false)}>{tr('ui.quantification.inherent-no-controls', 'Inherent (no controls)')}</button>
+            <button className={"seg-btn" + (residual ? " on" : "")} onClick={() => setResidual(true)}>{tr('ui.quantification.residual-with-controls', 'Residual (with controls)')}</button>
           </div>
           {benefit > 0 && <div className="qt-delta">controls cut the mean annual loss by {fmtVal(benefit, "money")} → -{benefitPct}%</div>}
           <button className="btn sm qt-llm" onClick={() => {
             void copyText(quantLlmMarkdown(tax, study)).then((okd) => setCopied(okd ? "copied" : "copy failed"));
             setTimeout(() => setCopied(null), 2500);
-          }} title="The full quantification as text: the rules, the parameters in force, every derived term, the chain, the results and the stated limits">
+          }} title={tr('ui.quantification.the-full-quantification-as', 'The full quantification as text: the rules, the parameters in force, every derived term, the chain, the results and the stated limits')}>
             {copied ?? "Copy for an LLM"}
           </button>
           {lkCheck?.diverges && (
             <div className="qt-crosscheck">
-              You rated this scenario <b>{scaleLabel(lkF!, lkCheck.ratedLevel!)}</b>; working from the
+              {tr('ui.quantification.you-rated-this-scenario', 'You rated this scenario')} <b>{scaleLabel(lkF!, lkCheck.ratedLevel!)}</b>; working from the
               actor and the chain, the model arrives at <b>{scaleLabel(lkF!, lkCheck.modelLevel)}</b>
               {" "}({lef > 0 ? `about one loss event every ${Math.round(1 / lef)} years` : "no loss events"}).
               The rating is not used in the calculation, so this is a genuine second opinion -
@@ -213,22 +214,22 @@ function QuantTree({ tax, study, op, color }: { tax: Taxonomy; study: Study; op:
         derived={derivedWith} tax={tax} cal={cal} benefit={benefit} onTraceControls={() => setTrace("controlStrength")} />}
 
       <div className="qt-tree">
-        <NodeRow op="×" title="Loss event frequency" value={fmtVal(lef, "rate")} />
+        <NodeRow op="×" title={tr('ui.quantification.loss-event-frequency', 'Loss event frequency')} value={fmtVal(lef, "rate")} />
         <div className="qt-sub">
-          <LeafRow title="Attempts per year" value={fmtVal(M("attemptRate"), "rate")} prov={derived.prov.attemptRate} onTrace={() => setTrace("attemptRate")} />
-          <NodeRow op="vs" title="Vulnerability" value={fmtVal(vuln, "prob")} />
+          <LeafRow title={tr('ui.quantification.attempts-per-year', 'Attempts per year')} value={fmtVal(M("attemptRate"), "rate")} prov={derived.prov.attemptRate} onTrace={() => setTrace("attemptRate")} />
+          <NodeRow op="vs" title={tr('ui.quantification.vulnerability', 'Vulnerability')} value={fmtVal(vuln, "prob")} />
           <div className="qt-sub">
-            <LeafRow title="Attacker capability" value={fmtVal(M("adversaryStrength"), "prob")} prov={derived.prov.adversaryStrength} onTrace={() => setTrace("adversaryStrength")} />
-            <LeafRow title="What an attempt has to beat" value={fmtVal(M("controlStrength"), "prob")} prov={derived.prov.controlStrength} onTrace={() => setTrace("controlStrength")} />
+            <LeafRow title={tr('ui.quantification.attacker-capability', 'Attacker capability')} value={fmtVal(M("adversaryStrength"), "prob")} prov={derived.prov.adversaryStrength} onTrace={() => setTrace("adversaryStrength")} />
+            <LeafRow title={tr('ui.quantification.what-an-attempt-has', 'What an attempt has to beat')} value={fmtVal(M("controlStrength"), "prob")} prov={derived.prov.controlStrength} onTrace={() => setTrace("controlStrength")} />
           </div>
         </div>
-        <NodeRow op="+" title="Loss magnitude" value={fmtVal(primary + secondary, "money")} />
+        <NodeRow op="+" title={tr('ui.quantification.loss-magnitude', 'Loss magnitude')} value={fmtVal(primary + secondary, "money")} />
         <div className="qt-sub">
-          <MoneyRow title="Direct impact" value={inputs.directImpact} onChange={setOv("directImpact")} unit="money" lo={1e3} hi={5e7} log accent={color} prov={derived.prov.directImpact} onTrace={() => setTrace("directImpact")} />
-          <NodeRow op="×" title="Secondary risk" value={fmtVal(secondary, "money")} />
+          <MoneyRow title={tr('ui.quantification.direct-impact', 'Direct impact')} value={inputs.directImpact} onChange={setOv("directImpact")} unit="money" lo={1e3} hi={5e7} log accent={color} prov={derived.prov.directImpact} onTrace={() => setTrace("directImpact")} />
+          <NodeRow op="×" title={tr('ui.quantification.secondary-risk', 'Secondary risk')} value={fmtVal(secondary, "money")} />
           <div className="qt-sub">
-            <MoneyRow title="Cascading likelihood" value={inputs.cascadingLikelihood} onChange={setOv("cascadingLikelihood")} unit="prob" lo={0} hi={1} accent={color} prov={derived.prov.cascadingLikelihood} onTrace={() => setTrace("cascadingLikelihood")} />
-            <MoneyRow title="Cascading impact" value={inputs.cascadingImpact} onChange={setOv("cascadingImpact")} unit="money" lo={1e3} hi={5e7} log accent={color} prov={derived.prov.cascadingImpact} onTrace={() => setTrace("cascadingImpact")} />
+            <MoneyRow title={tr('ui.quantification.cascading-likelihood', 'Cascading likelihood')} value={inputs.cascadingLikelihood} onChange={setOv("cascadingLikelihood")} unit="prob" lo={0} hi={1} accent={color} prov={derived.prov.cascadingLikelihood} onTrace={() => setTrace("cascadingLikelihood")} />
+            <MoneyRow title={tr('ui.quantification.cascading-impact', 'Cascading impact')} value={inputs.cascadingImpact} onChange={setOv("cascadingImpact")} unit="money" lo={1e3} hi={5e7} log accent={color} prov={derived.prov.cascadingImpact} onTrace={() => setTrace("cascadingImpact")} />
           </div>
         </div>
       </div>
@@ -338,15 +339,15 @@ function BreakExplain({ what, result, derived, tax, cal, onClose }: {
       <div className="ft-card" onMouseDown={(e) => e.stopPropagation()}>
         <header className="ft-head">
           <div>
-            <div className="ft-eyebrow">out of every 100 attempts on this chain</div>
+            <div className="ft-eyebrow">{tr('ui.quantification.out-of-every-attempts', 'out of every 100 attempts on this chain')}</div>
             <h2>{title} <span className="mono ft-val">{p1(share)}</span></h2>
           </div>
-          <button className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon.close /></button>
+          <button className="btn ghost sm" onClick={onClose} aria-label={tr('ui.quantification.close', 'Close')}><Icon.close /></button>
         </header>
         <div className="ft-body">
           {sc && cs ? (
             <>
-              <p className="bx-h">Measures you recorded on this step</p>
+              <p className="bx-h">{tr('ui.quantification.measures-you-recorded-on', 'Measures you recorded on this step')}</p>
               {sc.measures.length ? sc.measures.map((m) => (
                 <div key={m.id}>
                   {line(
@@ -357,7 +358,7 @@ function BreakExplain({ what, result, derived, tax, cal, onClose }: {
                       {" "}· most one measure can protect {p0(cal.effect.controlCeiling)}</>,
                   )}
                 </div>
-              )) : <p className="bx-none">None. Nothing here costs an attacker anything.</p>}
+              )) : <p className="bx-none">{tr('ui.quantification.none-nothing-here-costs', 'None. Nothing here costs an attacker anything.')}</p>}
               {sc.measures.filter((m) => effectClassOf(m) === "Preventive").length > 1 && line(
                 "together they protect",
                 p1(sc.prevention),
@@ -366,17 +367,17 @@ function BreakExplain({ what, result, derived, tax, cal, onClose }: {
                 "bx-sum",
               )}
 
-              <p className="bx-h">How much skill it takes to get past this step</p>
+              <p className="bx-h">{tr('ui.quantification.how-much-skill-it', 'How much skill it takes to get past this step')}</p>
               {dm && line("what the attack needs on its own", p1(dm.total),
                 <>getting in {p1(dm.entry)} + tooling {p1(dm.adds.tooling)} + breadth over {dm.tactics} tactics {p1(dm.adds.depth)} + staying in {p1(dm.adds.dwell)}</>)}
               {line(<>because this step is {p1(sc.prevention)} protected</>,
                 cs.gate ? `+${p1(cs.gate.mode - (dm?.total ?? 0))}` : "+0.0%",
                 <>{p1(sc.prevention)} × {p0(cal.effect.prevention)}, the most a fully protected step adds</>)}
-              {line(<b>an attacker has to be better than this share of all attackers</b>,
+              {line(<b>{tr('ui.quantification.an-attacker-has-to', 'an attacker has to be better than this share of all attackers')}</b>,
                 cs.gate ? p1(cs.gate.mode) : "nothing to clear", undefined, "bx-sum")}
               {cs.interrupt > 0 && (
                 <>
-                  <p className="bx-h">Being spotted here</p>
+                  <p className="bx-h">{tr('ui.quantification.being-spotted-here', 'Being spotted here')}</p>
                   {line("chance the intrusion is ended at this step", p1(cs.interrupt),
                     <>watched {p1(sc.detection)} × {p0(cal.effect.detection)} of what is seen gets stopped × how able you are to react</>)}
                 </>
@@ -388,21 +389,21 @@ function BreakExplain({ what, result, derived, tax, cal, onClose }: {
             </>
           ) : what === "" ? (
             <>
-              <p className="bx-h">How much skill this attack needs on its own</p>
+              <p className="bx-h">{tr('ui.quantification.how-much-skill-this', 'How much skill this attack needs on its own')}</p>
               {dm ? (
                 <>
                   {line("getting in", p1(dm.entry), <>from the first step&apos;s technique{dm.unknown.entry ? " - none recognised, so a default" : ""}</>)}
-                  {line("tooling", `+${p1(dm.adds.tooling)}`, <>the hardest single technique on the chain</>)}
+                  {line("tooling", `+${p1(dm.adds.tooling)}`, <>{tr('ui.quantification.the-hardest-single-technique', 'the hardest single technique on the chain')}</>)}
                   {line("breadth", `+${p1(dm.adds.depth)}`, <>the chain spans {dm.tactics} distinct tactics</>)}
-                  {line("staying in undetected", `+${p1(dm.adds.dwell)}`, <>the chain needs persistence, evasion or lateral movement</>)}
-                  {line(<b>skill the attack needs, before any measure of yours</b>, p1(dm.total), undefined, "bx-sum")}
+                  {line("staying in undetected", `+${p1(dm.adds.dwell)}`, <>{tr('ui.quantification.the-chain-needs-persistence', 'the chain needs persistence, evasion or lateral movement')}</>)}
+                  {line(<b>{tr('ui.quantification.skill-the-attack-needs', 'skill the attack needs, before any measure of yours')}</b>, p1(dm.total), undefined, "bx-sum")}
                 </>
               ) : line("read from the difficulty rating", p1(meanOf(derived.inputs.controlStrength)),
-                <>this scenario models no chain, so there is nothing to derive it from</>)}
-              <p className="bx-h">How skilled this attacker is</p>
+                <>{tr('ui.quantification.this-scenario-models-no', 'this scenario models no chain, so there is nothing to derive it from')}</>)}
+              <p className="bx-h">{tr('ui.quantification.how-skilled-this-attacker', 'How skilled this attacker is')}</p>
               {line(derived.riskSource,
                 `${p0(derived.inputs.adversaryStrength.min)} · ${p0(derived.inputs.adversaryStrength.mode)} · ${p0(derived.inputs.adversaryStrength.max)}`,
-                <>from the capability rating: at worst, most likely, at best - better than this share of all attackers. Wide because a rating describes a class of attacker, not one person.</>)}
+                <>{tr('ui.quantification.from-the-capability-rating', 'from the capability rating: at worst, most likely, at best - better than this share of all attackers. Wide because a rating describes a class of attacker, not one person.')}</>)}
               <p className="bx-note">
                 These {p1(share)} are the attempts whose attacker was less skilled than the
                 attack requires. They stopped before reaching any step, so no measure of yours
@@ -411,15 +412,14 @@ function BreakExplain({ what, result, derived, tax, cal, onClose }: {
             </>
           ) : (
             <>
-              <p className="bx-h">What this share becomes</p>
+              <p className="bx-h">{tr('ui.quantification.what-this-share-becomes', 'What this share becomes')}</p>
               {line("attempts per year on this scenario", derived.frequency.total.toPrecision(2),
                 <>base rate {derived.frequency.base.toPrecision(2)} × tempo {derived.frequency.tempo.toPrecision(2)} × resources {derived.frequency.throughput.toPrecision(2)} × why-us {derived.frequency.pull.toPrecision(2)} × reachability {derived.frequency.reachability.toPrecision(2)}</>)}
-              {line("× the share that gets through", p1(result.vuln), <>measured over the simulation, not set anywhere</>)}
-              {line(<b>loss events per year</b>, result.lef.toPrecision(2),
+              {line("× the share that gets through", p1(result.vuln), <>{tr('ui.quantification.measured-over-the-simulation', 'measured over the simulation, not set anywhere')}</>)}
+              {line(<b>{tr('ui.quantification.loss-events-per-year', 'loss events per year')}</b>, result.lef.toPrecision(2),
                 result.lef > 0 ? <>about one every {Math.round(1 / result.lef)} years</> : undefined, "bx-sum")}
               <p className="bx-note">
-                An attempt only counts as a loss event once it reaches the end of the chain.
-                Getting in is not a loss event.
+                {tr('ui.quantification.an-attempt-only-counts', 'An attempt only counts as a loss event once it reaches the end of the chain. Getting in is not a loss event.')}
               </p>
             </>
           )}
@@ -467,7 +467,7 @@ function LossDistribution({ resultWith, resultWithout, active, accent, derived, 
   return (
     <div className="qt-dist">
       <div className="qt-dist-head">
-        <span className="qt-shift-lbl">Simulated annual-loss distribution</span>
+        <span className="qt-shift-lbl">{tr('ui.quantification.simulated-annual-loss-distribution', 'Simulated annual-loss distribution')}</span>
         <span className="qt-dist-legend">
           <span className="qt-lg"><i style={{ background: accent }} />with controls</span>
           <span className="qt-lg"><i className="ghost" style={{ borderColor: warn }} />without</span>
@@ -498,7 +498,7 @@ function LossDistribution({ resultWith, resultWithout, active, accent, derived, 
           </Fragment>
         ))}
         {ticks.map((t) => <text key={"t" + t} x={X(t)} y={H - 14} textAnchor="middle" className="qv-ax">{fmtVal(t, "money")}</text>)}
-        <text x={W - PR} y={H - 2} textAnchor="end" className="qv-ax" fillOpacity={0.75}>annual loss (log €) →</text>
+        <text x={W - PR} y={H - 2} textAnchor="end" className="qv-ax" fillOpacity={0.75}>{tr('ui.quantification.annual-loss-log', 'annual loss (log €) →')}</text>
       </svg>
       <ChainBreak result={resultWith} derived={derived} tax={tax} cal={cal} accent={accent} benefit={benefit} onTrace={onTraceControls} />
     </div>
@@ -531,8 +531,8 @@ function ChainBreak({ result, derived, tax, cal, accent, benefit, onTrace }: {
   const named = segs.filter((s) => s.p > 0.0005);
   if (!segs.length) {
     return (
-      <button type="button" className="qt-ctrl-note" onClick={onTrace} title="Trace the control strength">
-        Nothing on this chain stops an attempt - every attacker who starts, finishes. <span className="qt-ctrl-more">trace →</span>
+      <button type="button" className="qt-ctrl-note" onClick={onTrace} title={tr('ui.quantification.trace-the-control-strength', 'Trace the control strength')}>
+        {tr('ui.quantification.nothing-on-this-chain', 'Nothing on this chain stops an attempt - every attacker who starts, finishes.')} <span className="qt-ctrl-more">trace →</span>
       </button>
     );
   }
@@ -541,7 +541,7 @@ function ChainBreak({ result, derived, tax, cal, accent, benefit, onTrace }: {
   // is a percentage nobody can argue with.
   const row = (p: number, label: string, cls = "", id?: string) => (
     <button type="button" className={"qb-row " + cls} key={label}
-      onClick={() => setExplain(id ?? "")} title="Where this number comes from">
+      onClick={() => setExplain(id ?? "")} title={tr('ui.quantification.where-this-number-comes', 'Where this number comes from')}>
       <span className="qb-p mono">{(p * 100).toFixed(1)}%</span>
       <span className="qb-l">{label}</span>
       <Icon.chevron />
@@ -553,8 +553,8 @@ function ChainBreak({ result, derived, tax, cal, accent, benefit, onTrace }: {
         <BreakExplain what={explain} result={result} derived={derived} tax={tax} cal={cal} onClose={() => setExplain(null)} />
       )}
       <div className="qt-break-h">
-        <span className="qt-shift-lbl">Where the attempts are stopped</span>
-        <span className="qb-scale">out of every 100 attacks on this chain</span>
+        <span className="qt-shift-lbl">{tr('ui.quantification.where-the-attempts-are', 'Where the attempts are stopped')}</span>
+        <span className="qb-scale">{tr('ui.quantification.out-of-every-attacks', 'out of every 100 attacks on this chain')}</span>
       </div>
       <div className="qt-break-bar" role="img" aria-label="share of attack attempts stopped at each stage of the chain">
         {segs.map((s, i) => (

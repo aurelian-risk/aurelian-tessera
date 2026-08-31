@@ -20,6 +20,7 @@
 // and is not a relation goes back out under its own key. A field added to the taxonomy
 // tomorrow is exported without this file being touched.
 import type { EntityRecord, EntityTypeDef, Study, Taxonomy } from "../../domain/types";
+import { slug } from "../../domain/persistence";
 
 /** The origin that means "written because the catalogue reaches this asset with nothing". */
 const ASSET_GAP = "Own - asset not covered";
@@ -105,6 +106,8 @@ export function ownRequirementsOscal(
     },
   };
 
-  const slug = (study.name || "study").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return { filename: `${slug || "study"}-eigene-anforderungen.json`, text: JSON.stringify(doc, null, 2) + "\n" };
+  // The engine's, not a second copy: a German study name lost its umlauts here too
+  // ("Netzführung" → "netzf-hrung"), and the same fix in two places drifts apart.
+  const base = slug(study.name || "study");
+  return { filename: `${base || "study"}-eigene-anforderungen.json`, text: JSON.stringify(doc, null, 2) + "\n" };
 }

@@ -16,6 +16,7 @@
 // Nothing here knows a method or a product. A taxonomy that declares no hierarchy simply
 // has no Classes reading, and one with no relationships has an empty Relations one.
 import { useMemo, useState } from "react";
+import { t as tr } from "../domain/i18n";
 import type { EntityRecord, EntityTypeDef, FieldDef, Study, Taxonomy } from "../domain/types";
 import { classificationLink, withAncestors } from "../domain/modelling";
 import { BUNDLED_FRAMEWORKS } from "../profile";
@@ -123,7 +124,7 @@ function Outline({ tax, study, q, onOpen }: { tax: Taxonomy; study: Study; q: st
                     <span className="tx-key">{t.key}</span>
                     <span className="tx-num">{t.fields.length} fields</span>
                     {published.has(t.key) && (
-                      <span className="tx-num" title="Fields the published catalogue itself fills; the rest are what this application keeps beside them">
+                      <span className="tx-num" title={tr('ui.taxonomyexplorer.fields-the-published-catalogue', 'Fields the published catalogue itself fills; the rest are what this application keeps beside them')}>
                         {t.fields.filter((f) => published.get(t.key)!.has(f.key)).length} published
                       </span>
                     )}
@@ -134,7 +135,7 @@ function Outline({ tax, study, q, onOpen }: { tax: Taxonomy; study: Study; q: st
                       <span className="tx-name">{f.label}</span>
                       <span className="tx-key">{f.key}</span>
                       {published.get(t.key)?.has(f.key) && (
-                        <span className="tx-pub" title="Filled by the published catalogue - the publisher's to change">published</span>
+                        <span className="tx-pub" title={tr('ui.taxonomyexplorer.filled-by-the-published', "Filled by the published catalogue - the publisher's to change")}>published</span>
                       )}
                       <span className="tx-spec">{fieldSpec(f)}</span>
                     </div>
@@ -152,7 +153,7 @@ function Outline({ tax, study, q, onOpen }: { tax: Taxonomy; study: Study; q: st
                   {tOpen && showRecs && (
                     <div className="tx-records">
                       {recs.slice(0, RECORD_PREVIEW).map((r) => (
-                        <button key={r.id} className="tx-rec" onClick={() => onOpen(r)} title="Open">
+                        <button key={r.id} className="tx-rec" onClick={() => onOpen(r)} title={tr('ui.taxonomyexplorer.open', 'Open')}>
                           {recordTitle(t, r)}
                         </button>
                       ))}
@@ -228,7 +229,7 @@ function classTree(tax: Taxonomy, study: Study): { nodes: ClassNode[]; source: s
 function Classes({ tax, study, q }: { tax: Taxonomy; study: Study; q: string }) {
   const tree = useMemo(() => classTree(tax, study), [tax, study]);
   const [only, setOnly] = useState(false);
-  if (!tree) return <div className="empty">This taxonomy declares no classification with a hierarchy.</div>;
+  if (!tree) return <div className="empty">{tr('ui.taxonomyexplorer.this-taxonomy-declares-no', 'This taxonomy declares no classification with a hierarchy.')}</div>;
 
   const link = classificationLink(tax)!;
   const total = tree.nodes.reduce(function sum(n: number, x: ClassNode): number {
@@ -257,7 +258,7 @@ function Classes({ tax, study, q }: { tax: Taxonomy; study: Study; q: string }) 
     <>
       <div className="guide" style={{ marginBottom: 10 }}>
         <b>{tree.label}</b> - {total} classes over {1 + Math.max(...rows.map((r) => r.depth))} levels,
-        as the publisher orders them. <b>Own</b> is how many requirements name the class itself;
+        as the publisher orders them. <b>{tr('ui.taxonomyexplorer.own', 'Own')}</b> is how many requirements name the class itself;
         <b> inherited</b> is what its parents add on top, which is what an object of this class
         actually carries. Choosing a class costs the sum.
         {tree.nodes.length > 0 && <> {study.entities.filter((e) => e.type === link.objectType).length} records
@@ -265,7 +266,7 @@ function Classes({ tax, study, q }: { tax: Taxonomy; study: Study; q: string }) 
       </div>
       <div className="tx-only">
         <label><input type="checkbox" checked={only} onChange={(e) => setOnly(e.target.checked)} />
-          <span>Only the classes this study uses</span></label>
+          <span>{tr('ui.taxonomyexplorer.only-the-classes-this', 'Only the classes this study uses')}</span></label>
       </div>
       <div className="tx-classes">
         {rows.map((n) => {
@@ -385,7 +386,7 @@ function Relations({ tax, study, q }: { tax: Taxonomy; study: Study; q: string }
                 <h2 style={{ fontSize: 19 }}>{picked.labelPlural}</h2>
                 <div className="tx-key">{picked.key}</div>
               </div>
-              <button className="btn ghost sm" onClick={() => setChosen(null)} aria-label="Close"><Icon.close /></button>
+              <button className="btn ghost sm" onClick={() => setChosen(null)} aria-label={tr('ui.taxonomyexplorer.close', 'Close')}><Icon.close /></button>
             </header>
             <div className="modal-lg-body">
               <h3 className="tx-detail-h">Fields ({picked.fields.length})</h3>
@@ -426,7 +427,22 @@ const VIEWS: { key: View; label: string; hint: string }[] = [
   { key: "outline", label: "Outline", hint: "Groups, types and fields, with what the study holds" },
   { key: "classes", label: "Classes", hint: "The published class hierarchy, and what each class carries" },
   { key: "relations", label: "Relations", hint: "Which type points at which" },
-];
+] as const;
+// The tabs are DATA, and data is read once at module load - before a language is settled.
+// The words are therefore looked up where they are shown, under the key the tab carries;
+// the authored text beside them stays the fallback, as everywhere else.
+// Written out rather than composed from the key: the check reads call sites off the source,
+// so a key built at run time is a key it cannot see, and an entry for it reads as an orphan.
+const viewWords = (v: View): { label: string; hint: string } =>
+  v === "outline" ? {
+    label: tr("ui.taxonomyexplorer.outline", "Outline"),
+    hint: tr("ui.taxonomyexplorer.groups-types-and-fields", "Groups, types and fields, with what the study holds") }
+  : v === "classes" ? {
+    label: tr("ui.taxonomyexplorer.classes", "Classes"),
+    hint: tr("ui.taxonomyexplorer.the-published-class-hierarchy", "The published class hierarchy, and what each class carries") }
+  : {
+    label: tr("ui.taxonomyexplorer.relations", "Relations"),
+    hint: tr("ui.taxonomyexplorer.which-type-points-at", "Which type points at which") };
 
 export function TaxonomyExplorer({ tax, study }: { tax: Taxonomy; study: Study | null }) {
   const [view, setView] = useState<View>("outline");
@@ -440,18 +456,18 @@ export function TaxonomyExplorer({ tax, study }: { tax: Taxonomy; study: Study |
   return (
     <div className="panel tx-explorer">
       <div className="panel-head">
-        <h3>{active.label}</h3>
+        <h3>{viewWords(active.key).label}</h3>
         <span className="badge">{tax.entityTypes.length} types</span>
         <span className="spacer" />
         <label className="tbl-search" style={{ flex: "0 1 220px" }}>
           <Icon.search />
-          <input type="search" value={query} placeholder="Search the model…"
-            onChange={(e) => setQuery(e.target.value)} aria-label="Search the model" />
+          <input type="search" value={query} placeholder={tr('ui.taxonomyexplorer.search-the-model', 'Search the model…')}
+            onChange={(e) => setQuery(e.target.value)} aria-label={tr('ui.taxonomyexplorer.search-the-model-2', 'Search the model')} />
         </label>
         <div className="tx-seg">
           {VIEWS.map((v) => (
             <button key={v.key} className={"seg-btn" + (view === v.key ? " on" : "")}
-              title={v.hint} onClick={() => setView(v.key)}>{v.label}</button>
+              title={viewWords(v.key).hint} onClick={() => setView(v.key)}>{viewWords(v.key).label}</button>
           ))}
         </div>
       </div>
@@ -476,7 +492,7 @@ export function ExplorerView() {
     <div className="content">
       <div className="page-head">
         <div style={{ flex: 1 }}>
-          <div className="eyebrow">The published method</div>
+          <div className="eyebrow">{tr('ui.taxonomyexplorer.the-published-method', 'The published method')}</div>
           <h1 className="grad-text">{PRODUCT.exploreLabel ?? "Explore"}</h1>
           <div className="meta" style={{ color: "var(--fg-subtle)" }}>
             {tax.name}{study ? ` · ${study.name}` : " · no study open"}

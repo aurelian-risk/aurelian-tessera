@@ -22,6 +22,8 @@ import { DEFAULT_TAXONOMY } from "./taxonomy";
 import { GRUNDSCHUTZ_PP } from "./catalog.generated";
 import { GSPP_COMPONENTS } from "./components.generated";
 import { VOCABULARY } from "./vocabulary.generated";
+import { getLanguage } from "../../domain/i18n";
+import { germanizeEntities, germanizeLog, germanizeStudy } from "./sample.de";
 
 function uid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -257,16 +259,16 @@ export function makeSampleStudy(): Study {
   // lowers the number of attempts, an avoidance measure removes the exposure. Without one
   // of each, half the effect model has nothing to show for itself.
   const own = (values: Record<string, FieldValue>) => add("security_measure", { ...values, scope: "in use" });
-  own({ name: "Multi-factor authentication for remote-maintenance access", description: "A second factor for every access by the manufacturer, released per session.", measure_type: "Preventive", status: "In progress", fulfills: req("DLS.2.1"), covers: [s1], implementation_level: 3, priority: 4, verantwortlich: "IT Operations", termin: "2026-10-31" });
+  own({ name: "Multi-factor authentication for remote-maintenance access", description: "A second factor for every access by the manufacturer, released per session.", measure_type: "Preventive", status: "Planned", fulfills: req("DLS.2.1"), covers: [s1], implementation_level: 3, priority: 4, verantwortlich: "IT Operations", termin: "2026-10-31" });
   // Two measures on one step: what the second adds on top of the first is the question the
   // defence-in-depth table answers, and the step breakdown shows the arithmetic.
   own({ name: "Maintenance access released only on request", description: "The manufacturer's access is disabled by default and opened for a time window per assignment.", measure_type: "Preventive", status: "Implemented", fulfills: req("ASST.5.6"), covers: [s1], implementation_level: 3, priority: 3, verantwortlich: "IT Operations", termin: "" });
-  own({ name: "Separation of the telecontrol network from the office IT", description: "Separate transmission paths and a controlled crossing between the zones.", measure_type: "Preventive", status: "Verified", fulfills: [], covers: [s3], implementation_level: 4, priority: 3, verantwortlich: "Network Operations", termin: "" });
-  own({ name: "Evaluation of the remote-maintenance logs", description: "Session logs are collected centrally and reviewed for anomalies.", measure_type: "Detective", status: "Proposed", fulfills: [], covers: [s2], implementation_level: 1, priority: 3, verantwortlich: "IT Security", termin: "2027-03-31" });
+  own({ name: "Separation of the telecontrol network from the office IT", description: "Separate transmission paths and a controlled crossing between the zones.", measure_type: "Preventive", status: "Implemented", fulfills: [], covers: [s3], implementation_level: 4, priority: 3, verantwortlich: "Network Operations", termin: "" });
+  own({ name: "Evaluation of the remote-maintenance logs", description: "Session logs are collected centrally and reviewed for anomalies.", measure_type: "Detective", status: "Recommended", fulfills: [], covers: [s2], implementation_level: 1, priority: 3, verantwortlich: "IT Security", termin: "2027-03-31" });
   own({ name: "Offline backup of the control-system configuration", description: "A weekly backup held off the network, restored once a quarter to prove it works.", measure_type: "Corrective", status: "Implemented", fulfills: [], covers: [s4], implementation_level: 3, priority: 2, verantwortlich: "IT Operations", termin: "" });
   own({ name: "Announced recording of every maintenance session", description: "Every session by the manufacturer is recorded; the recording is stated in the contract and at connection time.", measure_type: "Deterrent", status: "Implemented", fulfills: [], covers: [s1], implementation_level: 4, priority: 2, verantwortlich: "IT Security", termin: "" });
   own({ name: "Removal of the legacy dial-up lines", description: "The six remaining dial-up connections are disconnected and the stations moved onto the telecontrol network.", measure_type: "Avoidance", status: "Planned", fulfills: req("DLS.4.1"), covers: [b1], implementation_level: 1, priority: 4, verantwortlich: "Network Operations", termin: "2027-06-30" });
-  own({ name: "Anomaly detection on the telecontrol protocol", description: "Switching commands are checked against the expected operating pattern and deviations reported to the control room.", measure_type: "Detective", status: "In progress", fulfills: [], covers: [b2], implementation_level: 3, priority: 4, verantwortlich: "Network Operations", termin: "2027-09-30" });
+  own({ name: "Anomaly detection on the telecontrol protocol", description: "Switching commands are checked against the expected operating pattern and deviations reported to the control room.", measure_type: "Detective", status: "Planned", fulfills: [], covers: [b2], implementation_level: 3, priority: 4, verantwortlich: "Network Operations", termin: "2027-09-30" });
   ["DLS.2.1", "ASST.5.6", "DLS.4.1"].forEach(met);
 
   // PERF.3 · PERF.4: the audit programme and the report the management reads. Planned
@@ -315,7 +317,7 @@ export function makeSampleStudy(): Study {
     name: "Report a disturbance of the grid control systems to the Bundesnetzagentur without delay",
     ref_id: "EIGEN.1", herkunft: "Own - compliance obligation",
     compliance_basis: "§ 11 (1c) EnWG together with the security catalogue for grid operators - example, not legal advice",
-    modal_verb: "MUSS", praktik: "Governance und Compliance",
+    modal_verb: "MUSS", praktik: "GC Governance und Compliance",
     applies_to_process: [pGrid], verantwortlich: "Head of Network Operations",
     scope: "in scope", umsetzung: "nein", prioritaet: "1 - first", faellig: "2026-12-31",
     description: "A disturbance of the systems operating the grid is reported to the regulator without delay, in the form the security catalogue prescribes.",
@@ -439,6 +441,12 @@ export function makeSampleStudy(): Study {
   // A study that only ever shows creates says nothing about the change history, which is
   // one of the things this product is for. The sample therefore carries a few real edits
   // with editors, timestamps and reasons, as an audit would find them.
+  // The study is written in German where the reader is. This happens HERE, before the log
+  // is built: the entries take their title from the record, and the seal below hashes the
+  // values, so a rewrite afterwards would break the chain rather than translate it.
+  const de = getLanguage() === "de";
+  if (de) germanizeEntities(entities);
+
   const day = (back: number) => new Date(Date.parse(ts) - back * 86400000).toISOString();
   const pending: LogInput[] = entities.map((e, i) => ({
     ts: day(30 - Math.min(29, Math.floor((i / Math.max(1, entities.length)) * 29))),
@@ -466,6 +474,7 @@ export function makeSampleStudy(): Study {
     [{ field: "umsetzung", from: "nein", to: "ja" }]);
   edit(pGrid, day(14), "M. Adler", "After taking over the district-heating network the process covers both.",
     [{ field: "description", from: "Round-the-clock supervision and control of the electricity network.", to: "Round-the-clock supervision and control of the electricity and district-heating networks. An outage is felt immediately by every connected household." }]);
+  if (de) germanizeLog(pending);
   pending.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
   const lastIdx = new Map<string, number>();
   pending.forEach((p, i) => lastIdx.set(p.entity, i));
@@ -473,8 +482,12 @@ export function makeSampleStudy(): Study {
   const log = sealLog(pending.map((p, i) =>
     lastIdx.get(p.entity) === i ? { ...p, state: hashValues(byId.get(p.entity)!.values) } : p));
 
-  return {
+  const study: Study = {
     id: uid(),
+    // Example data, and it says so: the language below is the one its text was written in,
+    // and while nobody has worked in it the application may build it again in another.
+    example: true,
+    language: getLanguage(),
     name: "Riverbend Municipal Utilities - grid control (example)",
     organization: "Riverbend Municipal Utilities",
     // One of the sectors declared in calibration.ts. The value is matched literally
@@ -486,4 +499,6 @@ export function makeSampleStudy(): Study {
     entities,
     log,
   };
+  if (de) germanizeStudy(study);
+  return study;
 }

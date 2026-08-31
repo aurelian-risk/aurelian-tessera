@@ -8,12 +8,14 @@
 // catalogue leaves undecided. Adding writes the requirements into the study's own table,
 // each carrying the rule that put it there.
 import { useMemo, useState } from "react";
+import { Sentence } from "./Sentence";
+import { t as tr, tParts } from "../domain/i18n";
 import type { Study, Taxonomy } from "../domain/types";
 import { packageRelationField, requirementPackage } from "../domain/modelling";
 import { catalogTargets } from "../domain/catalog";
 import { BUNDLED_FRAMEWORKS } from "../profile";
 import { useStore } from "../domain/store";
-import { getType, inPlayField, optionLabel } from "../domain/taxonomy";
+import { getType, inPlayField, optionLabel, typeLabel, typeLabelPlural } from "../domain/taxonomy";
 import { Icon } from "./ui";
 
 export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: Study; color: string }) {
@@ -46,7 +48,10 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
   // Where the package is written as a relation rather than only as a sentence: the
   // requirement records which objects it applies to, so it can be read from either end.
   const relField = packageRelationField(tax, pkg.link);
-  const cls = (c: string) => optionLabel(pkg.link.objectField, c);
+  // The type as well: the class names are the catalogue's own values, and their reading is
+  // written under the type's key. Without it the shared key misses and the authored English
+  // shows, where the table beside it shows what the publisher wrote.
+  const cls = (c: string) => optionLabel(pkg.link.objectField, c, getType(tax, pkg.link.objectType) ?? undefined);
 
   // One action, not two. The whole ruleset comes in; what the reading reaches is in scope
   // and says why, the rest is present and set back, to be brought in by hand where it
@@ -105,7 +110,7 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
   return (
     <div className="panel ws-accent modelling" style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
       <div className="panel-head">
-        <h3>Derived from the catalogue</h3>
+        <h3>{tr('ui.modelling.derived-from-the-catalogue', 'Derived from the catalogue')}</h3>
         <span className="badge">{pkg.items.length}</span>
         <span className="spacer" />
         {BUNDLED_FRAMEWORKS.length > 1 && (
@@ -113,29 +118,33 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
             {BUNDLED_FRAMEWORKS.map((f) => <option key={f.key} value={f.key}>{f.name}</option>)}
           </select>
         )}
-        <button className="btn ghost sm" onClick={() => setOpen((o) => !o)}>{open ? "Hide the account" : "Show the account"}</button>
+        <button className="btn ghost sm" onClick={() => setOpen((o) => !o)}>{open ? tr("ui.modelling.hide-the-account", "Hide the account") : tr("ui.modelling.show-the-account", "Show the account")}</button>
       </div>
       <div className="panel-body" style={{ padding: "10px 0 14px" }}>
         <div className="guide" style={{ marginBottom: 10 }}>
-          <b>{fw.name}</b> states, per requirement, which classes of object it applies to.
-          Each {objectType?.label.toLowerCase() ?? "object"} below is read with its class and every
-          class above it, the requirements of those classes are collected, and one reaching an
-          object twice is carried once. {pkg.items.length} follow for this study
-          {missing.length > 0 ? `, of which ${missing.length} are not yet recorded` : " and all are recorded"}.
+          <Sentence k="ui.modelling.states-per-requirement-which"
+            en="{0} states, per requirement, which classes of object it applies to. Each {1} below is read with its class and every class above it, the requirements of those classes are collected, and one reaching an object twice is carried once. {2} follow for this study{3}."
+            parts={[<b>{fw.name}</b>,
+                    (objectType ? typeLabel(objectType) : tr("ui.modelling.object", "object")).toLowerCase(),
+                    String(pkg.items.length),
+                    missing.length > 0
+                      ? tParts("ui.modelling.of-which-n-are-not", ", of which {0} are not yet recorded")
+                          .map((x) => (typeof x === "number" ? String(missing.length) : x)).join("")
+                      : tr("ui.modelling.and-all-are-recorded", " and all are recorded")]} />
           {pkg.unclassifiedItems.length > 0 && <> {pkg.unclassifiedItems.length} requirements name no class at
             all - nothing can derive them, so they are recorded and set back until someone says they apply.</>}
         </div>
 
         {pkg.unclassified.length > 0 && (
           <div className="guide warn" style={{ marginBottom: 10 }}>
-            {pkg.unclassified.length} {(objectType?.labelPlural ?? "records").toLowerCase()} carry no
+            {pkg.unclassified.length} {(objectType ? typeLabelPlural(objectType) : "records").toLowerCase()} carry no
             class, so nothing can be derived for them: {pkg.unclassified.map((r) => String(r.values.name ?? r.id)).join(", ")}.
           </div>
         )}
 
         <table className="tbl">
           <thead><tr>
-            <th>{objectType?.label ?? "Object"}</th><th>Class</th><th>Inherited</th><th>Requirements</th>
+            <th>{objectType ? typeLabel(objectType) : "Object"}</th><th>{tr('ui.modelling.class', 'Class')}</th><th>{tr('ui.modelling.inherited', 'Inherited')}</th><th>{tr('ui.modelling.requirements', 'Requirements')}</th>
           </tr></thead>
           <tbody>
             {pkg.objects.map((o) => (
@@ -171,7 +180,7 @@ export function ModellingPanel({ tax, study, color }: { tax: Taxonomy; study: St
           <button className="btn primary sm modelling-apply" disabled={(!notYet.length && !stale.length) || !scopeField} onClick={apply}>
             <Icon.plus /> {notYet.length ? `Bring in the ${notYet.length} not yet recorded`
               : stale.length ? `Bring ${stale.length} up to date with the reading`
-              : "The whole ruleset is recorded, and the package is current"}
+              : tr("ui.modelling.the-whole-ruleset-is", "The whole ruleset is recorded, and the package is current")}
           </button>
         </div>
       </div>

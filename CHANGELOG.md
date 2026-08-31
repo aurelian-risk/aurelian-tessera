@@ -6,6 +6,43 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.6.4] - 2026-08-31
+
+### Added
+
+- **The application is in German where it is read in German, and the language can be
+  chosen.** The browser decides by default, as before; a choice made in the sidebar is kept
+  and wins at the next start. 478 interface texts go through a lookup, 475 of them have a
+  German wording, and so do the 19 completeness checks the engine declares. Measured at the
+  built page across every workshop and view: of 4920 visible runs of text, 13 read the same
+  in both languages - three by intention, six the schema editor, where the word a taxonomy
+  was authored with is the right one.
+- **The report follows the reader.** It read every type, field, group and value straight off
+  the declaration, so a German study came out with English headings: 68 of its 962 lines.
+  Now 0. A delivered document is unaffected - its wording is fixed whatever language the
+  application is worked in, and it names its own words.
+- **The example study is built in the language it is read in**, including a switch made
+  after it was loaded - while nobody has worked in it. An edited one is left alone.
+
+### Fixed
+
+- **A record whose perimeter was never set read as though it were outside it.** A two-state
+  field that carries no value is in force by its second state - the counts, the report and
+  the badge beside the switch all read it that way, and the switch itself read the first.
+  24 records of the example study stood in their register saying "out of scope" while every
+  figure counted them in, and one press sent them where they already were, so the dialog
+  that says what a record takes with it never opened.
+- **A pill that will not wrap may not grow either.** "existenzbedrohend" measured 175px in a
+  113px cell and was drawn over the column beside it - 21 of them at 1024px, now 0. The rung
+  name breaks at a hyphenation point instead, and in a table cell the bars give it 15px back.
+- **Two sentences that agreed with nothing.** A ring read "1 erkennen ihn" - two counts
+  govern two verbs. The model guide was five fragments in a fixed order and came out as
+  German word salad.
+- **Three values in the example study that no vocabulary declares.** Nothing failed: a value
+  outside its own list is answered by no option table, so it printed as stored.
+- **A relation read as the English word inside a German sentence** - on every graph edge and
+  in every record panel. All 31 the taxonomy declares were untranslated.
+
 ## [0.6.3] - 2026-08-30
 
 ### Added

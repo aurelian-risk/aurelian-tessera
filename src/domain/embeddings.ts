@@ -12,6 +12,12 @@ export interface ModelOption { id: string; label: string; size: string; note: st
 export const MODELS: ModelOption[] = [
   { id: "Xenova/all-MiniLM-L6-v2", label: "all-MiniLM-L6-v2", size: "~25 MB", note: "fast · general purpose" },
   { id: "Xenova/bge-small-en-v1.5", label: "bge-small-en-v1.5", size: "~34 MB", note: "stronger · English" },
+  // Both of the above are English. Extraction compares a document against the taxonomy's own
+  // labels, so a study whose sources and whose labels are not English is being matched across
+  // a language barrier with a model that was never shown one. This one was: 50 languages in
+  // a shared space, which is what makes a German paragraph and a German label comparable at
+  // all. Larger, and only worth its size where the documents are not English.
+  { id: "Xenova/paraphrase-multilingual-MiniLM-L12-v2", label: "paraphrase-multilingual-MiniLM-L12", size: "~120 MB", note: "50 languages · for non-English sources" },
 ];
 
 /** Built-in embedding models + user-added ones from the registry. */

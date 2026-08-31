@@ -3,6 +3,7 @@
 // revision), preview the diff against the current data (added / changed / removed
 // entities, per field), then apply it additively or destructively.
 import { useState } from "react";
+import { t as tr } from "../domain/i18n";
 import { createPortal } from "react-dom";
 import { useActiveStudy, useStore } from "../domain/store";
 import { pickTextFile, parseBundle } from "../domain/persistence";
@@ -159,10 +160,10 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       <div className="modal-lg" style={{ maxWidth: 620 }} onMouseDown={(e) => e.stopPropagation()}>
         <header className="modal-lg-head">
           <div style={{ flex: 1 }}>
-            <div className="dialog-sub" style={{ margin: 0 }}>Data · JSON / YAML (auto-detected)</div>
+            <div className="dialog-sub" style={{ margin: 0 }}>{tr('ui.import.data-json-yaml-auto', 'Data · JSON / YAML (auto-detected)')}</div>
             <h2 style={{ fontSize: 19 }}>{pending ? "Review changes" : "Import data"}</h2>
           </div>
-          <button className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon.close /></button>
+          <button className="btn ghost sm" onClick={onClose} aria-label={tr('ui.import.close', 'Close')}><Icon.close /></button>
         {/* One picker for the key a seal is checked against, outside both branches: the
             offer appears on the review side, where the seal is shown. */}
         <input ref={(el) => { matchRef.el = el; }} type="file" accept=".json" style={{ display: "none" }}
@@ -171,17 +172,17 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
         {!pending ? (
           <div className="modal-lg-body">
-            <div className="menu-label" style={{ padding: "16px 0 8px" }}>Source</div>
+            <div className="menu-label" style={{ padding: "16px 0 8px" }}>{tr('ui.import.source', 'Source')}</div>
             <div className="field" style={{ marginBottom: 8 }}>
-              <label>Paste JSON / YAML</label>
+              <label>{tr('ui.import.paste-json-yaml', 'Paste JSON / YAML')}</label>
               <textarea style={{ minHeight: 130, fontFamily: "var(--font-mono)", fontSize: 12 }} value={text}
-                onChange={(e) => setText(e.target.value)} placeholder="Paste a bundle, study data, or a taxonomy here…" />
+                onChange={(e) => setText(e.target.value)} placeholder={tr('ui.import.paste-a-bundle-study', 'Paste a bundle, study data, or a taxonomy here…')} />
             </div>
             <div className="idiff-actions">
-              <button className="btn" disabled={busy} onClick={fromFile}><Icon.upload /> Choose file…</button>
-              {active && <button className="btn ghost" onClick={previewDemo} title="See the diff without editing a file">Preview a demo revision</button>}
+              <button className="btn" disabled={busy} onClick={fromFile}><Icon.upload /> {tr('ui.import.choose-file', 'Choose file…')}</button>
+              {active && <button className="btn ghost" onClick={previewDemo} title={tr('ui.import.see-the-diff-without', 'See the diff without editing a file')}>{tr('ui.import.preview-a-demo-revision', 'Preview a demo revision')}</button>}
               <span style={{ flex: 1 }} />
-              <button className="btn primary" disabled={busy || !text.trim()} onClick={fromText}>Preview pasted →</button>
+              <button className="btn primary" disabled={busy || !text.trim()} onClick={fromText}>{tr('ui.import.preview-pasted', 'Preview pasted →')}</button>
             </div>
             {status && <div className="hint" style={{ marginTop: 12 }}>{status}</div>}
           </div>
@@ -201,9 +202,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                       <span className="sp-dot" />
                       {/* Three states, named. Which one this is decides what the reader
                           should do next, so it is said rather than implied by a colour. */}
-                      {st === "broken" ? <><strong>Not verified</strong> — this file&apos;s seal does not check out</>
-                        : st === "verified" ? <><strong>Verified</strong> — sealed by <strong>{known!.name}</strong>, a key you have vouched for</>
-                        : <><strong>Signature valid, sender unconfirmed</strong> — the seal is intact, but this key is not one you have named</>}
+                      {st === "broken" ? <><strong>{tr('ui.import.not-verified', 'Not verified')}</strong> — this file&apos;s seal does not check out</>
+                        : st === "verified" ? <><strong>{tr('ui.import.verified', 'Verified')}</strong> — sealed by <strong>{known!.name}</strong>{tr('ui.import.a-key-you-have', ', a key you have vouched for')}</>
+                        : <><strong>{tr('ui.import.signature-valid-sender-unconfirmed', 'Signature valid, sender unconfirmed')}</strong> {tr('ui.import.the-seal-is-intact', '— the seal is intact, but this key is not one you have named')}</>}
                       <span className="mono sp-kid">{top.seal.kid}</span>
                     </div>
                     <div className="meta">
@@ -215,9 +216,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                     {top.verdict.problem && <div className="sp-problem">{top.verdict.problem}</div>}
                     {st === "intact" && (
                       <div className="idiff-match">
-                        <span className="meta">Hold the sender&apos;s public key? Check it against this seal.</span>
+                        <span className="meta">{tr('ui.import.hold-the-sender-s', "Hold the sender's public key? Check it against this seal.")}</span>
                         <button className="btn sm" onClick={() => { setMatchFor({ kid: top.seal.kid, jwk: top.seal.jwk }); matchRef.el?.click(); }}>
-                          <Icon.upload /> Check against a key file…
+                          <Icon.upload /> {tr('ui.import.check-against-a-key', 'Check against a key file…')}
                         </button>
                       </div>
                     )}
@@ -226,8 +227,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                 );
               })() : (
                 <div className="guide" style={{ marginBottom: 10 }}>
-                  <strong>Not sealed.</strong> Nothing in this file says who produced it; its change
-                  log can only be checked against itself.
+                  <strong>{tr('ui.import.not-sealed', 'Not sealed.')}</strong> {tr('ui.import.nothing-in-this-file', 'Nothing in this file says who produced it; its change log can only be checked against itself.')}
                 </div>
               )}
               {a.untracked.length > 0 && (
@@ -244,9 +244,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               )}
               <div className={"guide " + (a.verdict.ok ? "" : "warn")} style={{ marginBottom: 12 }}>
                 <strong>{a.name}</strong> — {a.verdict.ok
-                  ? <>the file's own change log is <strong>complete and matches its data</strong>.</>
-                  : <>this file's change log <strong>does not hold up: {verdictText(a.verdict)}</strong>. Its history is
-                    taken over as it stands, and whatever it leaves unaccounted for is recorded as such.</>}
+                  ? <>{tr('ui.import.the-file-s-own', "the file's own change log is")} <strong>{tr('ui.import.complete-and-matches-its', 'complete and matches its data')}</strong>.</>
+                  : <>{tr('ui.import.this-file-s-change', "this file's change log")} <strong>does not hold up: {verdictText(a.verdict)}</strong>{tr('ui.import.its-history-is-taken', '. Its history is taken over as it stands, and whatever it leaves unaccounted for is recorded as such.')}</>}
                 {" "}
                 {mode === "replace"
                   ? <>Destructive: the file decides this study's contents, and records it does not contain are recorded
@@ -260,11 +259,11 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               <span className="idiff-c chg">~{totals!.changed} changed</span>
               <span className="idiff-c rem">−{totals!.removed} {mode === "replace" ? "removed" : "kept"}</span>
             </div>
-            {pending.diff.length === 0 && <div className="hint">No study data in this file (taxonomy/settings only).</div>}
+            {pending.diff.length === 0 && <div className="hint">{tr('ui.import.no-study-data-in', 'No study data in this file (taxonomy/settings only).')}</div>}
             {pending.diff.map((sd) => (
               <div className="idiff-study" key={sd.id}>
                 <div className="idiff-study-h">{sd.name}{sd.isNew && <span className="idiff-new">new study</span>}</div>
-                {[...sd.changed, ...sd.added, ...sd.removed].length === 0 && <div className="hint">No differences.</div>}
+                {[...sd.changed, ...sd.added, ...sd.removed].length === 0 && <div className="hint">{tr('ui.import.no-differences', 'No differences.')}</div>}
                 {[...sd.changed, ...sd.added, ...sd.removed].map((ed) => (
                   <div className={"idiff-ent " + ed.kind} key={ed.kind + ed.id}>
                     <span className={"idiff-badge " + ed.kind}>{ed.kind === "added" ? "+" : ed.kind === "removed" ? "−" : "~"}</span>
@@ -284,7 +283,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
         <footer className="modal-lg-foot">
           {!pending ? (
-            <span className="hint">Choose a source to preview the changes first.</span>
+            <span className="hint">{tr('ui.import.choose-a-source-to', 'Choose a source to preview the changes first.')}</span>
           ) : (
             <>
               <div className="import-modes-inline">

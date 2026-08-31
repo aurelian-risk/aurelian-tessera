@@ -147,6 +147,13 @@ export interface Taxonomy {
    *  Undeclared, a register happily reports a requirement as met while what it rests on is
    *  not - which is exactly what the publisher wrote the edge to prevent. */
   dependsOn?: {
+    /** What the finding this declaration produces is called. The title and hint below are
+     *  the PRODUCT's sentences, so the id has to be the product's too: a table can only be
+     *  held to a check it can see declared, and hard-coded in the engine this one read as
+     *  the engine's - leaving its two entries owned by a table that must not answer them,
+     *  because the next product declares a different sentence under the same key.
+     *  Defaults to `dependency-unmet`, which is what it was called before it could be said. */
+    id?: string;
     /** The type the edge runs between (requirement to requirement, normally). */
     type: string;
     /** The field holding the identifiers this item depends on, comma-separated. */
@@ -254,6 +261,17 @@ export interface Study {
    *  imported and shared with it - no separate file and no separate mechanism.
    *  Absent = the defaults. */
   calibration?: Calibration;
+  /** Written by a product that ships example data, and true only of that.
+   *
+   *  A study is DATA: its text was settled when it was created and a later language change
+   *  does not rewrite it - the seal hashes the values, so rewriting them would break the
+   *  chain rather than translate it. That is right for a study someone is working in and
+   *  wrong for the example, which exists to be read: a reader who switches to German and
+   *  finds the demonstration still in English reads it as a translation that did not work.
+   *  Marked, and only while untouched, it can simply be built again in the new language. */
+  example?: boolean;
+  /** The language the text in this study was WRITTEN in, if the product said so. */
+  language?: string;
   createdAt: string;
   updatedAt: string;
   entities: EntityRecord[];
@@ -329,6 +347,10 @@ export interface Product {
   mark: string;
   /** Which theme a fresh install opens in. Defaults to dark. */
   scheme?: "light" | "dark";
+  /** The language this product is AUTHORED in, and what a reader gets when the browser
+   *  asks for one no table answers. Defaults to English. The taxonomy stays English
+   *  whatever this says - see docs/i18n.md. */
+  language?: string;
   /** Where the source of THIS build can be obtained. Under a file-level copyleft the
    *  distributed single file has to say this: a recipient who has only the built HTML
    *  must still be able to find the source it came from. */

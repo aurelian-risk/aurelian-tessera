@@ -4,8 +4,9 @@
 // with click-lockout, Sankey ribbons between highlighted cards (rAF-tracked),
 // and the FLIP flight that centres the connected cards into a column tree.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { t as tr, tParts } from "../domain/i18n";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
-import { getType, recordTitle, refFields } from "../domain/taxonomy";
+import { getType, recordTitle, refFields, typeLabel, typeLabelPlural } from "../domain/taxonomy";
 import { EntityInfoPanel } from "./EntityInfoPanel";
 import { EntityModal } from "./EntityModal";
 import { Icon } from "./ui";
@@ -602,11 +603,11 @@ export function CanvasView({ tax, study }: { tax: Taxonomy; study: Study }) {
     <div className="diagram-dock-layout">
       <div className="flow-main">
       <div className="flow-toolbar">
-        <span className="hint">Click a node to trace its chains — pick several to narrow many paths to one.</span>
+        <span className="hint">{tr('ui.canvas.click-a-node-to', 'Click a node to trace its chains — pick several to narrow many paths to one.')}</span>
         <span style={{ flex: 1 }} />
         {zoom !== 1 && (
           <button className="btn ghost sm" onClick={() => { zoomRef.current = 1; setZoom(1); }}
-            title="Back to 100% — the wheel zooms, dragging the background pans">{Math.round(zoom * 100)}%</button>
+            title={tr('ui.canvas.back-to-the-wheel', 'Back to 100% — the wheel zooms, dragging the background pans')}>{Math.round(zoom * 100)}%</button>
         )}
         {selected.size > 0 && <button className="btn sm" onClick={() => { setSelected(new Set()); setFocused(null); }}>Clear ({selected.size})</button>}
       </div>
@@ -649,14 +650,14 @@ export function CanvasView({ tax, study }: { tax: Taxonomy; study: Study }) {
             // In highlight mode, drop whole columns that hold no available data.
             if (availableSet && !items.some((e) => availableSet.has(e.id))) return null;
             const color = groupColor(type.key);
-            const badge = badgeOf(type.label);
+            const badge = badgeOf(typeLabel(type));
             return (
               <div className="flow-lane" key={type.key}>
                 <div className="lane-header" data-lane={type.key} style={{ borderColor: color }}>
                   <span className="lane-dot" style={{ background: color }} />
-                  <span className="lane-label">{type.labelPlural}</span>
+                  <span className="lane-label" title={typeLabelPlural(type)}>{typeLabelPlural(type)}</span>
                   <span className="lane-count" style={{ color, borderColor: `color-mix(in oklch, ${color} 45%, transparent)` }}>{items.length}</span>
-                  <button className="lane-add" title={`New ${type.label}`} onClick={() => setModal({ typeKey: type.key, record: null })}><Icon.plus /></button>
+                  <button className="lane-add" title={tParts("ui.canvas.new-type", "New {0}").map((p) => (typeof p === "number" ? typeLabel(type) : p)).join("")} onClick={() => setModal({ typeKey: type.key, record: null })}><Icon.plus /></button>
                 </div>
                 <div className="lane-body">
                   {items.map((e) => {
@@ -678,7 +679,7 @@ export function CanvasView({ tax, study }: { tax: Taxonomy; study: Study }) {
                         onMouseDown={(ev) => { ev.preventDefault(); ev.currentTarget.focus({ preventScroll: true }); }}
                         onClick={() => clickNode(e.id)}>
                         <span className="node-badge" style={{ background: color }}>{badge}</span>
-                        <span className="node-name">{recordTitle(type, e)}</span>
+                        <span className="node-name" title={recordTitle(type, e)}>{recordTitle(type, e)}</span>
                       </button>
                     );
                   })}

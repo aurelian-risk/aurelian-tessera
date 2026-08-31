@@ -2,6 +2,8 @@
 // Global change timeline: every entity's hash-chained history, aggregated across
 // the active study and shown newest-first, grouped by day. A left-nav view.
 import { useMemo, useState } from "react";
+import { t as tr } from "../domain/i18n";
+import { Sentence } from "./Sentence";
 import { useActiveStudy, useStore } from "../domain/store";
 import { getType, recordTitle } from "../domain/taxonomy";
 import { STUDY_SCOPE, verifyLog } from "../domain/audit";
@@ -39,7 +41,7 @@ export function TimelineView() {
       });
   }, [study, tax]);
 
-  if (!study) return <div className="empty" style={{ padding: "60px 24px" }}>No active study. Open a study to see its change timeline.</div>;
+  if (!study) return <div className="empty" style={{ padding: "60px 24px" }}>{tr('ui.timeline.no-active-study-open', 'No active study. Open a study to see its change timeline.')}</div>;
 
   const editors = new Set(rows.map((r) => r.entry.editor));
   const entities = new Set(rows.map((r) => r.entry.entity).filter((id) => id !== STUDY_SCOPE));
@@ -58,15 +60,17 @@ export function TimelineView() {
     <div className="content tl-wrap">
       <div className="page-head">
         <div>
-          <h2 style={{ margin: 0 }}>Change timeline</h2>
-          <p className="hint" style={{ margin: "4px 0 0" }}>Every change across “{study.name}”, newest first - hash-chained for tamper-evidence.</p>
+          <h2 style={{ margin: 0 }}>{tr('ui.timeline.change-timeline', 'Change timeline')}</h2>
+          <p className="hint" style={{ margin: "4px 0 0" }}><Sentence k="ui.timeline.every-change-across"
+            en="Every change across “{0}”, newest first - hash-chained for tamper-evidence."
+            parts={[study.name]} /></p>
         </div>
       </div>
 
       <SealPanel />
 
       {rows.length === 0 ? (
-        <div className="empty" style={{ padding: "48px 24px" }}>No changes recorded yet. Edit any entity (with an editor name and optional note) and it appears here.</div>
+        <div className="empty" style={{ padding: "48px 24px" }}>{tr('ui.timeline.no-changes-recorded-yet', 'No changes recorded yet. Edit any entity (with an editor name and optional note) and it appears here.')}</div>
       ) : (
         <>
           <div className="tl-stats">
@@ -93,7 +97,8 @@ export function TimelineView() {
                 {day.rows.map((r, i) => (
                   <li className={"tl-item" + (r.gone ? " tl-gone" : "") + (r.scope ? " tl-scope" : "")} key={i}
                     role={r.entity ? "button" : undefined} tabIndex={r.entity ? 0 : undefined}
-                    title={r.entity ? "Open this record's change history" : "This record no longer exists"}
+                    title={r.entity ? tr("ui.timeline.open-this-record-s", "Open this record's change history")
+                      : tr("ui.timeline.this-record-no-longer", "This record no longer exists")}
                     onClick={() => r.entity && setOpenRec(r.entity)}
                     onKeyDown={(e) => { if (r.entity && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setOpenRec(r.entity); } }}>
                     <span className="tl-time mono">{new Date(r.entry.ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</span>

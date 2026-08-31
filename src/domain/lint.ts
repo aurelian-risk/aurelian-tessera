@@ -5,6 +5,7 @@
 // deterministic and taxonomy-guarded: a rule is skipped if its types are absent.
 import type { EntityRecord, Study, Taxonomy } from "./types";
 import { declaredClass, effectClassOf, hasEffectField } from "./controls";
+import { t as tr } from "./i18n";
 
 export type Severity = "high" | "medium" | "low";
 
@@ -38,9 +39,13 @@ export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
   const checks: LintCheck[] = [];
   // A taxonomy may declare that a check does not apply to its method - see checksOff.
   const off = new Set(tax.checksOff ?? []);
+  // Every check already carries an id, so the words it shows are looked up here rather
+  // than at every call site - a product gives them its own wording without this file
+  // being touched. See docs/i18n.md.
   const add = (id: string, title: string, severity: Severity, hint: string, type: string, affected: EntityRecord[]) => {
     if (off.has(id)) return;
-    checks.push({ id, title, severity, hint, affected, total: ents(type).length });
+    checks.push({ id, title: tr(`check.${id}.title`, title), severity,
+      hint: tr(`check.${id}.hint`, hint), affected, total: ents(type).length });
   };
 
   // Kill-chain steps not covered by any measure - the biggest exposure.
@@ -300,7 +305,7 @@ export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
       .split(/[,;]/).map((s) => s.trim()).filter(Boolean);
     // `ents` has already dropped what is set back: a record out of play carries no claim,
     // and a dependency that is not in play is not evidence of a gap either.
-    add("dependency-unmet", dep.title, dep.severity ?? "high", dep.hint, dep.type,
+    add(dep.id ?? "dependency-unmet", dep.title, dep.severity ?? "high", dep.hint, dep.type,
       all.filter((e) => done(e)
         && namesOf(e).some((n) => { const d = byId.get(n); return !!d && !done(d); })));
   }

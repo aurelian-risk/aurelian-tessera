@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 // Dependency-free UI primitives (icons, dialog, scale, multi-select).
 import { createPortal } from "react-dom";
+import { t as tr } from "../domain/i18n";
 import { useEffect, type ReactNode } from "react";
 
 const P = (d: string) => (
@@ -90,7 +91,7 @@ export function Dialog({
             <h2>{title}</h2>
             {subtitle && <div className="dialog-sub">{subtitle}</div>}
           </div>
-          <button className="btn ghost sm" onClick={onClose} aria-label="Close"><Icon.close /></button>
+          <button className="btn ghost sm" onClick={onClose} aria-label={tr('ui.ui.close', 'Close')}><Icon.close /></button>
         </div>
         {children}
       </div>
@@ -143,7 +144,10 @@ export function ScaleBadge({ value, max, label, positive }: { value: number; max
           <i key={n} className={n <= value ? "on" : ""} style={{ ["--sev" as string]: color }} />
         ))}
       </span>
-      {label}
+      {/* Named so it can be kept whole. A cell may let a long word break anywhere - German
+          compounds need it - and the rung's name is the one thing in here that must not be
+          split: "kritisch" set as "kriti sch" beside the bars is what happens otherwise. */}
+      <span className="scale-lbl">{label}</span>
     </span>
   );
 }

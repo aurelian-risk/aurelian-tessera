@@ -6,9 +6,10 @@
 // the three left→right methodology flows (Flow, Attack paths, Kill chain) — it is for
 // exploring "what is connected to X", not the linear progression.
 import { useEffect, useMemo, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { t as tr, tn } from "../domain/i18n";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
 import { buildGraph, spreadOut, type GNode } from "../domain/graph";
-import { getType } from "../domain/taxonomy";
+import { getType, groupLabel, typeLabel } from "../domain/taxonomy";
 import { EntityInfoPanel } from "./EntityInfoPanel";
 import { EntityModal } from "./EntityModal";
 
@@ -166,7 +167,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
   }, [fociSet, links, byId]);
 
   if (nodes.length === 0) {
-    return <div className="empty"><h3>Nothing to show yet</h3>Add entities in the workshops - the graph grows with them.</div>;
+    return <div className="empty"><h3>{tr('ui.graph.nothing-to-show-yet', 'Nothing to show yet')}</h3>{tr('ui.graph.add-entities-in-the', 'Add entities in the workshops - the graph grows with them.')}</div>;
   }
 
   const cx = size.w / 2, cy = size.h / 2;
@@ -281,27 +282,27 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
   return (
     <div className="graph-focus-layout">
       <aside className="graph-index">
-        <input className="graph-search" placeholder="Search entities…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="graph-search" placeholder={tr('ui.graph.search-entities', 'Search entities…')} value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="gi-list">
           {idxGroups.map(({ g, ents }) => (
             <div className="gi-group" key={g.key || "other"}>
-              <div className="gi-group-h"><span className="gi-dot" style={{ background: g.color }} />{g.label}<span className="gi-count">{ents.length}</span></div>
+              <div className="gi-group-h"><span className="gi-dot" style={{ background: g.color }} />{groupLabel(g)}<span className="gi-count">{ents.length}</span></div>
               {ents.map((e) => (
                 <button key={e.id} className={"gi-e" + (fociSet.has(e.id) ? " active" : "") + (primary?.id === e.id ? " primary" : "") + (inspect === e.id && !fociSet.has(e.id) ? " inspected" : "")}
-                  onClick={(ev) => goTo(e.id, ev.shiftKey)} title={`${e.label}  ·  Shift-click to add to the focus`}>{e.label}</button>
+                  onClick={(ev) => goTo(e.id, ev.shiftKey)} title={`${e.label}  ·  ${tr("ui.graph.shift-click-to-add", "Shift-click to add to the focus")}`}>{e.label}</button>
               ))}
             </div>
           ))}
-          {idxGroups.length === 0 && <div className="hint" style={{ padding: 12 }}>No matches.</div>}
+          {idxGroups.length === 0 && <div className="hint" style={{ padding: 12 }}>{tr('ui.graph.no-matches', 'No matches.')}</div>}
         </div>
       </aside>
       <div className="graph-main">
         <div className="graph-legend">
           {history.length > 0 && nF <= 1 && <button className="btn ghost sm" onClick={back}>← Back</button>}
           {nF > 1
-            ? <span className="item"><b style={{ color: "var(--fg)" }}>{nF} focuses</b>&nbsp;<span style={{ color: "var(--fg-subtle)" }}>· click a node to inspect · double-click to re-centre · Shift-click to add / remove</span></span>
-            : primary && <span className="item"><b style={{ color: "var(--fg)" }}>{primary.label}</b>&nbsp;<span style={{ color: "var(--fg-subtle)" }}>· {k} relationship{k === 1 ? "" : "s"} · click to inspect · double-click to re-centre · Shift-click to compare</span></span>}
-          {nF > 1 && <button className="btn ghost sm" onClick={() => setFocusIds(primary ? [primary.id] : [])}>Clear extra</button>}
+            ? <span className="item"><b style={{ color: "var(--fg)" }}>{nF} focuses</b>&nbsp;<span style={{ color: "var(--fg-subtle)" }}>{tr('ui.canvas.click-a-node-to', '· click a node to inspect · double-click to re-centre · Shift-click to add / remove')}</span></span>
+            : primary && <span className="item"><b style={{ color: "var(--fg)" }}>{primary.label}</b>&nbsp;<span style={{ color: "var(--fg-subtle)" }}>· {tn("ui.graph.n-relationships", k, "{0} relationship", "{0} relationships")} {tr("ui.graph.click-to-inspect-double", "· click to inspect · double-click to re-centre · Shift-click to compare")}</span></span>}
+          {nF > 1 && <button className="btn ghost sm" onClick={() => setFocusIds(primary ? [primary.id] : [])}>{tr('ui.graph.clear-extra', 'Clear extra')}</button>}
         </div>
         <div className="graph-wrap" ref={wrapRef}>
           <svg>
@@ -356,7 +357,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
                   {...nodeDrag(e.node.id, (shift) => shift ? goTo(e.node.id, true) : inspectNode(e.node.id))}
                   onDoubleClick={() => goTo(e.node.id)}>
                   {isInspect && <circle r={NR + 5} fill="none" stroke="var(--primary)" strokeWidth={1.4} strokeDasharray="3 3" opacity={0.9} />}
-                  {shapeEl(shapeIx.get(e.node.type) ?? 0, NR, { fill: e.node.color, fillOpacity: 0.92, stroke: isShared ? "var(--primary)" : "var(--bg-0)", strokeWidth: isShared ? 2.5 : 2 }, <title>{(t?.label ?? e.node.type)}: {e.node.label}</title>)}
+                  {shapeEl(shapeIx.get(e.node.type) ?? 0, NR, { fill: e.node.color, fillOpacity: 0.92, stroke: isShared ? "var(--primary)" : "var(--bg-0)", strokeWidth: isShared ? 2.5 : 2 }, <title>{(t ? typeLabel(t) : e.node.type)}: {e.node.label}</title>)}
                   <text x={anchorEnd ? -(NR + 5) : NR + 5} y={4} textAnchor={anchorEnd ? "end" : "start"} fontSize={10.5} fill="var(--fg)"
                     style={{ pointerEvents: "none", userSelect: "none", paintOrder: "stroke" }} stroke="var(--bg-0)" strokeWidth={3}>
                     {e.node.label.length > 24 ? e.node.label.slice(0, 24) + "…" : e.node.label}
@@ -375,7 +376,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
                   {...nodeDrag(f.id, (shift) => shift ? goTo(f.id, true) : inspectNode(f.id))}
                   onDoubleClick={() => setModal(study.entities.find((en) => en.id === f.id) ?? null)}>
                   {isInspect && <circle r={FR + 6} fill="none" stroke="var(--primary)" strokeWidth={1.6} strokeDasharray="3 3" opacity={0.9} />}
-                  {shapeEl(shapeIx.get(f.type) ?? 0, FR, { fill: f.color, fillOpacity: 0.95, stroke: isPrimary ? "var(--fg)" : "var(--primary)", strokeWidth: 3 }, <title>{(t?.label ?? f.type)}: {f.label}</title>)}
+                  {shapeEl(shapeIx.get(f.type) ?? 0, FR, { fill: f.color, fillOpacity: 0.95, stroke: isPrimary ? "var(--fg)" : "var(--primary)", strokeWidth: 3 }, <title>{(t ? typeLabel(t) : f.type)}: {f.label}</title>)}
                   <text x={0} y={FR + 15} textAnchor="middle" fontSize={12.5} fontWeight={700} fill="var(--fg)"
                     style={{ pointerEvents: "none", userSelect: "none", paintOrder: "stroke" }} stroke="var(--bg-0)" strokeWidth={4}>
                     {f.label.length > 30 ? f.label.slice(0, 30) + "…" : f.label}
@@ -383,7 +384,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
                 </g>
               );
             })}
-            {nF === 1 && k === 0 && <text x={cx} y={cy + FR + 34} textAnchor="middle" fontSize={10.5} fill="var(--fg-subtle)" style={{ paintOrder: "stroke" }} stroke="var(--bg-0)" strokeWidth={3}>no relationships yet</text>}
+            {nF === 1 && k === 0 && <text x={cx} y={cy + FR + 34} textAnchor="middle" fontSize={10.5} fill="var(--fg-subtle)" style={{ paintOrder: "stroke" }} stroke="var(--bg-0)" strokeWidth={3}>{tr('ui.graph.no-relationships-yet', 'no relationships yet')}</text>}
           </svg>
         </div>
       </div>

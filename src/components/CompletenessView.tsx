@@ -3,6 +3,7 @@
 // (failing checks first) with the affected entities as click-through chips and a
 // fix hint; passing checks collapse into a compact green list.
 import { useState } from "react";
+import { t as tr } from "../domain/i18n";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
 import { getType, recordTitle } from "../domain/taxonomy";
 import { lintStudy, sortChecks, type Severity } from "../domain/lint";
@@ -22,8 +23,8 @@ export function CompletenessView({ tax, study }: { tax: Taxonomy; study: Study }
   return (
     <div className="lint">
       <div className="lint-head">
-        <h2>Quality checks</h2>
-        <p className="hint">Completeness gaps in the analysis, with the affected items and how to close them. Everything here is derived from the study - fixing the data clears the check.</p>
+        <h2>{tr('ui.completeness.quality-checks', 'Quality checks')}</h2>
+        <p className="hint">{tr('ui.completeness.completeness-gaps-in-the', 'Completeness gaps in the analysis, with the affected items and how to close them. Everything here is derived from the study - fixing the data clears the check.')}</p>
         <div className="lint-summary">
           <span className={"lint-pill " + (totalIssues ? "warn" : "ok")}>{totalIssues ? `${totalIssues} open items` : "No gaps found"}</span>
           {counts.high > 0 && <span className="lint-pill sev-high">{counts.high} high</span>}

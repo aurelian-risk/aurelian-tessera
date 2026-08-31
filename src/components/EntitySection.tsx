@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { t as tr, tn } from "../domain/i18n";
+import { Sentence } from "./Sentence";
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldType, FieldValue, Study, Taxonomy } from "../domain/types";
-import { columnFields, getType, isSetBack, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, setBackBlocked, titleField } from "../domain/taxonomy";
+import { columnFields, fieldLabel, fieldRelation, getType, inForce, isSetBack, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, setBackBlocked, titleField, typeLabel, typeLabelPlural, typeNameOf } from "../domain/taxonomy";
 import { foldScope, getFolds, setFolds } from "../domain/viewstate";
 import { scopeChange, deleteChange } from "../domain/scope";
 import { TOOLBAR_MIN_ROWS } from "../domain/tablefilter";
@@ -56,7 +58,13 @@ const NAME_MIN = 320;
 const UNIT = 4;
 const COL_UNITS: Record<FieldType, number> = {
   number: 2, boolean: 2,          // a figure or a tick
-  enum: 3, scale: 3,              // a badge, or bars and their label
+  enum: 3,                        // a badge
+  // A scale is bars AND their name, and their figure is 3.7 of this ladder - but 4 units
+  // does not fit the ladder at all: seventeen registers would then want more than the 82%
+  // the value columns may take, the name column would hit its floor, and the shared grid
+  // that the whole ladder exists for breaks. Measured: two e2e assertions fell. The name
+  // wraps at a hyphenation point inside the badge instead - app.css, `.badge .scale-lbl`.
+  scale: 3,
   text: 4, textarea: 4, ref: 4, multiref: 4,   // words, a chip, or chips and a "+n"
 };
 const gridUnits = (cols: FieldDef[]) => cols.reduce((u, c) => u + COL_UNITS[c.type], 0);
@@ -93,8 +101,12 @@ const groupFloor = (tax: Taxonomy, group: string | undefined) => {
   return NAME_MIN - 20 + units * UNIT_MIN;
 };
 
-function FieldValueView({ field, value, tax, study, recordId, onOpen, onToggle, toggleBlocked }:
-  { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study; recordId?: string;
+function FieldValueView({ field, value, tax, study, type, recordId, onOpen, onToggle, toggleBlocked }:
+  { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study;
+    /** The type the field belongs to. A field key is not unique - five types here declare a
+     *  `status`, each with its own options - so a value reading has to be looked up under the
+     *  type as well, or all five would share one wording. */
+    type?: EntityTypeDef; recordId?: string;
     onOpen?: (id: string) => void;
     onToggle?: (field: FieldDef, next: string) => void;
     /** Why the switch may not be flipped right now, if it may not - see setBackBlocked. */
@@ -113,21 +125,22 @@ function FieldValueView({ field, value, tax, study, recordId, onOpen, onToggle, 
     return r && t ? recordTitle(t, r) : " - ";
   };
   const chip = (id: string) => onOpen
-    ? <button className="chip link" key={id} title="Open" onClick={(e) => { e.stopPropagation(); onOpen(id); }}>{nameOf(id)}</button>
+    ? <button className="chip link" key={id} title={tr('ui.entitysection.open', 'Open')} onClick={(e) => { e.stopPropagation(); onOpen(id); }}>{nameOf(id)}</button>
     : <span className="chip" key={id}>{nameOf(id)}</span>;
   switch (field.type) {
     case "enum": {
       // A two-state field that is flipped often is a switch, not a label to open a form for.
       if (field.toggle && field.options?.length === 2 && onToggle) {
-        const on = String(value ?? "") === field.options[1];
+        const on = inForce(field, value) === 1;
         // Blocked only in the direction that would take the record out of play: putting
         // one IN is never in conflict with anything.
+        const blocked = on ? toggleBlocked ?? null : null;
         return (
-          <button className={"cell-toggle" + (on ? " on" : "") + (on && toggleBlocked ? " locked" : "")}
-            disabled={!!(on && toggleBlocked)}
-            title={(on && toggleBlocked) || `${optionLabel(field, field.options[on ? 0 : 1])} instead`}
-            onClick={(e) => { e.stopPropagation(); if (!(on && toggleBlocked)) onToggle(field, field.options![on ? 0 : 1]); }}>
-            {optionLabel(field, field.options[on ? 1 : 0])}
+          <button className={"cell-toggle" + (on ? " on" : "") + (blocked ? " locked" : "")}
+            disabled={!!blocked}
+            title={blocked ?? `${optionLabel(field, field.options[on ? 0 : 1], type)} instead`}
+            onClick={(e) => { e.stopPropagation(); if (!blocked) onToggle(field, field.options![on ? 0 : 1]); }}>
+            {optionLabel(field, field.options[on ? 1 : 0], type)}
           </button>
         );
       }
@@ -137,12 +150,12 @@ function FieldValueView({ field, value, tax, study, recordId, onOpen, onToggle, 
       // untouched record showed a dash, which reads as "not decided" for something the study
       // has already decided.
       if (field.toggle && field.options?.length === 2)
-        return <span className="badge">{optionLabel(field, field.options[String(value ?? "") !== field.options[0] ? 1 : 0])}</span>;
-      return value ? <span className="badge" title={String(value)}>{optionLabel(field, String(value))}</span> : <span className="hint"> - </span>;
+        return <span className="badge">{optionLabel(field, field.options[inForce(field, value)], type)}</span>;
+      return value ? <span className="badge" title={String(value)}>{optionLabel(field, String(value), type)}</span> : <span className="hint"> - </span>;
     }
     case "scale": {
       const v = typeof value === "number" ? value : 1;
-      return <ScaleBadge value={v} max={scaleMax(field)} label={scaleLabel(field, v)} positive={field.polarity === "positive"} />;
+      return <ScaleBadge value={v} max={scaleMax(field)} label={scaleLabel(field, v, type)} positive={field.polarity === "positive"} />;
     }
     case "boolean":
       return <span className="badge">{value ? "yes" : "no"}</span>;
@@ -228,7 +241,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
 
   const refTargets = (typeKey: string) => study.entities.filter((e) => e.type === typeKey);
   const missingReq = type.fields.find((f) => f.type === "ref" && f.required && refTargets(f.refType ?? "").length === 0);
-  const targetLabel = missingReq ? getType(tax, missingReq.refType ?? "")?.label ?? "entity" : "";
+  const targetLabel = missingReq ? typeNameOf(tax, missingReq.refType ?? "") : "";
   const addBlocked = missingReq ? `Create a ${targetLabel} first - required by "${missingReq.label}".` : null;
 
   // Open a linked entity from ANOTHER workshop (or type) in the modal popup.
@@ -241,17 +254,17 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
         {/* The heading is the switch: a workshop holding several registers of a thousand
             rows is unreadable if every one of them is always laid out in full. */}
         <button className="panel-fold" aria-expanded={open} onClick={fold}
-          title={open ? `Fold ${type.labelPlural.toLowerCase()} away` : `Show ${type.labelPlural.toLowerCase()}`}>
+          title={open ? `Fold ${typeLabelPlural(type).toLowerCase()} away` : `Show ${typeLabelPlural(type).toLowerCase()}`}>
           <Icon.chevron />
         </button>
-        <h3 onClick={fold} style={{ cursor: "pointer" }}>{type.labelPlural}</h3>
+        <h3 onClick={fold} style={{ cursor: "pointer" }}>{typeLabelPlural(type)}</h3>
         <span className="badge" title={filtered ? `${shown.length} shown of ${items.length}` : undefined}>{filtered ? `${shown.length} / ${items.length}` : items.length}</span>
         <span className="spacer" />
         {open && headerExtra}
         {open && !hideAdd && (
           <button className="btn sm primary" disabled={!!addBlocked} title={addBlocked ?? undefined}
             onClick={() => setModal({ typeKey: type.key, record: null })}>
-            <Icon.plus /> {type.label}
+            <Icon.plus /> {typeLabel(type)}
           </button>
         )}
       </div>
@@ -262,10 +275,10 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
 
       {open && <div className="panel-body">
         {items.length === 0 ? (
-          <div className="empty" style={{ padding: "28px 16px" }}>No {type.labelPlural.toLowerCase()} yet.</div>
+          <div className="empty" style={{ padding: "28px 16px" }}>No {typeLabelPlural(type).toLowerCase()} yet.</div>
         ) : shown.length === 0 ? (
           <div className="empty" style={{ padding: "28px 16px" }}>
-            Nothing matches. <button className="btn ghost sm" onClick={clearAll}>Clear filters</button>
+            {tr('ui.entitysection.nothing-matches', 'Nothing matches.')} <button className="btn ghost sm" onClick={clearAll}>{tr('ui.entitysection.clear-filters', 'Clear filters')}</button>
           </div>
         ) : (
           <table className="tbl tbl-share" style={{ minWidth: groupFloor(tax, type.group) }}>
@@ -289,8 +302,8 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
             </colgroup>
             <thead>
               <tr>
-                <th>{type.fields.find((f) => f.key === title)?.label ?? "Name"}</th>
-                {cols.map((c) => <th key={c.key}>{c.label}</th>)}
+                <th>{(() => { const f = type.fields.find((x) => x.key === title); return f ? fieldLabel(f, type) : "Name"; })()}</th>
+                {cols.map((c) => <th key={c.key}>{fieldLabel(c, type)}</th>)}
               </tr>
             </thead>
             {groups.map((g) => (
@@ -323,9 +336,9 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                           <div className="desc">{clip(r.values.description)}</div>
                         )}
                       </td>
-                      {cols.map((c) => <td key={c.key}><FieldValueView field={c} value={r.values[c.key] ?? null} tax={tax} study={study} recordId={r.id}
-                        onOpen={openEntity} toggleBlocked={setBackBlocked(tax, study, r)}
-                        onToggle={(f, next) => {
+                      {cols.map((c) => <td key={c.key}><FieldValueView field={c} value={r.values[c.key] ?? null} tax={tax} study={study} type={type} recordId={r.id}
+                        toggleBlocked={setBackBlocked(tax, study, r)}
+                        onOpen={openEntity} onToggle={(f, next) => {
                           // Out of the perimeter is the direction with consequences: what
                           // cannot stand without this record goes too, and what would be
                           // left pointing at it has to be named. Coming back IN never
@@ -338,7 +351,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                             setScopeAsk(r);
                             return;
                           }
-                          updateEntity(r.id, { ...r.values, [f.key]: next }, `${f.label}: ${optionLabel(f, next)}`);
+                          updateEntity(r.id, { ...r.values, [f.key]: next }, `${fieldLabel(f, type)}: ${optionLabel(f, next, type)}`);
                         }} /></td>)}
                     </tr>
                     {isOpen && (
@@ -377,7 +390,7 @@ function ScopeDialog({ record, tax, study, onClose }:
   const setScope = useStore((s) => s.setScope);
   const change = scopeChange(tax, study, record.id);
   const inPlay = !isSetBack(tax, record);
-  const typeOf = (r: EntityRecord) => getType(tax, r.type)?.label ?? r.type;
+  const typeOf = (r: EntityRecord) => typeNameOf(tax, r.type);
   const title = (r: EntityRecord) => { const t = getType(tax, r.type); return t ? recordTitle(t, r) : r.id; };
   useDismissOnEscape(true, onClose);
 
@@ -389,27 +402,34 @@ function ScopeDialog({ record, tax, study, onClose }:
           <span>{typeOf(x.record)}{x.note ? ` · ${x.note}` : ""}</span>
         </div>
       ))}
-      {items.length > cap && <div className={"dep " + tone + " more"}>+{items.length - cap} more</div>}
+      {items.length > cap && <div className={"dep " + tone + " more"}>{tn("ui.entitysection.more", items.length - cap, "+{0} more", "+{0} more")}</div>}
     </div>
   );
 
   const others = change.carried.filter((r) => r.id !== record.id);
   const blocked = change.blocked.map((b) => ({ record: b.record, note: b.field }));
   const weak = change.weakened.map((w) => ({ record: w.record,
-    note: w.left === 0 ? `${w.field}: none left` : `${w.field}: ${w.left} other${w.left === 1 ? "" : "s"}` }));
+    note: `${w.field}: ` + (w.left === 0
+      ? tr("ui.entitysection.none-left", "none left")
+      : tn("ui.entitysection.n-others", w.left, "{0} other", "{0} others")) }));
 
   return (
     <Overlay onClose={onClose}>
       <div className="modal-lg scope-dlg" style={{ maxWidth: 620 }} onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-lg-head">
-          <h3>{inPlay ? "Disable" : "Enable"} <span className="scope-name">{title(record)}</span></h3>
+          <h3>{inPlay
+            ? <Sentence k="ui.entitysection.disable-record" en="Disable {0}"
+                parts={[<span className="scope-name">{title(record)}</span>]} />
+            : <Sentence k="ui.entitysection.enable-record" en="Enable {0}"
+                parts={[<span className="scope-name">{title(record)}</span>]} />}</h3>
         </div>
         <div className="modal-lg-body">
           {!inPlay ? (
-            <p className="scope-lead">Counts again everywhere.</p>
+            <p className="scope-lead">{tr('ui.entitysection.counts-again-everywhere', 'Counts again everywhere.')}</p>
           ) : blocked.length ? (
             <>
-              <p className="scope-lead warn">Currently in use by {blocked.length} record{blocked.length === 1 ? "" : "s"}</p>
+              <p className="scope-lead warn">{tn("ui.entitysection.currently-in-use", blocked.length,
+                "Currently in use by {0} record", "Currently in use by {0} records")}</p>
               {boxes(blocked, "block")}
               {/* Standing in the way is a judgement about the perimeter, not a technical
                   impossibility - so it can be overruled, the way a delete can. What it
@@ -418,15 +438,17 @@ function ScopeDialog({ record, tax, study, onClose }:
               {/* Says what the number on the button means, and nothing else. The count is
                   larger than the list above because taking those out can be refused in
                   turn, and that refusal is lifted with them. */}
-              <p className="scope-lead">Taking it out anyway takes
-                {blocked.length === 1 ? " that one" : ` those ${blocked.length}`} with it
-                — {change.forced.length} records in all.</p>
+              <p className="scope-lead"><Sentence k="ui.entitysection.taking-it-out-anyway"
+                en="Taking it out anyway takes {0} with it - {1} records in all."
+                parts={[tn("ui.entitysection.that-one", blocked.length, "that one", "those {0}"),
+                        String(change.forced.length)]} /></p>
             </>
           ) : (
             <>
               {others.length > 0 && (
                 <>
-                  <p className="scope-h">Disabled with it ({others.length})</p>
+                  <p className="scope-h">{tn("ui.entitysection.disabled-with-it", others.length,
+                    "Disabled with it ({0})", "Disabled with it ({0})")}</p>
                   {boxes(others.map((r) => ({ record: r })), "carry")}
                 </>
               )}
@@ -435,25 +457,27 @@ function ScopeDialog({ record, tax, study, onClose }:
                   {/* Not "still used elsewhere": some of these lose their last link in the
                       field named and keep standing for another reason entirely. "Affected"
                       is what they have in common; the box says the rest. */}
-                  <p className="scope-h">Also affected ({weak.length})</p>
+                  <p className="scope-h">{tn("ui.entitysection.also-affected", weak.length,
+                    "Also affected ({0})", "Also affected ({0})")}</p>
                   {boxes(weak, "weak", 6)}
                 </>
               )}
-              {!others.length && !weak.length && <p className="scope-lead">Nothing else is affected.</p>}
-              {!change.possible && <p className="scope-lead warn">A type involved has no switch in this taxonomy.</p>}
+              {!others.length && !weak.length && <p className="scope-lead">{tr('ui.entitysection.nothing-else-is-affected', 'Nothing else is affected.')}</p>}
+              {!change.possible && <p className="scope-lead warn">{tr('ui.entitysection.a-type-involved-has', 'A type involved has no switch in this taxonomy.')}</p>}
             </>
           )}
         </div>
         <div className="modal-lg-foot">
           <span className="spacer" />
-          <button className="btn ghost sm" onClick={onClose}>Cancel</button>
+          <button className="btn ghost sm" onClick={onClose}>{tr('ui.entitysection.cancel', 'Cancel')}</button>
           {inPlay && blocked.length > 0 && change.possible && (
             <button className="btn sm danger" onClick={() => {
               setScope(change.forced.map((r) => r.id), false,
                 `Out of scope with ${change.forced.length - 1} dependent record${change.forced.length === 2 ? "" : "s"}, over ${blocked.length} in use`);
               onClose();
             }}>
-              <Icon.ban /> Out of scope anyway ({change.forced.length})
+              <Icon.ban /> {tn("ui.entitysection.out-of-scope-anyway", change.forced.length,
+                "Out of scope anyway ({0})", "Out of scope anyway ({0})")}
             </button>
           )}
           {/* Not shown beside the override: a dead button next to a live one asks the reader
@@ -469,7 +493,9 @@ function ScopeDialog({ record, tax, study, onClose }:
             }}>
             {/* The count is what WILL happen; with the action refused there is nothing to
                 count, and a disabled button reading "Disable 4" reads like a threat. */}
-            {inPlay ? <><Icon.ban /> Disable{others.length && !blocked.length ? ` ${change.carried.length}` : ""}</> : "Enable"}
+            {inPlay
+              ? <><Icon.ban /> {tr("ui.entitysection.disable", "Disable")}{others.length && !blocked.length ? ` ${change.carried.length}` : ""}</>
+              : tr("ui.entitysection.enable", "Enable")}
           </button>
           )}
         </div>
@@ -484,7 +510,7 @@ function ScopeDialog({ record, tax, study, onClose }:
 function DeleteDialog({ record, tax, study, onConfirm, onClose }:
   { record: EntityRecord; tax: Taxonomy; study: Study; onConfirm: () => void; onClose: () => void }) {
   const change = deleteChange(tax, study, record.id);
-  const typeOf = (r: EntityRecord) => getType(tax, r.type)?.label ?? r.type;
+  const typeOf = (r: EntityRecord) => typeNameOf(tax, r.type);
   const title = (r: EntityRecord) => { const t = getType(tax, r.type); return t ? recordTitle(t, r) : r.id; };
   useDismissOnEscape(true, onClose);
 
@@ -496,31 +522,35 @@ function DeleteDialog({ record, tax, study, onConfirm, onClose }:
           <span>{typeOf(x.record)}{x.note ? ` · ${x.note}` : ""}</span>
         </div>
       ))}
-      {items.length > cap && <div className={"dep " + tone + " more"}>+{items.length - cap} more</div>}
+      {items.length > cap && <div className={"dep " + tone + " more"}>{tn("ui.entitysection.more", items.length - cap, "+{0} more", "+{0} more")}</div>}
     </div>
   );
 
   const others = change.removed.filter((r) => r.id !== record.id);
   const lost = [
-    ...change.cleared.map((c) => ({ record: c.record, note: `${c.field}: emptied` })),
+    ...change.cleared.map((c) => ({ record: c.record,
+      note: `${c.field}: ` + tr("ui.entitysection.emptied", "emptied") })),
     ...change.shortened.map((c) => ({ record: c.record,
-      note: c.left === 0 ? `${c.field}: none left` : `${c.field}: ${c.left} left` })),
+      note: `${c.field}: ` + (c.left === 0
+        ? tr("ui.entitysection.none-left", "none left")
+        : tn("ui.entitysection.n-left", c.left, "{0} left", "{0} left")) })),
   ];
 
   return (
     <Overlay onClose={onClose}>
       <div className="modal-lg scope-dlg" style={{ maxWidth: 620 }} onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-lg-head">
-          <h3>Delete <span className="scope-name">{title(record)}</span></h3>
+          <h3>{tr('ui.entitysection.delete', 'Delete')} <span className="scope-name">{title(record)}</span></h3>
         </div>
         <div className="modal-lg-body">
           {others.length > 0 ? (
             <>
-              <p className="scope-lead warn">Deleted with it ({others.length}) — this cannot be undone</p>
+              <p className="scope-lead warn">{tn("ui.entitysection.deleted-with-it", others.length,
+                "Deleted with it ({0}) - this cannot be undone", "Deleted with it ({0}) - this cannot be undone")}</p>
               {boxes(others.map((r) => ({ record: r })), "block")}
             </>
           ) : lost.length > 0 ? (
-            <p className="scope-lead">This record alone is deleted.</p>
+            <p className="scope-lead">{tr('ui.entitysection.this-record-alone-is', 'This record alone is deleted.')}</p>
           ) : null}
           {lost.length > 0 && (
             <>
@@ -528,7 +558,8 @@ function DeleteDialog({ record, tax, study, onConfirm, onClose }:
                   deleted. "Loses a reference to it" read as though the deleted record were
                   losing something - the relation the wrong way round, over a list of other
                   records. The subject has to be the list. */}
-              <p className="scope-h">These stay, and lose their link to it ({lost.length})</p>
+              <p className="scope-h">{tn("ui.entitysection.these-stay-and-lose", lost.length,
+                "These stay, and lose their link to it ({0})", "These stay, and lose their link to it ({0})")}</p>
               {boxes(lost, "weak", 6)}
             </>
           )}
@@ -536,16 +567,15 @@ function DeleteDialog({ record, tax, study, onConfirm, onClose }:
               Nothing else is affected." is a pair of negations followed by advice, and a
               reader looking at it learns nothing about their own study. */}
           {!others.length && !lost.length && (
-            <p className="scope-lead">Nothing in the study refers to it. Deleting removes
-              this one record, and the deletion is recorded.</p>
+            <p className="scope-lead">{tr('ui.entitysection.nothing-in-the-study', 'Nothing in the study refers to it. Deleting removes this one record, and the deletion is recorded.')}</p>
           )}
-          <p className="scope-lead">To keep the record and its judgement out of the figures, disable it instead.</p>
+          <p className="scope-lead">{tr('ui.entitysection.to-keep-the-record', 'To keep the record and its judgement out of the figures, disable it instead.')}</p>
         </div>
         <div className="modal-lg-foot">
           <span className="spacer" />
-          <button className="btn ghost sm" onClick={onClose}>Cancel</button>
+          <button className="btn ghost sm" onClick={onClose}>{tr('ui.entitysection.cancel', 'Cancel')}</button>
           <button className="btn sm danger" onClick={() => { onConfirm(); onClose(); }}>
-            <Icon.trash /> Delete{others.length ? ` ${change.removed.length}` : ""}
+            <Icon.trash /> {tr("ui.entitysection.delete", "Delete")}{others.length ? ` ${change.removed.length}` : ""}
           </button>
         </div>
       </div>
@@ -573,7 +603,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
     const r = study.entities.find((e) => e.id === id);
     const t = r && getType(tax, r.type);
     return (
-      <button className="chip link" key={id} onClick={() => onOpenEntity(id)} title="Open">
+      <button className="chip link" key={id} onClick={() => onOpenEntity(id)} title={tr('ui.entitysection.open', 'Open')}>
         {r && t ? recordTitle(t, r) : " - "}
       </button>
     );
@@ -590,7 +620,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
       const v = e.values[f.key];
       const ids = f.type === "multiref" ? (Array.isArray(v) ? (v as string[]) : []) : v ? [v as string] : [];
       if (!ids.includes(record.id)) continue;
-      const rel = f.relation ?? f.label;
+      const rel = fieldRelation(f, type);
       const key = `${et.key}::${rel}`;
       const g = backGroups.get(key);
       if (g) g.ids.push(e.id);
@@ -602,17 +632,17 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
   return (
     <div className="detail">
       <div className="detail-actions">
-        <span className="d-sub" style={{ margin: 0, flex: 1 }}>Details</span>
-        <button className="btn sm" style={{ background: `color-mix(in oklch, ${color} 20%, transparent)`, borderColor: `color-mix(in oklch, ${color} 45%, transparent)`, color: "var(--fg)" }} onClick={onEdit}><Icon.edit /> Edit</button>
+        <span className="d-sub" style={{ margin: 0, flex: 1 }}>{tr('ui.entitysection.details', 'Details')}</span>
+        <button className="btn sm" style={{ background: `color-mix(in oklch, ${color} 20%, transparent)`, borderColor: `color-mix(in oklch, ${color} 45%, transparent)`, color: "var(--fg)" }} onClick={onEdit}><Icon.edit /> {tr('ui.entitysection.edit', 'Edit')}</button>
         {/* No second door into the perimeter. Scope is one state with one rule, and the
             switch in the table carries it - including the dialog, when something hangs on
             the record. A button here would be the same field with a different name and a
             different rule, which is what it had become. */}
-        <button className="btn sm danger" onClick={() => setDelAsk(true)}><Icon.trash /> Delete</button>
+        <button className="btn sm danger" onClick={() => setDelAsk(true)}><Icon.trash /> {tr('ui.entitysection.delete', 'Delete')}</button>
       </div>
       {delAsk && <DeleteDialog record={record} tax={tax} study={study}
         onConfirm={onDelete} onClose={() => setDelAsk(false)} />}
-      {record.source && <div className="ent-source" style={{ marginBottom: 8 }} title="Extracted from this source"><Icon.doc /> {record.source}</div>}
+      {record.source && <div className="ent-source" style={{ marginBottom: 8 }} title={tr('ui.entitysection.extracted-from-this-source', 'Extracted from this source')}><Icon.doc /> {record.source}</div>}
       {descFields.map((f) => {
         const v = record.values[f.key];
         return typeof v === "string" && v.trim() ? <p className="d-desc" key={f.key}>{v}</p> : null;
@@ -624,8 +654,8 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
             const v = typeof record.values[f.key] === "number" ? (record.values[f.key] as number) : 1;
             return (
               <div className="d-scale-row" key={f.key}>
-                <span className="d-k">{f.label}</span>
-                <ScaleBars value={v} max={scaleMax(f)} label={scaleLabel(f, v)} positive={f.polarity === "positive"} />
+                <span className="d-k">{fieldLabel(f, type)}</span>
+                <ScaleBars value={v} max={scaleMax(f)} label={scaleLabel(f, v, type)} positive={f.polarity === "positive"} />
               </div>
             );
           })}
@@ -634,8 +664,8 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
       <div className="detail-grid">
         {otherScalars.map((f) => (
           <div className="d-item" key={f.key}>
-            <span className="d-k">{f.label}</span>
-            <div className="d-v"><FieldValueView field={f} value={record.values[f.key] ?? null} tax={tax} study={study} recordId={record.id} /></div>
+            <span className="d-k">{fieldLabel(f, type)}</span>
+            <div className="d-v"><FieldValueView field={f} value={record.values[f.key] ?? null} tax={tax} study={study} type={type} recordId={record.id} /></div>
           </div>
         ))}
         {relFields.map((f) => {
@@ -643,7 +673,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
           const ids = f.type === "multiref" ? (Array.isArray(v) ? (v as string[]) : []) : v ? [v as string] : [];
           return (
             <div className="d-item" key={f.key}>
-              <span className="d-k">{f.label}</span>
+              <span className="d-k">{fieldLabel(f, type)}</span>
               <div className="d-v multi">{ids.length ? ids.map(linkChip) : <span className="hint"> - </span>}</div>
             </div>
           );
@@ -651,7 +681,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
       </div>
       {incoming.length > 0 && (
         <div className="detail-rels">
-          <span className="d-sub">Referenced by</span>
+          <span className="d-sub">{tr('ui.entitysection.referenced-by', 'Referenced by')}</span>
           {incoming.map((g) => {
             const key = `${g.type.key}::${g.rel}`;
             const all = openRels.has(key);
@@ -659,7 +689,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
             return (
               <div className="d-rel-group" key={key}>
                 <div className="d-rel-head">
-                  <span className="d-rel-what">{g.ids.length === 1 ? g.type.label : g.type.labelPlural}</span>
+                  <span className="d-rel-what">{g.ids.length === 1 ? typeLabel(g.type) : typeLabelPlural(g.type)}</span>
                   <span className="d-rel-how">{g.rel} &rarr;</span>
                   <span className="badge">{g.ids.length}</span>
                 </div>
@@ -681,10 +711,10 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
         const hist = entryOf(study.log, record.id);
         return hist.length > 0 && (
           <button className="hist-btn" onClick={() => setHistOpen(true)}>
-            <span className="d-sub" style={{ margin: 0 }}>Change history</span>
+            <span className="d-sub" style={{ margin: 0 }}>{tr('ui.entitysection.change-history', 'Change history')}</span>
             <span className="hist-count">{hist.length}</span>
             <IntegrityBadge study={study} entityId={record.id} />
-            <span className="hist-view">View →</span>
+            <span className="hist-view">{tr('ui.entitysection.view', 'View →')}</span>
           </button>
         );
       })()}
