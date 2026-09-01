@@ -68,7 +68,7 @@ ok("no entry names a type, group or check this profile does not declare",
 // applyProductLanguage registers the engine's table first and this one after it, so the
 // later registration wins per key. This method calls the report a Bericht and the change
 // log an Änderungslauf, and those are its words, not the engine's.
-const shape = keys.filter((k) => !/^(product\.(tagline|documentTitle)|ui\.[a-z]+\.[a-zA-Z0-9_.-]+|type\.[a-z_0-9]+\.(label|plural)|group\.[a-z]+\.(label|description)|check\.[a-z0-9-]+\.(title|hint)|field\.[a-z_0-9]+(\.[a-z_0-9]+)?\.(label|help|relation|options|scale))$/.test(k));
+const shape = keys.filter((k) => !/^(product\.(tagline|documentTitle|credit)|ui\.[a-z]+\.[a-zA-Z0-9_.-]+|type\.[a-z_0-9]+\.(label|plural)|group\.[a-z]+\.(label|description)|check\.[a-z0-9-]+\.(title|hint)|field\.[a-z_0-9]+(\.[a-z_0-9]+)?\.(label|help|relation|options|scale))$/.test(k));
 ok("every key follows the agreed scheme", shape.length === 0, shape.join(", "));
 
 // An override that says what the engine already says is dead weight that reads as a

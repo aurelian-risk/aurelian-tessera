@@ -90,9 +90,11 @@ const DE: Overlay = {
   "field.praktik.schwerpunkt.options": ["Methodisch", "Organisatorisch", "Technisch"],
   "field.risk_origin.category.options": ["Cyberkriminelle", "Staatlicher Akteur", "Hacktivist",
     "Innentäter", "Wettbewerber", "Terrorist", "Gelegenheitstäter"],
-  "field.kill_chain_step.tactic.options": ["Aufklärung", "Ressourcenaufbau", "Erstzugriff",
-    "Ausführung", "Persistenz", "Rechteausweitung", "Verteidigungsumgehung", "Zugangsdaten",
-    "Erkundung", "Laterale Bewegung", "Sammlung", "Steuerung", "Abfluss", "Wirkung"],
+  // THE MITRE TACTICS ARE NOT TRANSLATED. They are the names ATT&CK publishes, and an
+  // analyst reads them, cites them and searches for them in that form - "Lateral Movement",
+  // not "Laterale Bewegung". Translated here they also parted company with the rest of the
+  // application, which prints the tactic straight from the record: the register read German
+  // while the defence chart beside it read English. No entry, so the authored value shows.
   // The four decisions of BSI 200-3 and ISO 27005. The stored words are engine contract -
   // treatment.ts compares against them - so only the reading changes.
   "field.risk_treatment.decision.options": ["Reduzieren", "Akzeptieren", "Teilen", "Vermeiden"],
@@ -245,7 +247,8 @@ const DE: Overlay = {
   "ui.study.report": "Bericht",
   "product.documentTitle": "Sicherheitskonzept nach Grundschutz++",
   "product.tagline": "BSI-Grundschutz umgesetzt",
-  "ui.nav.timeline": "Änderungslauf",
+  "product.credit": "Methode: Grundschutz++ © Bundesamt für Sicherheit in der Informationstechnik (BSI), Lizenz CC\u00a0BY-SA\u00a04.0",
+  "ui.nav.timeline": "Historie",
 
   // ── how a reference reads in a sentence ────────────────────────────────────────
   // `fieldRelation` falls back to the field's own label, so an untranslated relation does
@@ -307,7 +310,9 @@ const DE: Overlay = {
   "field.tags.label": "Schlagwörter",
   "field.target_object_categories.label": "Gilt für Zielobjektkategorien",
   "field.targets_asset.label": "Angegriffenes Zielobjekt",
-  "field.technique.label": "Technik",
+  // MITRE's word, not a translation of it - the value in the field is "T1078 Valid
+  // Accounts" and the column has to read as the same vocabulary.
+  "field.technique.label": "Technique",
   "field.termin.label": "Umzusetzen bis",
   "field.threats.label": "Elementare Gefährdungen",
   "field.traeger.label": "Durchgeführt von",

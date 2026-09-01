@@ -6,6 +6,50 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.6.5] - 2026-09-02
+
+### Added
+
+- **An export decides what goes in, in one dialog.** Scope, contents, format, file name and
+  who may open it, with the size stated before the file is written. Beside the single text
+  file there is now an **archive**: the study as readable JSON and the source documents next
+  to it. A JSON export carries references only - measured on a corpus of 40 documents, 9 kB
+  against 6.2 MB - so the archive is what moves a corpus to another machine. Driven end to
+  end: a document is exported and read back in a profile that has nothing, with its text and
+  its source file rather than a reference to them.
+- **A document keeps its source file**, not only the text extracted from it, and saving one
+  asks where it goes instead of assuming.
+- **A portable file can carry the public keys its seals are checked with**, so a recipient
+  can verify them without being sent a second file.
+
+### Changed
+
+- **The interface reads as one language.** 22 further texts that no key could reach -
+  sentences broken by their own markup, counted phrases, the words on the perimeter switch -
+  and the model view's file note is set as three steps rather than one paragraph. The Explore
+  view showed the whole model under its authored English names while every register beside it
+  read German; only the schema editor keeps the authored word, where it is the thing being
+  edited.
+- **Published terms are not translated.** MITRE's tactics were read into German, so the
+  register read "Laterale Bewegung" while the defence chart beside it read "Lateral
+  Movement". The kill chain, an attack path, a choke point and defense in depth keep the
+  words an analyst reads and searches for; prose about them is German.
+- **The example study follows the reader's language.** Untouched it is built again in
+  silence; worked in, it asks first, and a refusal is remembered.
+- **Table cells hold what they are given.** A chip is capped and truncated with its full name
+  in the title, so a column of them reads as a column; the scale bars give the rung name
+  15px back. Measured at 1600/1280/1024 in both languages: labels drawn over the column
+  beside them, 21 at 1024px, now 0.
+
+### Fixed
+
+- **The scenario name in the TTP panel was cropped mid-word** with nothing to say it had
+  been: `text-overflow` does not apply to a flex container.
+- **Two sentences agreed with nothing** - a ring read "1 erkennen ihn", and the model note
+  came out as German word salad because it was five fragments in a fixed order.
+- **A merge kept the hour it was made.** git runs `post-merge` for the commit a merge makes,
+  never `post-commit`, so the rule about publishing hours passed every merge by.
+
 ## [0.6.4] - 2026-08-31
 
 ### Added

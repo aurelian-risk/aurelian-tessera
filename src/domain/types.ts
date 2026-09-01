@@ -326,6 +326,17 @@ export interface PortableSettings {
   modelId?: string;      // selected embedding model
   genModelId?: string;   // selected generative (language) model
   theme?: "light" | "dark";
+  /** Where a language model is served, when one is. */
+  endpoint?: string;
+  /** Models the analyst added themselves - without these an export names a model the
+   *  receiving installation has never heard of. */
+  userModels?: unknown[];
+  // DELIBERATELY ABSENT, and each for its own reason:
+  //   · the reader's LANGUAGE - a property of whoever is reading, not of the study. An
+  //     import that switches the recipient's interface to German would be a bug.
+  //   · the EDITOR NAME - personal, and adopting the sender's would have the recipient
+  //     writing entries in somebody else's name.
+  //   · the PRIVATE KEY - a secret. Only the public ring travels; see Bundle.keys.
 }
 
 /** A file that carries a taxonomy and/or studies (the swap unit). With
@@ -337,6 +348,13 @@ export interface Bundle {
   studies?: Study[];
   documents?: RefDocRecord[];
   settings?: PortableSettings;
+  /** Public keys the sender knows, so the seals in these studies can be CHECKED.
+   *
+   *  A seal names a fingerprint; without the key behind it the seal is unverifiable, and a
+   *  study handed over with its seals unverifiable has handed over nothing. These are
+   *  public keys - an address book, not a secret. The sender's own private key never
+   *  travels. */
+  keys?: { kid: string; name: string; jwk: unknown; seen?: string }[];
 }
 
 /** Product identity. Supplied by the active profile (src/profile), consumed by the shell. */

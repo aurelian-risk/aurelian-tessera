@@ -76,6 +76,7 @@ for (const id of checkIds) {
 // keys are, because a product declares them as data and the engine only shows them.
 note("product.tagline", "product");
 note("product.documentTitle", "product");
+note("product.credit", "product");
 
 // The interface's own keys are READ OFF THE SOURCE, because that is where they are
 // declared — `tr("ui.dash.new-study", "New study")`. A list kept here by hand would be a

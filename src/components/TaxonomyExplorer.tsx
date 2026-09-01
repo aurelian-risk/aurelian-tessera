@@ -16,12 +16,12 @@
 // Nothing here knows a method or a product. A taxonomy that declares no hierarchy simply
 // has no Classes reading, and one with no relationships has an empty Relations one.
 import { useMemo, useState } from "react";
-import { t as tr } from "../domain/i18n";
+import { t as tr, tn } from "../domain/i18n";
 import type { EntityRecord, EntityTypeDef, FieldDef, Study, Taxonomy } from "../domain/types";
 import { classificationLink, withAncestors } from "../domain/modelling";
 import { BUNDLED_FRAMEWORKS } from "../profile";
 import { catalogTargets } from "../domain/catalog";
-import { getType, optionLabel, recordTitle } from "../domain/taxonomy";
+import { fieldLabel, getType, groupLabel, optionLabel, recordTitle, typeLabel, typeLabelPlural } from "../domain/taxonomy";
 import { EntityModal } from "./EntityModal";
 import { useActiveStudy, useStore } from "../domain/store";
 import { Icon } from "./ui";
@@ -97,10 +97,10 @@ function Outline({ tax, study, q, onOpen }: { tax: Taxonomy; study: Study; q: st
         // A search reaches types, their fields and their records; a group survives if
         // anything under it does, so nothing hides behind a fold that did not match.
         const types = q === "" ? all : all.filter((t) =>
-          hit(t.label) || hit(t.labelPlural) || hit(t.key)
-          || t.fields.some((f) => hit(f.label) || hit(f.key))
+          hit(t.label) || hit(t.labelPlural) || hit(typeLabel(t)) || hit(typeLabelPlural(t)) || hit(t.key)
+          || t.fields.some((f) => hit(f.label) || hit(fieldLabel(f, t)) || hit(f.key))
           || recordsOf(t).some((r) => hit(recordTitle(t, r))));
-        if (q !== "" && !types.length && !hit(g.label)) return null;
+        if (q !== "" && !types.length && !hit(g.label) && !hit(groupLabel(g))) return null;
         const records = all.reduce((n, t) => n + count(t), 0);
         const shown = q !== "" ? true : open.has(g.key);
         return (
@@ -108,8 +108,8 @@ function Outline({ tax, study, q, onOpen }: { tax: Taxonomy; study: Study; q: st
             <button className="tx-row tx-row-g" onClick={() => toggle(open, g.key, setOpen)} aria-expanded={shown}>
               <span className={"caret" + (shown ? " open" : "")}><Icon.chevron /></span>
               <span className="tx-dot" style={{ background: g.color }} />
-              <span className="tx-name">{g.label}</span>
-              <span className="tx-num">{types.length} {types.length === 1 ? "type" : "types"}</span>
+              <span className="tx-name">{groupLabel(g)}</span>
+              <span className="tx-num">{tn("ui.taxonomyexplorer.n-types", types.length, "{0} type", "{0} types")}</span>
               <span className="tx-num strong">{records}</span>
             </button>
             {shown && types.map((t) => {
@@ -120,9 +120,9 @@ function Outline({ tax, study, q, onOpen }: { tax: Taxonomy; study: Study; q: st
                 <div key={t.key}>
                   <button className="tx-row tx-row-t" onClick={() => toggle(openType, t.key, setOpenType)} aria-expanded={tOpen}>
                     <span className={"caret" + (tOpen ? " open" : "")}><Icon.chevron /></span>
-                    <span className="tx-name">{t.labelPlural}</span>
+                    <span className="tx-name">{typeLabelPlural(t)}</span>
                     <span className="tx-key">{t.key}</span>
-                    <span className="tx-num">{t.fields.length} fields</span>
+                    <span className="tx-num">{tn("ui.taxonomyexplorer.n-fields", t.fields.length, "{0} field", "{0} fields")}</span>
                     {published.has(t.key) && (
                       <span className="tx-num" title={tr('ui.taxonomyexplorer.fields-the-published-catalogue', 'Fields the published catalogue itself fills; the rest are what this application keeps beside them')}>
                         {t.fields.filter((f) => published.get(t.key)!.has(f.key)).length} published
@@ -132,7 +132,7 @@ function Outline({ tax, study, q, onOpen }: { tax: Taxonomy; study: Study; q: st
                   </button>
                   {tOpen && t.fields.filter((f) => q === "" || hit(f.label) || hit(f.key) || hit(t.label)).map((f) => (
                     <div key={f.key} className="tx-row tx-row-f">
-                      <span className="tx-name">{f.label}</span>
+                      <span className="tx-name">{fieldLabel(f, t)}</span>
                       <span className="tx-key">{f.key}</span>
                       {published.get(t.key)?.has(f.key) && (
                         <span className="tx-pub" title={tr('ui.taxonomyexplorer.filled-by-the-published', "Filled by the published catalogue - the publisher's to change")}>published</span>

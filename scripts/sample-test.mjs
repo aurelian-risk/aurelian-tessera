@@ -213,7 +213,7 @@ ok("the German study's log is sealed like the English one",
   const enFile = ownRequirementsOscal(tax, withGap(en))?.filename ?? "";
   const deFile = ownRequirementsOscal(tax, withGap(de))?.filename ?? "";
   ok("the German study's delivery keeps its letters in the file name",
-    /netzfuehrung/.test(deFile), deFile);
+    /netzsteuerung/.test(deFile), deFile);
   ok("...and an ASCII name is unchanged by that folding",
     /riverbend-municipal-utilities-grid-control-example/.test(enFile), enFile);
 }

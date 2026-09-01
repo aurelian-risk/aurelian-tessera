@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { t as tr, chooseLanguage, getLanguage, languageChoice, offeredLanguages, onLanguageChange } from "./domain/i18n";
 import { useStore } from "./domain/store";
 import { PRODUCT, makeSampleStudy } from "./profile";
@@ -32,7 +32,7 @@ function LanguagePicker() {
   };
   return (
     <label className="nav-item nav-lang" title={tr("ui.nav.the-language-this-interface", "The language this interface is shown in. Unset, it follows the browser.")}>
-      <span className="dot" style={{ background: "var(--fg-muted)" }} />
+      <span className="nav-mark"><Icon.globe /></span>
       <select value={languageChoice()} onChange={(e) => chooseLanguage(e.target.value, PRODUCT.language ?? "en")}>
         <option value="">{tr("ui.nav.browser-language", "Browser language")}</option>
         {langs.map((l) => <option key={l} value={l}>{endonym(l)}</option>)}
@@ -97,7 +97,7 @@ function Sidebar({ route, go, hasStudy }: { route: Route; go: (r: Route) => void
       <div style={{ flex: 1 }} />
       <LanguagePicker />
       <button className="nav-item" onClick={toggleTheme}>
-        <span className="dot" style={{ background: "var(--primary)" }} />
+        <span className="nav-mark"><span className="dot" style={{ background: "var(--primary)" }} /></span>
         {light ? tr("ui.nav.theme.dark", "Dark theme") : tr("ui.nav.theme.light", "Light theme")}
       </button>
       {/* Under a file-level copyleft the built file has to tell its recipient where the
@@ -106,9 +106,11 @@ function Sidebar({ route, go, hasStudy }: { route: Route; go: (r: Route) => void
         {PRODUCT.name} {__APP_VERSION__} · {__APP_LICENSE__}
         {PRODUCT.credit && (
           <span className="credit">
+            {/* Through the lookup like everything else shown, and the licence carries
+                no-break spaces: in a 250px sidebar "CC BY-SA 4.0" was split after "CC". */}
             {PRODUCT.credit.url
-              ? <a href={PRODUCT.credit.url} target="_blank" rel="noreferrer">{PRODUCT.credit.text}</a>
-              : PRODUCT.credit.text}
+              ? <a href={PRODUCT.credit.url} target="_blank" rel="noreferrer">{tr("product.credit", PRODUCT.credit.text)}</a>
+              : tr("product.credit", PRODUCT.credit.text)}
           </span>
         )}
         {PRODUCT.source && <><br /><a href={`https://${PRODUCT.source}`} target="_blank" rel="noreferrer">{PRODUCT.source}</a></>}
@@ -125,23 +127,40 @@ function Sidebar({ route, go, hasStudy }: { route: Route; go: (r: Route) => void
  *  translation that failed. Measured: switch first and it loads German; load first and it
  *  stayed English.
  *
- *  Only while UNTOUCHED. The comparison is the change log: the example arrives with a fixed
- *  number of entries, and one edit is one more. Someone who has worked in it keeps their
- *  work, in the language they wrote it in. */
+ *  REPLACED, NOT EDITED. Rewriting the values in place would leave every entry in the
+ *  hash-chained log describing text that is no longer there, and the study would then read
+ *  as "changed outside the app" - which is exactly what the chain is for. A fresh example
+ *  brings its own chain, and the old one goes with its remembered folds.
+ *
+ *  Where it has been worked in, it ASKS: switching then costs those edits, and a
+ *  demonstration silently reset is worse than one that says what it is about to do. A
+ *  refusal is remembered per study and language, so the question is put once. Only the
+ *  example - `Study.example` is set by the product that ships it - so nothing anyone is
+ *  working in is ever touched. */
 function useSampleInReadersLanguage(lang: string) {
   const studies = useStore((s) => s.studies);
   const activeId = useStore((s) => s.activeStudyId);
   const mergeStudies = useStore((s) => s.mergeStudies);
   const setActiveStudy = useStore((s) => s.setActiveStudy);
+  const deleteStudy = useStore((s) => s.deleteStudy);
+  const declined = useRef("");
   useEffect(() => {
     const study = studies.find((s) => s.id === activeId);
     if (!study?.example || study.language === lang) return;
     const fresh = makeSampleStudy();
-    if ((fresh.log?.length ?? 0) !== (study.log?.length ?? 0)
-        || fresh.entities.length !== study.entities.length) return;
+    const untouched = (fresh.log?.length ?? 0) === (study.log?.length ?? 0)
+      && fresh.entities.length === study.entities.length;
+    if (!untouched) {
+      const key = `${study.id}→${lang}`;
+      if (declined.current === key) return;
+      declined.current = key;
+      if (!confirm(tr("ui.nav.the-example-study-has",
+        "The example study has been edited. Showing it in the language you just chose means building it again, and those edits are lost. Build it again?"))) return;
+    }
+    deleteStudy(study.id);              // and its remembered folds with it
     mergeStudies([fresh]);
     setActiveStudy(fresh.id);
-  }, [lang, activeId, studies, mergeStudies, setActiveStudy]);
+  }, [lang, activeId, studies, mergeStudies, setActiveStudy, deleteStudy]);
 }
 
 export default function App() {

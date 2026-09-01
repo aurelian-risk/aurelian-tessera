@@ -53,7 +53,7 @@ export const PRODUCT: Product = {
   // The method is the BSI's work; this is the acknowledgement of that, not a licence
   // notice - those travel with the documents that quote the ruleset, and stand in NOTICE.md.
   credit: {
-    text: "Method: Grundschutz++ © Bundesamt für Sicherheit in der Informationstechnik, CC BY-SA 4.0",
+    text: "Method: Grundschutz++ © Bundesamt für Sicherheit in der Informationstechnik (BSI), licence CC\u00a0BY-SA\u00a04.0",
     url: "https://github.com/BSI-Bund/Stand-der-Technik-Bibliothek",
   },
   // CC BY-SA 4.0 asks for the creator, a link, the licence and an indication of what was

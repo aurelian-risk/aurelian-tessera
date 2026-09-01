@@ -128,7 +128,12 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
         style={{ background: heatColor(ratio, 0.55), borderColor: heatColor(ratio, 0.8) }}>{Math.round(ratio * 100)}%</button>
     );
   };
-  const gridCols = `minmax(96px, 1fr) repeat(${present.length}, minmax(66px, 1fr))`;
+  // The label column carries a scenario NAME and the others carry three digits, so it is
+  // not one share of five: at 1fr the names were cut after 13 characters. 1.6fr and a
+  // floor of 150px, and what still does not fit ends in an ellipsis with the name in the
+  // title - which needs .hm-rowlbl to be a block, since text-overflow does nothing on a
+  // flex container and the label was simply cropped mid-word.
+  const gridCols = `minmax(150px, 1.6fr) repeat(${present.length}, minmax(66px, 1fr))`;
   const mName = (m: EntityRecord) => recordTitle(measureType, m);
 
   return (
@@ -141,16 +146,16 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
       <div className="panel-body mc-body">
         <div className="mc-ring">
           <svg viewBox="0 0 184 184" width="164" height="164" role="img"
-            aria-label={`${pct}% of attempts stopped - ${Math.round(resisted * 100)}% resisted, ${Math.round(caught * 100)}% caught in the act, ${Math.round(through * 100)}% reach the objective`}>
+            aria-label={`${pct}% ${tr("ui.mitigationcharts.attempts-stopped", "attempts stopped")} - ${Math.round(resisted * 100)}% resisted, ${Math.round(caught * 100)}% caught in the act, ${Math.round(through * 100)}% reach the objective`}>
             <circle cx={cx} cy={cy} r={r} stroke="var(--track, var(--border))" strokeWidth={sw} fill="none" />
             {aRes > 0.5 && <path d={arcPath(cx, cy, r, 0, aRes)} fill="none" strokeWidth={sw} stroke="var(--color-state-success)" />}
             {aCau > 0.5 && <path d={arcPath(cx, cy, r, aRes, aRes + aCau)} fill="none" strokeWidth={sw} stroke="var(--color-state-info, var(--primary))" />}
             {aRes + aCau < 359.5 && <path d={arcPath(cx, cy, r, aRes + aCau, 360)} fill="none" strokeWidth={sw} stroke="var(--color-state-error)" />}
             <text x={cx} y={cy - 2} textAnchor="middle" fontSize="30" fontWeight="700" fill="var(--fg)">{pct}%</text>
-            <text x={cx} y={cy + 18} textAnchor="middle" fontSize="11" fill="var(--fg-subtle)">attempts stopped</text>
+            <text x={cx} y={cy + 18} textAnchor="middle" fontSize="11" fill="var(--fg-subtle)">{tr("ui.mitigationcharts.attempts-stopped", "attempts stopped")}</text>
           </svg>
           <div className="mc-ring-legend">
-            <span><i style={{ background: "var(--color-state-success)" }} /> blocked</span>
+            <span><i style={{ background: "var(--color-state-success)" }} /> {tr("ui.mitigationcharts.blocked", "blocked")}</span>
             <span><i style={{ background: "var(--color-state-info, var(--primary))" }} /> {tr('ui.mitigationcharts.detected-in-time', 'detected in time')}</span>
             <span><i style={{ background: "var(--color-state-error)" }} /> {tr('ui.mitigationcharts.reaches-the-objective', 'reaches the objective')}</span>
             {/* Two counted phrases, because two counts govern two verbs: with one detecting step
@@ -197,11 +202,11 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
                 </div>
               </div>
               <div className="hm-key">
-                <span className="hm-key-l">undefended</span>
+                <span className="hm-key-l">{tr("ui.mitigationcharts.undefended", "undefended")}</span>
                 <span className="hm-key-bar">
                   {[0, 0.2, 0.4, 0.6, 0.8, 1].map((v) => <i key={v} style={{ background: heatColor(v, 0.55) }} />)}
                 </span>
-                <span className="hm-key-l">fully defended</span>
+                <span className="hm-key-l">{tr("ui.mitigationcharts.fully-defended", "fully defended")}</span>
                 <span className="hm-key-note">{tr('ui.mitigationcharts.click-a-tile-for', 'click a tile for the working')}</span>
               </div>
             </>

@@ -40,6 +40,10 @@ const GEN_WORDS_DE: Overlay = LLM ? {
 
 export const ENGINE_WORDS: Record<string, Overlay> = {
   de: {
+    // TECHNICAL TERMS STAY AS THEY ARE PUBLISHED. MITRE's tactics and techniques, the kill
+    // chain, an attack path, a choke point, defense in depth: an analyst reads, cites and
+    // searches for those words in that form, and a German reading of them is a word nobody
+    // else uses. Prose about them is German; the terms are not.
     // ── app ──
     "ui.app.loading": "Lädt …",
 
@@ -52,12 +56,12 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
 
     // ── attackpaths ──
     "ui.attackpaths.attack-paths": "Attack paths",
-    "ui.attackpaths.chains": "Ketten",
+    "ui.attackpaths.chains": "Chains",
     "ui.attackpaths.choke-points": "Choke points",
-    "ui.attackpaths.cross-chain-link": "kettenübergreifende Verbindung",
-    "ui.attackpaths.kill-chain-link": "Verbindung innerhalb der Kette",
+    "ui.attackpaths.cross-chain-link": "Cross-chain link",
+    "ui.attackpaths.kill-chain-link": "Kill-chain link",
     "ui.attackpaths.no-kill-chain-steps": "Noch keine Kill-chain-Schritte — modellieren Sie die Kill chain eines Operational scenario, um seine Attack paths zu sehen.",
-    "ui.attackpaths.read-only-projection-of": "nur lesende Projektion aller Angriffsketten auf die Zielobjekte",
+    "ui.attackpaths.read-only-projection-of": "nur lesende Projektion aller Kill chains auf die Zielobjekte",
     "ui.attackpaths.target-assets": "Zielobjekte",
     "ui.attackpaths.toggle-a-scenario-above": "Schalten Sie oben ein Szenario ein, um seinen Attack path zu zeigen, und fügen Sie weitere hinzu, um zu sehen, wo sie zusammenlaufen.",
 
@@ -176,23 +180,16 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.dashboard.what-is-in-scope": "Was gehört dazu? Welche Systeme, Prozesse, Grenzen?",
 
     // ── datamenu ──
-    "ui.datamenu.each-of-them-opens": "Jeder von ihnen öffnet sie mit seinem eigenen Schlüssel. Die Liste der Empfänger ist in der Datei lesbar — daran erkennt man, ob sie an jemanden ging, den man nicht erwartet hat.",
-    "ui.datamenu.file-or-paste": "Datei oder Einfügen",
-    "ui.datamenu.format": "Format",
+    "ui.datamenu.hint-file-or-paste": "Datei, Archiv oder Einfügen",
+    "ui.datamenu.export-dots": "Exportieren…",
+    "ui.datamenu.hint-export": "wählen, was hineingeht und wer es öffnen darf",
     "ui.datamenu.import-data": "Daten importieren…",
-    "ui.datamenu.key": "Schlüssel",
-    "ui.datamenu.none": "Keiner",
-    "ui.datamenu.password": "Passwort",
-    "ui.datamenu.password-aes": "Passwort (AES-256)",
-    "ui.datamenu.portable-session": "Portable Sitzung",
-    "ui.datamenu.protection": "Schutz",
-    "ui.datamenu.taxonomy": "Taxonomy",
-    "ui.datamenu.taxonomy-data-docs-settings": "Taxonomie + Daten + Dokumente + Einstellungen",
 
     // ── distinput ──
     "ui.distinput.drag-to-slide-the": "Ziehen, um die ganze Verteilung zu verschieben",
 
     // ── documents ──
+    "ui.documents.save-file": "Quelldatei speichern",
     "ui.documents.n-for-this-study": "{0} für diese Studie · Word / PDF / Text - lokal extrahiert und zwischengespeichert",
     "ui.documents.references.many": "{0} Fundstellen",
     "ui.documents.references.one": "{0} Fundstelle",
@@ -274,7 +271,6 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.entitysection.nothing-else-is-affected": "Sonst ist nichts betroffen.",
     "ui.entitysection.nothing-in-the-study": "Nichts in der Studie verweist darauf. Löschen entfernt genau diesen Datensatz, und die Löschung wird protokolliert.",
     "ui.entitysection.nothing-matches": "Nichts passt.",
-    "ui.entitysection.open": "Öffnen",
     "ui.entitysection.referenced-by": "Verwiesen von",
     "ui.entitysection.this-record-alone-is": "Nur dieser Datensatz wird gelöscht.",
     "ui.entitysection.to-keep-the-record": "Um den Datensatz mitsamt seiner Bewertung aus den Zahlen herauszuhalten, setzen Sie ihn stattdessen zurück.",
@@ -315,7 +311,7 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.factortrace.seeded-from-the-feared": "Vorbelegt aus der Schwere des Schadensereignisses",
     "ui.factortrace.staying-in": "Drinbleiben",
     "ui.factortrace.the-difficulty-rating-stands": "Die Difficulty-Bewertung steht stellvertretend:",
-    "ui.factortrace.the-entry-technique": "· die Einstiegstechnik",
+    "ui.factortrace.the-entry-technique": "· die Entry-Technique",
     "ui.factortrace.the-factor-you-are": "der Faktor, den Sie verfolgen - er speist die Schritte darunter",
     "ui.factortrace.tooling": "Werkzeug",
     "ui.factortrace.what-the-attack-demands": "Was der Angriff verlangt",
@@ -339,6 +335,13 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.graph.search-entities": "Entitäten suchen…",
 
     // ── import ──
+    "ui.import.gap-title": "Diese Datei bringt kein Datenmodell mit und passt nicht zu diesem.",
+    "ui.import.gap-records.one": "{0} Datensatz benutzt etwas, das es auf dieser Installation nicht gibt. Er würde importiert und danach nie angezeigt - es gibt keine Tabelle dafür.",
+    "ui.import.gap-records.many": "{0} Datensätze benutzen etwas, das es auf dieser Installation nicht gibt. Sie würden importiert und danach nie angezeigt - es gibt keine Tabelle dafür.",
+    "ui.import.gap-types": "Unbekannte Typen:",
+    "ui.import.gap-fields": "Unbekannte Felder:",
+    "ui.import.gap-fix": "Beim Absender einen Export anfordern, der das Datenmodell enthält.",
+    "ui.import.archive-encrypted": "Dieses Archiv ist verschlüsselt. Passwort eingeben:",
     "ui.import.a-key-you-have": ", ein Schlüssel, für den Sie gebürgt haben",
     "ui.import.check-against-a-key": "Gegen eine Schlüsseldatei prüfen…",
     "ui.import.choose-a-source-to": "Wählen Sie eine Quelle, um die Änderungen zuerst anzusehen.",
@@ -360,9 +363,9 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.import.see-the-diff-without": "Den Unterschied sehen, ohne eine Datei zu bearbeiten",
     "ui.import.signature-valid-sender-unconfirmed": "Signatur gültig, Absender unbestätigt",
     "ui.import.source": "Quelle",
-    "ui.import.the-file-s-own": "der eigene Änderungslauf der Datei ist",
+    "ui.import.the-file-s-own": "die eigene Historie der Datei ist",
     "ui.import.the-seal-is-intact": "— das Siegel ist unversehrt, aber dieser Schlüssel ist keiner, den Sie benannt haben",
-    "ui.import.this-file-s-change": "der Änderungslauf dieser Datei",
+    "ui.import.this-file-s-change": "die Historie dieser Datei",
     "ui.import.verified": "Verifiziert",
 
     // ── killchainlane ──
@@ -380,6 +383,12 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.killchainmitigation.operational-scenario": "Operational scenario",
 
     // ── mitigationcharts ──
+    "ui.mitigationcharts.undefended": "unverteidigt",
+    "ui.mitigationcharts.fully-defended": "vollständig verteidigt",
+    // Inside the donut, where "Versuche aufgehalten" ran past the ring: the figure above it
+    // says what is being counted.
+    "ui.mitigationcharts.attempts-stopped": "aufgehalten",
+    "ui.mitigationcharts.blocked": "blockiert",
     "ui.mitigationcharts.n-detect-him.many": "{0} erkennen ihn",
     "ui.mitigationcharts.n-detect-him.one": "{0} erkennt ihn",
     "ui.mitigationcharts.n-steps-block.many": "{0} von {1} Schritten halten einen Angreifer auf",
@@ -392,7 +401,7 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.mitigationcharts.a-second-measure-on": "Eine zweite Maßnahme am selben Schritt schließt einen Teil dessen, was die erste offen ließ. Jede zählt danach, wie weit sie umgesetzt ist und wo sie greift.",
     "ui.mitigationcharts.all-scenarios": "Alle Szenarien",
     "ui.mitigationcharts.at-this-step": "an diesem Schritt",
-    "ui.mitigationcharts.chain-defence": "Verteidigung der Kette",
+    "ui.mitigationcharts.chain-defence": "Chain defence",
     "ui.mitigationcharts.click-a-tile-for": "eine Kachel anklicken für die Rechnung",
     "ui.mitigationcharts.close": "Schließen",
     "ui.mitigationcharts.corrective-deterrent-and-avoidance": "Corrective-, deterrent- und avoidance-Maßnahmen werden hier nicht gezählt",
@@ -416,7 +425,11 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.mitigationcharts.ttp-tactic-defence": "Verteidigung nach TTP-Tactic",
 
     // ── model ──
-    "ui.model.keeping-the-model-as-a-file": "Damit es nicht in jeder {0}-Sitzung erneut geladen werden muss, liegt das Modell als Datei ({1}): {2} drücken, die Datei aus dem Speichern-Dialog neben diese HTML-Seite legen und beim nächsten Mal {3} drücken. Das funktioniert in Chrome und Edge, auch unter {0}. Unter {4} und in Firefox wird die Datei beim Start gefunden.",
+    "ui.model.file-why": "Das Modell liegt als Datei ({0}), damit eine {1}-Sitzung es nicht erneut herunterlädt.",
+    "ui.model.file-step-1": "{0} - ein Speichern-Dialog öffnet sich.",
+    "ui.model.file-step-2": "Die Datei neben diese HTML-Datei legen.",
+    "ui.model.file-step-3": "Beim nächsten Mal {0} wählen - es wird nichts heruntergeladen.",
+    "ui.model.file-auto": "Schritt 2 und 3 funktionieren in Chrome und Edge. Unter {0} und in Firefox wird die Datei beim Start von selbst gefunden.",
     "ui.model.load-the-model-first": "Erst das Modell laden",
     "ui.model.reload": "Neu laden",
     "ui.model.save-as-a-file": "Als Datei neben der Anwendung speichern",
@@ -458,10 +471,11 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.modelling.the-whole-ruleset-is": "Das ganze Regelwerk ist erfasst, und das Paket ist aktuell",
 
     // ── nav ──
+    "ui.nav.the-example-study-has": "Die Beispielstudie wurde bearbeitet. Sie in der eben gewählten Sprache zu zeigen heißt, sie neu zu erzeugen; die Bearbeitungen gehen dabei verloren. Neu erzeugen?",
     "ui.nav.documents-for-the-active": "Dokumente der aktiven Studie",
     "ui.nav.import-a-document-corpus": "Einen Dokumentenbestand einlesen (legt eine Studie an)",
     "ui.nav.browser-language": "Browsersprache",
-    "ui.nav.change-timeline-of-the": "Änderungslauf der aktiven Studie",
+    "ui.nav.change-timeline-of-the": "Historie der aktiven Studie",
     "ui.nav.documents": "Dokumente",
     "ui.nav.model": "Model",
     "ui.nav.navigation": "Navigation",
@@ -510,9 +524,9 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.quantification.secondary-risk": "Sekundäres Risiko",
     "ui.quantification.simulated-annual-loss-distribution": "Simulierte Jahresschadensverteilung",
     "ui.quantification.skill-the-attack-needs": "Können, das der Angriff verlangt, vor jeder Ihrer Maßnahmen",
-    "ui.quantification.the-chain-needs-persistence": "die Kette verlangt Persistenz, Umgehung oder seitliche Bewegung",
+    "ui.quantification.the-chain-needs-persistence": "die Kette verlangt Persistence, Defense Evasion oder Lateral Movement",
     "ui.quantification.the-full-quantification-as": "Die vollständige Quantification als Text: die Regeln, die geltenden Parameter, jeder abgeleitete Term, die Kette, die Ergebnisse und die genannten Grenzen",
-    "ui.quantification.the-hardest-single-technique": "die schwierigste einzelne Technik der Kette",
+    "ui.quantification.the-hardest-single-technique": "die schwierigste einzelne Technique der Kette",
     "ui.quantification.this-scenario-models-no": "dieses Szenario modelliert keine Kette, es gibt also nichts, woraus es abzuleiten wäre",
     "ui.quantification.to-pick-the-operational": "um die zu quantifizierenden Angriffsszenarien zu wählen.",
     "ui.quantification.trace-the-control-strength": "Die Control-Stärke nachverfolgen",
@@ -636,6 +650,10 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.taxonomy.taxonomy": "Taxonomy",
 
     // ── taxonomyexplorer ──
+    "ui.taxonomyexplorer.n-types.one": "{0} Typ",
+    "ui.taxonomyexplorer.n-types.many": "{0} Typen",
+    "ui.taxonomyexplorer.n-fields.one": "{0} Feld",
+    "ui.taxonomyexplorer.n-fields.many": "{0} Felder",
     "ui.taxonomyexplorer.classes": "Klassen",
     "ui.taxonomyexplorer.groups-types-and-fields": "Gruppen, Typen und Felder, mit dem, was die Studie hält",
     "ui.taxonomyexplorer.outline": "Überblick",
@@ -659,7 +677,7 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
 
     // ── timeline ──
     "ui.timeline.every-change-across": "Jede Änderung an „{0}“, die neueste zuerst - über eine Hashkette gegen Veränderung gesichert.",
-    "ui.timeline.open-this-record-s": "Den Änderungslauf dieses Datensatzes öffnen",
+    "ui.timeline.open-this-record-s": "Die Historie dieses Datensatzes öffnen",
     "ui.timeline.this-record-no-longer": "Diesen Datensatz gibt es nicht mehr",
     "ui.timeline.change-timeline": "Änderungsverlauf",
     "ui.timeline.no-active-study-open": "Keine aktive Studie. Öffnen Sie eine Studie, um ihren Änderungsverlauf zu sehen.",
@@ -677,14 +695,14 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     // ── report ──
     "ui.report.organization": "Institution",
     "ui.report.scope": "Geltungsbereich",
-    "ui.report.attack-paths-origin-action": "Angriffspfade (Ursprung -> Handlung -> Ergebnis)",
+    "ui.report.attack-paths-origin-action": "Attack paths (Ursprung -> Handlung -> Ergebnis)",
     "ui.report.change-record": "Änderungsnachweis",
     "ui.report.compliance-coverage": "Abdeckung der Compliance",
     "ui.report.date": "Datum",
     "ui.report.document-control": "Dokumentenlenkung",
     "ui.report.editor": "Bearbeiter",
     "ui.report.generated": "Erzeugt",
-    "ui.report.kill-chain-mitigation-coverage": "Abdeckung der Kettenverteidigung",
+    "ui.report.kill-chain-mitigation-coverage": "Abdeckung der Kill-chain-Mitigation",
     "ui.report.overview": "Überblick",
     "ui.report.reason": "Grund",
     "ui.report.record": "Datensatz",
@@ -705,6 +723,56 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.report.rights-holder": "Rechteinhaber",
     "ui.report.sources-and-terms": "Quellen und Begriffe",
     "ui.report.yes": "ja",
+
+    // ── exportdlg ──
+    "ui.exportdlg.scope": "Welche Studien",
+    "ui.exportdlg.s-active": "Die geöffnete Studie",
+    "ui.exportdlg.s-none-open": "Es ist keine Studie geöffnet.",
+    "ui.exportdlg.s-all.one": "Alle {0} Studie",
+    "ui.exportdlg.s-all.many": "Alle {0} Studien",
+    "ui.exportdlg.filename": "Dateiname",
+    "ui.exportdlg.fn-model": "datenmodell",
+    "ui.exportdlg.fn-studies.one": "{0}-studie",
+    "ui.exportdlg.fn-studies.many": "{0}-studien",
+    "ui.exportdlg.what": "Was",
+    "ui.exportdlg.w-study-and-model": "Studie und Datenmodell",
+    "ui.exportdlg.w-studies-and-model": "Studien und Datenmodell",
+    "ui.exportdlg.w-taxonomy": "Nur Datenmodell",
+    "ui.exportdlg.as": "Als",
+    "ui.exportdlg.w-all-note": "Die Studien, ihre Änderungsprotokolle, das Modell, auf dem sie beruhen, und die Einstellungen dieser Installation — eine Sitzung, die anderswo weiterläuft. Das Modell reist mit, weil Datensätze auf einem Modell, das der Empfänger nicht hat, importiert und danach nie angezeigt würden.",
+    "ui.exportdlg.w-taxonomy-note": "Nur das Datenmodell: Typen, Felder und Skalen, ohne Studie dahinter.",
+    "ui.exportdlg.a-file": "Einzelne Datei",
+    "ui.exportdlg.a-archive-off": "Zu einem Datenmodell gibt es keine Dokumente zu packen.",
+    "ui.exportdlg.a-archive": "Archiv",
+    "ui.exportdlg.as-archive-note": "Ein ZIP: die Studie als lesbares JSON, die Dokumentdateien daneben.",
+    "ui.exportdlg.as-text-note": "Eine Textdatei — klein, lesbar und in der Versionsverwaltung vergleichbar.",
+    "ui.exportdlg.out-taxonomy": "Nur das Datenmodell, ohne jede Studie.",
+    "ui.exportdlg.out-with-model": "Das Datenmodell und {0}",
+    "ui.exportdlg.out-one": "diese Studie",
+    "ui.exportdlg.out-n.one": "{0} Studie",
+    "ui.exportdlg.out-n.many": "{0} Studien",
+    "ui.exportdlg.out-json": "{0} als eine Textdatei. Die Dokumente sind darin benannt; ihre Inhalte bleiben hier.",
+    "ui.exportdlg.out-archive-with": "{0} samt {1} — ein Archiv, das sich überall öffnen lässt.",
+    "ui.exportdlg.out-archive-without": "{0} als Archiv, ohne die Dokumentdateien.",
+    "ui.exportdlg.title": "Diesen Export packen",
+    "ui.exportdlg.documents": "Quelldokumente",
+    "ui.exportdlg.no-files": "Zu keiner Referenz dieser Studie liegt die Quelldatei vor - mitreisen können nur Referenzen, die seit der Einführung dieser Ablage hinzugekommen sind.",
+    "ui.exportdlg.n-files.one": "{0} Datei",
+    "ui.exportdlg.n-files.many": "{0} Dateien",
+    "ui.exportdlg.keys": "Öffentliche Schlüssel",
+    "ui.exportdlg.no-keys": "Auf dieser Installation ist kein Schlüssel benannt.",
+    "ui.exportdlg.n-keys.one": "{0} Schlüssel, damit der Empfänger die Siegel dieser Studie prüfen kann",
+    "ui.exportdlg.n-keys.many": "{0} Schlüssel, damit der Empfänger die Siegel dieser Studie prüfen kann",
+    "ui.exportdlg.protection": "Schutz",
+    "ui.exportdlg.plain": "Keiner",
+    "ui.exportdlg.password": "Passwort",
+    "ui.exportdlg.to-keys": "An Schlüssel",
+    "ui.exportdlg.password-hint": "mindestens 4 Zeichen",
+    "ui.exportdlg.password-note": "Das Passwort nimmt denselben Weg wie die Datei. Die Adressierung an einen Schlüssel erspart diesen Schritt.",
+    "ui.exportdlg.recipients-note": "Jeder Empfänger kostet einen verpackten Schlüssel, keine zweite Kopie der Daten.",
+    "ui.exportdlg.cancel": "Abbrechen",
+    "ui.exportdlg.export": "Exportieren",
+    "ui.exportdlg.working": "Wird gepackt …",
 
     // ── the engine's own completeness checks; the two this profile switches off are left out ──
     "check.actor-no-category.title": "Risk sources ohne Category",

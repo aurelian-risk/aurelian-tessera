@@ -257,17 +257,28 @@ export function ModelView() {
             {status && <span className="hint">{status}</span>}
           </div>
           <div className="guide" style={{ marginTop: 12, marginBottom: 0 }}>
-            {/* ONE sentence, not five fragments. Assembled from pieces it came out as
-                "nach Herunterladen und laden ein Speichern-Dialog öffnet sich → legen Sie
-                es neben die HTML-Datei, dann Datei benutzen… beim nächsten Mal": German
-                puts the verb somewhere else, and fragments in a fixed order forbid it. */}
-            <Sentence k="ui.model.keeping-the-model-as-a-file"
-              en="To avoid downloading it again in every {0} session, the model is kept as a file ({1}): press {2}, keep the file the save dialog offers next to this HTML page, and press {3} next time. That works in Chrome and Edge, {0} included. On {4} and in Firefox the file is found at start."
-              parts={[<span className="mono">file://</span>,
-                      <span className="mono">{MODEL_FILE}</span>,
-                      <strong>{tr("ui.model.download-load", "Download & load")}</strong>,
-                      <strong>{tr("ui.model.use-file", "Use file…")}</strong>,
-                      <span className="mono">http://localhost</span>]} />
+            {/* A lead sentence and then the steps as steps - Aurelian Lite's shape, taken
+                because it is the one that reads: written as one paragraph, the buttons, the
+                save dialog and the two browsers ran into each other, and in German the verb
+                ended up somewhere the sentence had not left room for. */}
+            <p style={{ margin: "0 0 7px" }}>
+              <Sentence k="ui.model.file-why"
+                parts={[<span className="mono">{MODEL_FILE}</span>, <span className="mono">file://</span>]}
+                en="The model is kept as a file ({0}) so that a {1} session does not download it again." />
+            </p>
+            <ol className="guide-steps">
+              <li><Sentence k="ui.model.file-step-1"
+                parts={[<strong>{tr("ui.model.download-load", "Download & load")}</strong>]}
+                en="{0} - a save dialog opens." /></li>
+              <li>{tr("ui.model.file-step-2", "Save the file beside this HTML file.")}</li>
+              <li><Sentence k="ui.model.file-step-3"
+                parts={[<strong>{tr("ui.model.use-file", "Use file…")}</strong>]}
+                en="Next time choose {0} - nothing is downloaded." /></li>
+            </ol>
+            <p style={{ margin: "7px 0 0" }}>
+              <Sentence k="ui.model.file-auto" parts={[<span className="mono">http://localhost</span>]}
+                en="Steps 2 and 3 work on Chrome and Edge. On {0}, and in Firefox, the file is found by itself at start." />
+            </p>
           </div>
         </div>
       </div>

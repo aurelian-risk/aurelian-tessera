@@ -10,6 +10,11 @@ const P = (d: string) => (
 );
 export const Icon = {
   plus: () => P("M12 5v14M5 12h14"),
+  globe: () => (
+    <svg className="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18" /></svg>
+  ),
   ban: () => P("M12 3a9 9 0 100 18 9 9 0 000-18zM5.6 5.6l12.8 12.8"),
   trash: () => (
     <svg className="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"

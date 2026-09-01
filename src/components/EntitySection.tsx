@@ -125,8 +125,10 @@ function FieldValueView({ field, value, tax, study, type, recordId, onOpen, onTo
     return r && t ? recordTitle(t, r) : " - ";
   };
   const chip = (id: string) => onOpen
-    ? <button className="chip link" key={id} title={tr('ui.entitysection.open', 'Open')} onClick={(e) => { e.stopPropagation(); onOpen(id); }}>{nameOf(id)}</button>
-    : <span className="chip" key={id}>{nameOf(id)}</span>;
+    // The NAME as the tooltip, not the verb: in a table cell the chip is truncated, and the
+  // title is where the rest of it is. What the click does is plain enough from the pointer.
+  ? <button className="chip link" key={id} title={nameOf(id)} onClick={(e) => { e.stopPropagation(); onOpen(id); }}>{nameOf(id)}</button>
+    : <span className="chip" key={id} title={nameOf(id)}>{nameOf(id)}</span>;
   switch (field.type) {
     case "enum": {
       // A two-state field that is flipped often is a switch, not a label to open a form for.
@@ -603,7 +605,7 @@ function EntityDetail({ type, record, tax, study, color, onEdit, onDelete, onOpe
     const r = study.entities.find((e) => e.id === id);
     const t = r && getType(tax, r.type);
     return (
-      <button className="chip link" key={id} onClick={() => onOpenEntity(id)} title={tr('ui.entitysection.open', 'Open')}>
+      <button className="chip link" key={id} onClick={() => onOpenEntity(id)} title={r && t ? recordTitle(t, r) : ""}>
         {r && t ? recordTitle(t, r) : " - "}
       </button>
     );

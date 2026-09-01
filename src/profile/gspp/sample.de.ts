@@ -33,7 +33,7 @@ import { DEFAULT_TAXONOMY } from "./taxonomy";
 export const SAMPLE_DE: Record<string, Record<string, string>> = {
   // ── Step 1 · Rahmen und Planung ────────────────────────────────────────────
   "business_asset/Grid control": {
-    name: "Netzführung",
+    name: "Netzsteuerung",
     description: "Rund um die Uhr Überwachung und Steuerung der Strom- und Fernwärmenetze. Ein Ausfall ist in jedem angeschlossenen Haushalt sofort zu spüren.",
     verantwortlich: "Leiter Netzbetrieb",
     protection_rationale: "Der Verlust der Fernsteuerung, oder ein unterwegs verändertes Schaltkommando, bedroht die Versorgung selbst. Mit der Leitung als hoch eingestuft, was zugleich die Risikobetrachtung nach GC.7.2 auslöst.",
@@ -54,7 +54,7 @@ export const SAMPLE_DE: Record<string, Record<string, string>> = {
   // STM.2.1.7: the requirement the institution writes itself. The catalogue's 1000 are the
   // publisher's text and are never touched; this one is this file's own sentence.
   "requirement/Report a disturbance of the grid control systems to the Bundesnetzagentur without delay": {
-    name: "Eine Störung der Netzführungssysteme unverzüglich an die Bundesnetzagentur melden",
+    name: "Eine Störung der Netzsteuerungssysteme unverzüglich an die Bundesnetzagentur melden",
     // Deliberately the same on both sides: an identifier and a date are not translated, and
     // an entry saying so is what tells a reader it was considered rather than forgotten.
     ref_id: "EIGEN.1",
@@ -182,7 +182,7 @@ export const SAMPLE_DE: Record<string, Record<string, string>> = {
   },
 
   "feared_event/Loss of network control": {
-    name: "Verlust der Netzführung",
+    name: "Verlust der Netzsteuerung",
     description: "Die Leitstelle verliert die Fernsteuerung; geschaltet werden kann nur noch vor Ort.",
   },
   "feared_event/Switching commands manipulated": {
@@ -225,7 +225,7 @@ export const SAMPLE_DE: Record<string, Record<string, string>> = {
     description: "Der Angreifer kompromittiert den Fernzugang des Herstellers und erreicht darüber das Fernwirknetz.",
   },
   "strategic_scenario/Sabotage of network control": {
-    name: "Sabotage der Netzführung",
+    name: "Sabotage der Netzsteuerung",
     description: "Ein staatlicher Akteur richtet sich dauerhaft ein und verändert Schaltbefehle zu einem selbst gewählten Zeitpunkt.",
   },
 
@@ -357,13 +357,13 @@ export const SAMPLE_DE: Record<string, Record<string, string>> = {
   "managementbericht/Management report on information security, first half of 2026": {
     name: "Managementbericht Informationssicherheit, erstes Halbjahr 2026",
     zeitraum: "Januar bis Juni 2026",
-    eignung: "Das Anforderungspaket ist modelliert, und die Maßnahmen am Prozess Netzführung sind eingerichtet oder geplant. An zwei Stellen wird der beabsichtigte Zweck noch nicht wirksam erreicht: die Wartungssitzungen werden aufgezeichnet, aber nicht gelesen, und die alten Wählverbindungen hängen noch.",
+    eignung: "Das Anforderungspaket ist modelliert, und die Maßnahmen am Prozess Netzsteuerung sind eingerichtet oder geplant. An zwei Stellen wird der beabsichtigte Zweck noch nicht wirksam erreicht: die Wartungssitzungen werden aufgezeichnet, aber nicht gelesen, und die alten Wählverbindungen hängen noch.",
     folgemassnahmen: "Der Beschluss der letzten Bewertung, die Wählverbindungen zurückzubauen, liegt hinter dem Plan; das Budget ist nach 2027 übertragen.",
-    rahmenbedingungen: "Im März wurde das Fernwärmenetz übernommen, die Netzführung deckt seitdem beide Netze ab und der Prozess wurde auf hoch neu eingestuft. Der veröffentlichte Katalog ist auf den Stand 2026-08 gewechselt; die Ableitung wurde erneut ausgeführt und brachte neun Anforderungen herein, keine davon MUSS.",
+    rahmenbedingungen: "Im März wurde das Fernwärmenetz übernommen, die Netzsteuerung deckt seitdem beide Netze ab und der Prozess wurde auf hoch neu eingestuft. Der veröffentlichte Katalog ist auf den Stand 2026-08 gewechselt; die Ableitung wurde erneut ausgeführt und brachte neun Anforderungen herein, keine davon MUSS.",
     erfolge_probleme: "Der zweite Faktor auf der Fernwartung trägt seit Februar, ohne eine gewährte Ausnahme. Dagegen: im April wurde zweimal ein Schaltbefehl über das Wartungs-Gateway eingereiht - kein Ausfall, aber gefunden hat es der Anlagenfahrer und nicht wir.",
     eignung_massnahmen: "Die Mehrfaktor-Authentisierung erreicht ihr Ziel, belegt am Freigabeprotokoll des letzten Quartals. Die Aufzeichnung der Wartungssitzungen nicht: die Aufzeichnungen liegen vor und niemand liest sie, die Maßnahme erkennt also nichts. Sie wird um einen benannten Auswertenden ergänzt, nicht ersetzt.",
     rueckmeldungen: "Die Bundesnetzagentur hat im Mai gefragt, wie lange eine Störungsmeldung hier braucht; die Antwort wurde als eigene Anforderung festgehalten. Das Betriebspersonal meldet, dass der zweite Faktor etwa eine Minute je Sitzung kostet, was niemand beanstandet hat. Von angeschlossenen Kunden kam in diesem Zeitraum keine Rückmeldung zur Sicherheit.",
-    planstatus: "Von acht geplanten Maßnahmen sind vier umgesetzt, zwei in Arbeit, zwei nicht begonnen. Das Risiko am Prozess Netzführung ist von wahrscheinlich-existenzbedrohend auf möglich-schwer gerückt; die beiden nicht begonnenen sind die an den Altstationen, der Wählpfad ist also unverändert.",
+    planstatus: "Von acht geplanten Maßnahmen sind vier umgesetzt, zwei in Arbeit, zwei nicht begonnen. Das Risiko am Prozess Netzsteuerung ist von wahrscheinlich-existenzbedrohend auf möglich-schwer gerückt; die beiden nicht begonnenen sind die an den Altstationen, der Wählpfad ist also unverändert.",
     verbesserungen_bericht: "Die Bewertung des letzten Zeitraums verlangte, das Ausnahmeverfahren niederzuschreiben; es ist verankert und seit April in Kraft. Zweimal angewandt, beide Male mit benannter freigebender Stelle und Enddatum - wofür es da war. Ob es eine unbefristete Ausnahme verhindert, lässt sich vor Ablauf der ersten nicht sagen.",
     entscheidungen: "Der Rückbau der Wählverbindungen ist für das erste Halbjahr 2027 bestätigt. Für das Lesen der Sitzungsaufzeichnungen ist eine verantwortliche Stelle benannt.",
     massnahmenvorschlaege: "1 - Die Wartungsaufzeichnungen wöchentlich lesen, mit benannter auswertender Person: 2 Stunden je Woche aus der Rufbereitschaft, kein Budget. 2 - Zweiter Faktor für die verbleibenden zwei administrativen Konten: 4 Personentage und 900 EUR für Token. 3 - Rückbau der sechs alten Wählstationen: 25 Personentage und 40.000 EUR, davon 18.000 EUR im Jahr 2027.",
@@ -463,7 +463,7 @@ export const SAMPLE_DE: Record<string, Record<string, string>> = {
  *  against the sectors in calibration.ts, and a translated one silently loses the rate
  *  exception. `organization` is an invented name and is given its German form. */
 export const STUDY_DE: { name: string; organization: string; scope: string } = {
-  name: "Stadtwerke Riverbend - Netzführung (Beispiel)",
+  name: "Stadtwerke Riverbend - Netzsteuerung (Beispiel)",
   organization: "Stadtwerke Riverbend",
   scope: "Die Leitstelle, die Fernwirktechnik und die Verwaltungs-IT, die ihnen dient, am Hauptstandort.",
 };

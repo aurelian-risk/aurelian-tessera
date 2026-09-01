@@ -1,6 +1,6 @@
 {
   "name": "aurelian-tessera",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "private": true,
   "description": "BSI Grundschutz implemented - an offline ISMS tool for the Grundschutz++ method, in a single HTML file.",
   "type": "module",
@@ -16,6 +16,7 @@
     "test:audit": "rm -rf node_modules/.cache/audit && esbuild src/domain/audit.ts src/profile/index.ts --bundle --format=esm --outdir=node_modules/.cache/audit --out-extension:.js=.mjs --log-level=error && MOD_A=node_modules/.cache/audit/domain/audit.mjs MOD_S=node_modules/.cache/audit/profile/index.mjs node scripts/audit-test.mjs",
     "test:scope": "rm -rf node_modules/.cache/scope && esbuild src/domain/scope.ts src/profile/index.ts src/profile/gspp/sample.ts --bundle --format=esm --outdir=node_modules/.cache/scope --out-extension:.js=.mjs --log-level=error && MOD_SC=node_modules/.cache/scope/domain/scope.mjs MOD_P=node_modules/.cache/scope/profile/index.mjs MOD_S=node_modules/.cache/scope/profile/gspp/sample.mjs node scripts/scope-test.mjs",
     "test:taxonomy": "esbuild src/domain/taxonomy.ts --bundle --format=esm --outfile=node_modules/.cache/taxonomy.mjs --log-level=error && MOD=node_modules/.cache/taxonomy.mjs node scripts/taxonomy-test.mjs",
+    "test:zip": "esbuild src/domain/zip.ts --bundle --format=esm --outfile=node_modules/.cache/zip.mjs --log-level=error && MOD_Z=node_modules/.cache/zip.mjs node scripts/zip-test.mjs",
     "test:list": "rm -rf node_modules/.cache/list && esbuild src/domain/listimport.ts src/domain/catalogimport.ts --bundle --format=esm --outdir=node_modules/.cache/list --out-extension:.js=.mjs --log-level=error && MOD_L=node_modules/.cache/list/listimport.mjs MOD_CI=node_modules/.cache/list/catalogimport.mjs node scripts/listimport-test.mjs",
     "test:tablefilter": "esbuild src/domain/tablefilter.ts --bundle --format=esm --outfile=node_modules/.cache/tablefilter.mjs --log-level=error && MOD_TF=node_modules/.cache/tablefilter.mjs node scripts/tablefilter-test.mjs",
     "test:oscal": "esbuild src/domain/oscal.ts --bundle --format=esm --outfile=node_modules/.cache/oscal.mjs --log-level=error && MOD_O=node_modules/.cache/oscal.mjs node scripts/oscal-test.mjs",

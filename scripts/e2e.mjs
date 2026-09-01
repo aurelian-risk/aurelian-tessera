@@ -2076,16 +2076,22 @@ try {
     ok("Escape closes the export menu", (await page.locator(".menu-pop").count()) === 0);
     await page.locator("button", { hasText: "Export / Import" }).first().click();
     await page.waitForSelector(".menu-pop", { timeout: 8000 });
-    if (!(/Password/.test(body) && /Key/.test(body))) console.log("   menu:", body.replace(/\n/g, " | ").slice(0, 160));
-    ok("the export offers both kinds of protection", /Password/.test(body) && /\bKey\b/.test(body));
-    await menu.locator(".seg-btn", { hasText: /^Key$/ }).click();
+    // Format, protection and recipients used to be asked here AND in a dialog beside it -
+    // two places for one answer. They live in the dialog now; the menu is the way in.
+    await menu.locator(".menu-item", { hasText: /Export/ }).click();
+    await page.waitForSelector(".export-dlg", { timeout: 8000 });
+    await page.waitForTimeout(300);
+    const dlg = await page.locator(".export-dlg").innerText();
+    if (!(/Password/.test(dlg) && /keys/i.test(dlg))) console.log("   dialog:", dlg.replace(/\n/g, " | ").slice(0, 200));
+    ok("the export offers both kinds of protection", /Password/.test(dlg) && /Named keys/.test(dlg));
+    await page.locator(".export-dlg .seg-btn", { hasText: /^Named keys$/ }).click();
     await page.waitForTimeout(250);
-    const rows = await menu.locator(".menu-to-row").count();
-    ok("...listing the keys that have been named", rows >= 1, `${rows} recipients`);
-    ok("...and saying the recipient list is readable in the file",
-      /readable in the file/i.test(await menu.innerText()));
+    const rows = await page.locator(".export-dlg .check-row").count();
+    ok("...listing the keys that have been named", rows >= 1, `${rows} rows`);
+    ok("...and saying what a second recipient costs",
+      /wrapped key/i.test(await page.locator(".export-dlg").innerText()));
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(300);
     await page.locator("body").click({ position: { x: 5, y: 5 } }).catch(() => {});
     await page.waitForTimeout(200);
   }
@@ -2129,6 +2135,83 @@ try {
     await page.getByText("Riverbend Municipal Utilities").first().click();
     await page.waitForSelector(".ws-tabs", { timeout: 10000 });
   }
+  // ── an archive carries the documents, and another profile gets them back ─────
+  //
+  // The JSON export holds REFERENCES only, which is right for a file that has to stay
+  // readable and small; the bodies and the source files travel in the archive instead. So
+  // this drives the thing that would otherwise be silently lost: a document is put in the
+  // way the application stores one, exported as an archive, and read back in a profile
+  // that has nothing.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+    const a = await ctx.newPage();
+    a.on("pageerror", (e) => errors.push("pageerror: " + e.message));
+    await a.goto(file); await a.waitForSelector("#root .app", { timeout: 10000 });
+    await a.getByRole("button", { name: /Load sample study/i }).click();
+    await a.waitForSelector(".ws-tabs", { timeout: 10000 });
+    await a.waitForTimeout(500);
+    await a.evaluate(async () => {
+      const bytes = new TextEncoder().encode("Prüfbericht. " + "Zugriffskontrolle. ".repeat(300));
+      const st = await new Promise((res) => { const r = indexedDB.open("ebios_offline", 1);
+        r.onsuccess = () => { const g = r.result.transaction("state", "readonly").objectStore("state").get("app"); g.onsuccess = () => res(g.result); }; });
+      const db = await new Promise((res) => { const r = indexedDB.open("ebios_offline_docs", 1);
+        r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("docs")) r.result.createObjectStore("docs", { keyPath: "id" }); };
+        r.onsuccess = () => res(r.result); });
+      await new Promise((res) => { const tx = db.transaction("docs", "readwrite");
+        tx.objectStore("docs").put({ id: "e2e-doc", studyId: st.studies[0].id, name: "Prüfbericht 2026.pdf",
+          mime: "application/pdf", size: bytes.length, addedAt: new Date().toISOString(),
+          text: new TextDecoder().decode(bytes), file: new Blob([bytes], { type: "application/pdf" }) });
+        tx.oncomplete = res; });
+    });
+    await a.getByRole("button", { name: /Export \/ Import/ }).click();
+    await a.waitForTimeout(300);
+    await a.locator(".menu-item", { hasText: /Export/ }).first().click();
+    await a.waitForSelector(".modal-lg", { timeout: 10000 });
+    await a.waitForTimeout(300);
+    ok("the packaging dialog says what it found", /file|Datei/i.test(await a.locator(".modal-lg-body").innerText()));
+    await a.locator(".modal-lg-body .seg-btn", { hasText: /Archive|Archiv/ }).first().click();
+    await a.waitForTimeout(300);
+    const dl = a.waitForEvent("download");
+    await a.locator(".modal-lg-foot .primary").click();
+    const got = await dl;
+    const zipPath = "/tmp/gspp-e2e-archive.zip";
+    await got.saveAs(zipPath);
+    ok("the archive export produces a zip", /\.zip$/.test(got.suggestedFilename()));
+    await ctx.close();
+
+    const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const c = await ctx2.newPage();
+    c.on("pageerror", (e) => errors.push("pageerror: " + e.message));
+    await c.goto(file); await c.waitForSelector("#root .app", { timeout: 10000 });
+    // In a profile with no study the menu is the sidebar's "Data", not a study's
+    // "Export / Import" - the second is only drawn beside a study.
+    // In a profile with no study the menu is the sidebar's "Data"; the import opens a
+    // dialog first and the file picker sits inside it, so the chooser is armed there.
+    await c.getByRole("button", { name: /^Data/ }).first().click();
+    await c.waitForTimeout(400);
+    await c.locator(".menu-item", { hasText: /Import/ }).first().click();
+    await c.waitForSelector(".modal-lg", { timeout: 10000 });
+    const chooser = c.waitForEvent("filechooser");
+    await c.locator(".modal-lg button", { hasText: /Choose file/ }).first().click();
+    (await chooser).setFiles(zipPath);
+    await c.waitForTimeout(2000);
+    const confirm = c.locator(".modal-lg-foot .primary, .modal-lg-foot .btn.primary").first();
+    if (await confirm.count()) { await confirm.click(); await c.waitForTimeout(2000); }
+    ok("...and the study arrives in a profile that had nothing",
+      (await c.locator("#root").innerText()).includes("Riverbend"));
+    const back = await c.evaluate(async () => {
+      const db = await new Promise((res) => { const r = indexedDB.open("ebios_offline_docs", 1);
+        r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("docs")) r.result.createObjectStore("docs", { keyPath: "id" }); };
+        r.onsuccess = () => res(r.result); });
+      const all = await new Promise((res) => { const g = db.transaction("docs", "readonly").objectStore("docs").getAll(); g.onsuccess = () => res(g.result); });
+      const d = all.find((x) => /Prüfbericht/.test(x.name || ""));
+      return d ? { text: (d.text || "").length, file: d.file ? d.file.size : 0 } : null;
+    });
+    ok("...with the document's text and its source file, not only a reference",
+      !!back && back.text > 3000 && back.file > 3000, JSON.stringify(back));
+    await ctx2.close();
+  }
+
   const errorsBefore = errors.length;
   let survived = 0, blanked = "";
   for (let round = 0; round < 3 && !blanked; round++) {
