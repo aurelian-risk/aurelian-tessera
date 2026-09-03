@@ -184,14 +184,46 @@ select { cursor: pointer; }
    name column takes the rest, so the columns fill the table instead of leaving a headerless
    strip at the right. */
 .tbl { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
-/* Where the colgroup gives every column a share, the shares have to be honoured as given:
-   under auto layout a column still grows to its widest cell and the sharing stops meaning
-   anything. Only the register tables carry this - the rest size themselves from content. */
-.tbl.tbl-share { table-layout: fixed; }
+/* FIXED where the widths are STATED. Under `auto` a column grows to its widest cell and the
+   colgroup's widths are only hints, so one long value drags its column over the one beside
+   it. Under `fixed` WITHOUT a colgroup every column takes the same share instead, which is
+   wrong for the tables that have none - measured: their name column fell to 154px at 960.
+   So the register tables, which state every width, carry this; the rest size from content. */
+.tbl.tbl-cols { table-layout: fixed; }
+/* The title column's own padding: see NAME_MIN in EntitySection. */
+.tbl-cols td:first-child, .tbl-cols th:first-child { padding-left: 12px; padding-right: 12px; }
 .panel-body { overflow-x: auto; } /* wide tables (e.g. risk quantification) scroll instead of squashing */
+/* A header WRAPS rather than being cut. A column is as wide as its values need to be, and
+   several labels are longer than any value they head - clipping them costs the reader the
+   label to save a line of height. Breaks at spaces and slashes only: a label cut mid-word
+   ("UMSETZUN / GSSTAND") is harder to read than one that wraps, and a single word longer
+   than its column is clipped at the edge with the whole label in the tooltip.
+   Aurelian Lite's rule, measured there. */
 .tbl th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em;
-  color: var(--fg-subtle); font-weight: 600; padding: 10px 18px; white-space: nowrap;
+  color: var(--fg-subtle); font-weight: 600; padding: 10px 18px; vertical-align: bottom;
+  white-space: normal; overflow-wrap: normal; word-break: normal;
   overflow: hidden; text-overflow: ellipsis; }
+
+/* THE TITLE COLUMN STAYS PUT WHILE THE REST SCROLLS SIDEWAYS. A register wider than its
+   panel has to be read in two passes on a narrow window, and without this the second pass
+   is of rows that no longer say which record they belong to - measured at 1100px, where the
+   category chips were sliced at the panel's edge with nothing to say what had been cut.
+   Both the pinning and its background hang off `.pinned`, which the panel body sets once it
+   has actually been scrolled: a table that fits needs no pinned column, and the opaque base
+   cannot match the glass panel exactly, so an unscrolled table would carry a seam for
+   nothing. */
+.panel-body.pinned .tbl th:first-child,
+.panel-body.pinned .tbl tbody tr:not(.detail-row) > td:first-child {
+  position: sticky; left: 0; z-index: 2;
+  background: linear-gradient(var(--bg-panel), var(--bg-panel)), var(--bg-0);
+  box-shadow: 7px 0 11px -9px oklch(0 0 0 / 0.55); }
+.panel-body.pinned .tbl tbody tr:hover > td:first-child,
+.panel-body.pinned .tbl tbody tr.row-clickable.expanded > td:first-child {
+  background: linear-gradient(var(--bg-hover), var(--bg-hover)),
+              linear-gradient(var(--bg-panel), var(--bg-panel)), var(--bg-0); }
+/* A group heading and an opened detail span the whole table: pinning them would drag their
+   content along the scroll instead of holding a column in place. */
+.tbl .group-row > th, .tbl .detail-row > td { position: static; }
 .tbl td { padding: 13px 18px; border-top: 1px solid var(--hairline); vertical-align: middle;
   overflow-wrap: anywhere; }
 .tbl tbody tr { transition: background 0.12s var(--ease); }
@@ -457,6 +489,18 @@ select { cursor: pointer; }
    column is sized by what it holds, and the form-and-detail padding costs every table it
    is in about 20px per column without telling the reader anything more. */
 .tbl .badge { padding: 2px 7px; font-size: 11px; gap: 5px; }
+/* LOCKED, AND LEFT. A pill belongs on one line, clipped with the whole of it in the title
+   where the word is longer than the column - not wrapped into a three-line lozenge with a
+   hyphen inside a word ("Externe Netzan-schlüsse").
+   Left, not centred, and that is the point: a centred pill starts wherever its own length
+   puts it, so a column of them has no edge at all. Measured on the requirement register -
+   "MUSS" and "SOLLTE" began 4px apart, the tactic column at five different offsets. The
+   heading above them is centred by this product's own stylesheet, which is a decision about
+   how a printed table looks; the VALUES line up under it. */
+.tbl td > .badge:only-child, .tbl td > .cell-toggle:only-child {
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The rung's name sits beside its bars, so the flex item is what has to give. */
+.tbl .badge .scale-lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .tbl .scale { gap: 2px; }
 .tbl .scale i { width: 6px; height: 11px; }
 .scale i { width: 8px; height: 13px; border-radius: 3px; background: var(--border-strong);
@@ -956,10 +1000,22 @@ select { cursor: pointer; }
 /* Coverage overview: ring + tactic heatmap */
 /* .panel-body has no horizontal padding (tables are meant to run full-bleed), so any
    panel body that is NOT a table has to inset itself to line up with the panel header. */
-.mc-body { display: flex; flex-wrap: wrap; gap: 26px; align-items: flex-start; padding: 6px 18px 12px; }
+/* More air, vertically: the ring is 260px tall and the panel beside it 124, so the row
+   reads as one block only if it is given room to breathe rather than butting into the
+   section below. */
+.mc-body { display: flex; flex-wrap: wrap; gap: 26px 32px; align-items: flex-start;
+  padding: 14px 18px 8px; }
+/* The count under the whole row, on one line, with the section below kept clear: it stood
+   1px from the next heading, which is why the two read as one lump. */
+.mc-foot { margin: 0; padding: 12px 18px 20px; font-size: 11.5px; color: var(--fg-subtle);
+  border-top: 1px solid var(--hairline); margin-top: 8px; }
+/* The ring and what explains it: the legend sat against the circle - see .mc-ring below. */
+.mc-ring-legend { row-gap: 7px; }
+/* And the drill-down below starts as its own block rather than continuing the one above. */
+.panel-body.dd-wrap { padding-top: 16px; }
 /* Keep the ring block narrow: it is the fixed-size element, and letting its legend
    stretch it pushes the heatmap onto its own row for no reason. */
-.mc-ring { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none; max-width: 240px; }
+.mc-ring { display: flex; flex-direction: column; align-items: center; gap: 14px; flex: none; max-width: 240px; }
 .mc-ring-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px;
   font-size: 12px; color: var(--fg-muted); }
 .mc-ring-legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -974,15 +1030,21 @@ select { cursor: pointer; }
 /* No `min-width: max-content` here: that would size every column to its label on ONE
    line ("Credential Access" ≈ 100px) and push the last tactics past the panel edge. The
    columns get a readable minimum instead and two-word labels wrap at the space. */
-.hm-grid { display: grid; gap: 4px; grid-template-rows: auto; grid-auto-rows: 34px; }
+/* A row is 34px unless its label needs two lines: a scenario name cut to
+   "Verschlüsselung der Leitste…" says which scenario only to whoever already knows. */
+.hm-grid { display: grid; gap: 4px; grid-template-rows: auto; grid-auto-rows: minmax(34px, auto); }
 .hm-grid > * { min-width: 0; }
 .hm-col { font-size: 10px; color: var(--fg-muted); text-align: center; line-height: 1.2;
   align-self: end; padding: 0 2px 4px; overflow-wrap: normal; hyphens: none; word-break: keep-all; }
 /* A BLOCK, not a flex box: `text-overflow` does not apply to a flex container, so the
    scenario name was cropped mid-word with no ellipsis and no sign that anything was cut.
    The row is 34px (grid-auto-rows), which the line height centres it in. */
-.hm-rowlbl { font-size: 12px; color: var(--fg-muted); display: block; line-height: 34px;
-  padding-right: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-rowlbl { font-size: 12px; color: var(--fg-muted); display: flex; align-items: center;
+  padding: 4px 12px 4px 0; line-height: 1.25;
+  /* Two lines at most, then an ellipsis - the whole name is the row's title. */
+  overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.hm-rowlbl > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; }
 .hm-rowlbl.strong { color: var(--fg); font-weight: 600; }
 .hm-cell { border-radius: 6px; display: grid; place-items: center; padding: 0;
   font-size: 11px; font-family: var(--font-mono); color: var(--fg); border: 1px solid transparent; }
@@ -1159,7 +1221,9 @@ button.hm-cell:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm,
 .qt-break-caught { font-style: normal; color: var(--color-state-info, var(--primary)); }
 /* Ring legend footnote + the effect class on a measure chip in the per-step breakdown.
    A class shown "off" acts somewhere other than on reaching this step. */
-.mc-ring-sub { color: var(--fg-subtle); font-size: 10.5px; margin-top: 2px; text-wrap: balance; }
+/* The ring column is the shorter of the two, so its last line ends up level with the
+   heading of the section below. In German it wraps, and the two touched. */
+
 .dd-cls { margin-left: 6px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;
   font-weight: 700; color: var(--fg-muted); }
 .dd-cls.off { opacity: 0.55; text-decoration: line-through; text-decoration-thickness: 1px; }

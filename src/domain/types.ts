@@ -385,7 +385,9 @@ export interface Product {
   /** The acknowledgement that the method is someone else's work, shown in the application
    *  and linked to where it is published. Not a licence notice - those belong with the
    *  documents that quote the content, and in the notice file. */
-  credit?: { text: string; url?: string };
+  /** The acknowledgement in the sidebar. `hover` carries what the short form leaves out -
+   *  a rights holder's full name is long, and a 203px column is not where it belongs. */
+  credit?: { text: string; url?: string; hover?: string };
   /** Content this product carries that belongs to someone else, and on what terms. Shown
    *  in the application and in every generated document, because attribution that lives
    *  only in a repository file does not travel with the build or with the concept. */

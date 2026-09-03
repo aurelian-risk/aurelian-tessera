@@ -10,13 +10,10 @@ import { t as tr } from "../domain/i18n";
 import { createPortal } from "react-dom";
 import { useActiveStudy, useStore } from "../domain/store";
 import { verifyLog } from "../domain/audit";
-import {
-  fingerprint, forgetKey, generateKeyPair, knownKey, knownKeys, ownKey, publicKeyFile, publicOf,
-  readPublicKeyFile, rememberKey, setOwnKey, signingAvailable, verifyAllSeals, type Seal, type SealVerdict,
-} from "../domain/keys";
-import { downloadText } from "../domain/clipboard";
-import { encryptText, decryptText } from "../domain/crypto";
+import { fingerprint, knownKey, ownKey, publicOf, readPublicKeyFile, rememberKey, setOwnKey, signingAvailable, verifyAllSeals, type Seal, type SealVerdict } from "../domain/keys";
+import { decryptText } from "../domain/crypto";
 import { Icon } from "./ui";
+import { KeyManager } from "./KeyManager";
 
 type Row = { seq: number; ts: string; editor: string; seal: Seal; verdict: SealVerdict };
 
@@ -60,23 +57,6 @@ export function SealPanel() {
 
   const close = () => { setDialog("none"); setPw(""); setField(""); setPending(null); };
 
-  const makeKey = async () => {
-    setBusy(true);
-    const kp = await generateKeyPair().catch(() => null);
-    if (kp) { setOwnKey(kp.privateJwk); rememberKey(kp.kid, "you", kp.publicJwk, new Date().toISOString()); setMsg(`Key ${kp.kid} created.`); }
-    setBusy(false); bump((n) => n + 1);
-  };
-  const saveKey = async () => {
-    if (!mine || pw.length < 4) { setMsg("The key file needs a password of at least 4 characters."); return; }
-    setBusy(true);
-    downloadText("aurelian-signing-key.json", await encryptText(JSON.stringify(mine), pw), "application/json");
-    setMsg("Private key saved, encrypted with that password."); setPw(""); setBusy(false);
-  };
-  const savePublic = async () => {
-    if (!mine) return;
-    downloadText(`aurelian-public-key-${kid}.json`, publicKeyFile(kid, "", publicOf(mine)), "application/json");
-    setMsg("Public key saved. It is not a secret — send it any way you like, then have the other side check the fingerprint.");
-  };
   const loadKey = async (file: File) => {
     setBusy(true);
     try {
@@ -193,56 +173,7 @@ export function SealPanel() {
 
       {dialog === "keys" && (
         <Modal title={tr('ui.seal.keys', 'Keys')} onClose={close} wide>
-          <div className="sp-sec">
-            <div className="sp-sec-t">{tr('ui.seal.this-installation', 'This installation')}</div>
-            {/* The two halves are separate rows, and they have to be: a password field
-                between "save public" and "save private" reads as belonging to whichever
-                button the eye reaches first, and the public half needs no password at
-                all. One row per key, the password inside the row it protects. */}
-            {mine ? (
-              <>
-                <div className="sp-fp mono">{kid}</div>
-                <div className="sp-half">
-                  <div className="sp-half-t">{tr('ui.seal.public-key', 'Public key')} <span>{tr('ui.seal.not-a-secret-hand', 'not a secret — hand it to whoever checks your seals')}</span></div>
-                  <div className="sp-acts">
-                    <button className="btn sm" onClick={savePublic}><Icon.download /> {tr('ui.seal.save-public-key', 'Save public key…')}</button>
-                  </div>
-                </div>
-                <div className="sp-half">
-                  <div className="sp-half-t">{tr('ui.seal.private-key', 'Private key')} <span>keep it; the file is encrypted with the password you give here</span></div>
-                  <div className="sp-acts">
-                    <input type="password" placeholder="password for this file" value={pw} onChange={(e) => setPw(e.target.value)} style={{ maxWidth: 210 }} />
-                    <button className="btn sm" disabled={busy} onClick={saveKey}><Icon.download /> {tr('ui.seal.save-private-key', 'Save private key…')}</button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="sp-acts">
-                  <button className="btn sm primary" disabled={busy} onClick={makeKey}><Icon.plus /> {tr('ui.seal.create-a-key', 'Create a key')}</button>
-                </div>
-                <div className="sp-half">
-                  <div className="sp-half-t">{tr('ui.seal.or-load-one-you', 'Or load one you already have')} <span>{tr('ui.seal.the-password-its-file', 'the password its file was saved with')}</span></div>
-                  <div className="sp-acts">
-                    <input type="password" placeholder="password of that file" value={pw} onChange={(e) => setPw(e.target.value)} style={{ maxWidth: 210 }} />
-                    <button className="btn sm" disabled={busy} onClick={() => keyFile.el?.click()}><Icon.upload /> {tr('ui.seal.load-private-key', 'Load private key…')}</button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="sp-sec">
-            <div className="sp-sec-t">{tr('ui.seal.keys-you-have-named', 'Keys you have named')}</div>
-            {knownKeys().length === 0 && <p className="meta">{tr('ui.seal.none-yet-name-a', "None yet. Name a key from a seal, or load someone's public-key file.")}</p>}
-            {knownKeys().map((k) => (
-              <div className="sp-ring-row" key={k.kid}>
-                <span className="mono">{k.kid}</span><span>{k.name}</span>
-                <button className="btn ghost sm danger" title={tr('ui.seal.forget-this-key', 'Forget this key')} onClick={() => { forgetKey(k.kid); bump((n) => n + 1); }}><Icon.trash /></button>
-              </div>
-            ))}
-            <div className="sp-acts"><button className="btn sm" onClick={() => pubFile.el?.click()}><Icon.upload /> {tr('ui.seal.add-someone-s-public', "Add someone's public key…")}</button></div>
-          </div>
+          <KeyManager onChange={() => bump((n) => n + 1)} />
           {msg && <p className="hint">{msg}</p>}
         </Modal>
       )}

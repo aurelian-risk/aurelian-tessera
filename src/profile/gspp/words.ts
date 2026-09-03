@@ -102,13 +102,15 @@ const DE: Overlay = {
   "field.security_measure.measure_type.options": ["Präventiv", "Detektierend", "Korrigierend",
     "Abschreckend", "Vermeidend"],
   "field.security_measure.status.options": ["Umgesetzt", "Geplant", "Fehlt", "Empfohlen"],
-  "field.paket_review.neumodellierung.options": ["Nein", "Ja - das Paket wurde neu abgeleitet"],
+  "field.paket_review.neumodellierung.options": ["Nein", "Ja, neu abgeleitet"],
   "field.audit.audit_type.options": ["Intern", "Extern", "Überwachung", "Wiederholung", "Sonderprüfung"],
   "field.managementbericht.anlass.options": ["Turnusmäßig", "Anlassbezogen"],
   "field.partei.art.options": ["Extern", "Intern"],
   "field.leitlinie.status.options": ["Entwurf", "In Kraft"],
-  "field.rolle.art.options": ["Informationssicherheitsbeauftragte", "Rolle", "Gremium",
-    "Schnittstelle zu einer anderen Disziplin"],
+  // Short enough to stand in a column. "Informationssicherheitsbeauftragte" measures 236px
+  // in a 137px cell and "Schnittstelle zu einer anderen Disziplin" 258px; both said the same
+  // thing at half the length. ISB is the method's own abbreviation.
+  "field.rolle.art.options": ["ISB", "Rolle", "Gremium", "Schnittstelle"],
   "field.rolle.vorspracherecht.options": ["Ja", "Nein"],
   "field.rolle.status.options": ["Nicht eingerichtet", "Eingerichtet"],
   "field.verfahren.status.options": ["Nicht verankert", "In Kraft"],
@@ -247,7 +249,7 @@ const DE: Overlay = {
   "ui.study.report": "Bericht",
   "product.documentTitle": "Sicherheitskonzept nach Grundschutz++",
   "product.tagline": "BSI-Grundschutz umgesetzt",
-  "product.credit": "Methode: Grundschutz++ © Bundesamt für Sicherheit in der Informationstechnik (BSI), Lizenz CC\u00a0BY-SA\u00a04.0",
+  "product.credit": "Methode: Grundschutz++ © BSI, CC\u00a0BY\u2011SA\u00a04.0",
   "ui.nav.timeline": "Historie",
 
   // ── how a reference reads in a sentence ────────────────────────────────────────

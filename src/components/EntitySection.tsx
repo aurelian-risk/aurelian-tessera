@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { t as tr, tn } from "../domain/i18n";
 import { Sentence } from "./Sentence";
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldType, FieldValue, Study, Taxonomy } from "../domain/types";
@@ -34,72 +34,57 @@ const BACKREF_PREVIEW = 12;
 /* The pixel widths that used to sit here (number 80, enum 124, scale 148, text 156,
    multiref 164) are what the unit counts below are rounded from: they were right about the
    RATIOS and wrong to be pixels, which is what gave every table a grid of its own. */
-/** Floor for the name column, and the only thing the table's min-width adds to the sum of
- *  its value columns. Nothing is reserved for a trailing spacer: there is none any more. */
-const NAME_MIN = 320;
-
-/** ONE GRID FOR EVERY REGISTER IN A WORKSHOP.
+/** WHAT A COLUMN NEEDS, IN PIXELS, BY WHAT IT HOLDS.
  *
- *  A width in pixels, or a share of the table's OWN preferred width, gives each table a
- *  grid of its own: on the first workshop the five registers put their column edges at
- *  461/640/864, at 373/556/747 and at 678/942, and nothing lines up with anything. The
- *  tables are all the same width, so the fix is to measure the columns in the same unit for
- *  all of them - a percentage of the table rather than of what that table happens to hold.
+ *  Aurelian Lite's figures from their own harness (harness/table-width.mjs), taken as they
+ *  are rather than guessed at a second time: two answers to one question is how a shared
+ *  engine drifts apart while it still looks merged.
  *
- *  Every value column is a whole number of units and is laid from the RIGHT, so every
- *  boundary in every register falls on the same ladder, and two registers ending in the
- *  same kind of column - the in-force and established switches, say - put those switches
- *  in the same place. The name column takes what is left, which is why it is the one that
- *  differs: it is the remainder, not a measurement.
- *
- *  The unit is set by the worst case rather than by taste. The widest register here carries
- *  five value columns worth 19 units; at 4% that leaves 24% of the table, 301px, for the
- *  name - about the floor at which a requirement title is still worth reading. */
-const UNIT = 4;
-const COL_UNITS: Record<FieldType, number> = {
-  number: 2, boolean: 2,          // a figure or a tick
-  enum: 3,                        // a badge
-  // A scale is bars AND their name, and their figure is 3.7 of this ladder - but 4 units
-  // does not fit the ladder at all: seventeen registers would then want more than the 82%
-  // the value columns may take, the name column would hit its floor, and the shared grid
-  // that the whole ladder exists for breaks. Measured: two e2e assertions fell. The name
-  // wraps at a hyphenation point inside the badge instead - app.css, `.badge .scale-lbl`.
-  scale: 3,
-  text: 4, textarea: 4, ref: 4, multiref: 4,   // words, a chip, or chips and a "+n"
+ *  This replaces a ladder of percentages that made every register of a workshop share one
+ *  grid. The alignment was worth having and the cost was not: a share is a share of the
+ *  TABLE, so on a narrow window the value columns gave up width they had no room to lose -
+ *  measured at 1100px, the category chips were sliced at the panel's edge - while the name
+ *  column still held 355px. A pixel width is a floor as well as a preference: the value
+ *  columns keep exactly what their content needs at every window size, and the name column,
+ *  which is prose and reads at any width, gives up the difference until the table reaches
+ *  its own minimum. Past that the panel scrolls, with the title column pinned. */
+const COL_WIDTH: Record<FieldType, number> = {
+  number: 80,
+  boolean: 96,
+  // 124 in their tree, where the vocabularies are English. "Externe Netzanschlüsse"
+  // measures 130px at the cell's 11px, and a pill that has to wrap is a pill that
+  // reads as broken - so the column carries the word this product's own lists hold.
+  enum: 156,
+  scale: 148,      // bars plus the longest scale label
+  text: 156,
+  textarea: 156,   // never a column today (columnFields drops it), sized for completeness
+  ref: 156,        // one chip
+  multiref: 164,   // two chips and a "+n", each chip clipped to a readable stub
 };
-const gridUnits = (cols: FieldDef[]) => cols.reduce((u, c) => u + COL_UNITS[c.type], 0);
-/** A value column: whole units of the table. */
-const pctOf = (c: FieldDef) => `${(COL_UNITS[c.type] * UNIT).toFixed(3)}%`;
-/** The name column: whatever the value columns leave, so their edges stay on the ladder.
- *  Where a register carries so many columns that nothing sensible is left, it keeps a floor
- *  and the table overflows its panel instead - the min-width above already says so. */
-const pctName = (cols: FieldDef[]) => `${Math.max(18, 100 - gridUnits(cols) * UNIT).toFixed(3)}%`;
-/** The floor, measured on the same ladder rather than as a second opinion in pixels.
+/** The floor for the name column, and the only thing the table's minimum adds to the sum of
+ *  its value columns. Nothing is reserved for a trailing spacer: there is none. */
+/* 308, not 320, and the twelve pixels come out of the PADDING rather than out of the words:
+   the first cell carried 18px on each side, so the title had width - 36. At 12px it has the
+   same text width in a column twelve pixels narrower - measured on the example study, the
+   same 75 titles wrap either way, and every register is 12px shorter. Below that the count
+   climbs (300/12 → 89), which is where "no new line breaks" stops being true. */
+const NAME_MIN = 308;
+const tableMinWidth = (cols: FieldDef[]) =>
+  NAME_MIN + cols.reduce((w, c) => w + COL_WIDTH[c.type], 0);
+/** ...and it is the WORKSHOP's minimum, not this register's.
  *
- *  A register that reaches ITS floor while the others still have room leaves the shared
- *  grid, and that is what breaks the alignment on a narrow window: measured across the five
- *  registers of the first workshop, they are identical at 1600 and 1440, one steps out at
- *  1280, and three different widths at 1150. Deriving the floor from the units keeps the
- *  order of that sensible - a register with more columns needs more room, and by how much
- *  is now the same arithmetic as the columns themselves. */
-const UNIT_MIN = 40;
-/** ...and it is the WORKSHOP's floor, not this register's.
- *
- *  A floor per register is why the alignment held at 1600 and 1440 and fell apart below:
- *  the widest register reached its own floor while the others still had room, stepped out
- *  of the shared width, and from there its columns were on a ladder of a different size.
- *  Measured at 1150: five registers at 820, 806, 1060, 860 and 860.
- *
- *  The floor is therefore the widest register of the same group - the same workshop the
- *  reader is looking at - so they all reach it together and none leaves the others behind.
- *  The cost is that a register of three columns keeps the width of one with six and scrolls
- *  where it would have fitted; that is the trade, and it is taken because the columns
- *  standing under each other is what the whole grid is for. */
-const groupFloor = (tax: Taxonomy, group: string | undefined) => {
+ *  A minimum per register is why the tables of one workshop stopped lining up: the widest
+ *  reached its own floor while the others still had room, so it stood 12px wider than the
+ *  four beside it and its right edge sat outside theirs. Sharing the widest peer's minimum
+ *  means they reach it together and none leaves the others behind - the frames line up at
+ *  every window size, and below it they all scroll. The cost is that a register of three
+ *  columns keeps the width of one with six; that is the trade, and the alignment is what it
+ *  is taken for. */
+const groupMinWidth = (tax: Taxonomy, group: string | undefined, cols: FieldDef[]) => {
   const peers = tax.entityTypes.filter((t) => (t.group ?? "") === (group ?? ""));
-  const units = peers.length ? Math.max(...peers.map((t) => gridUnits(columnFields(t)))) : 0;
-  return NAME_MIN - 20 + units * UNIT_MIN;
+  return Math.max(tableMinWidth(cols), ...peers.map((t) => tableMinWidth(columnFields(t))));
 };
+
 
 function FieldValueView({ field, value, tax, study, type, recordId, onOpen, onToggle, toggleBlocked }:
   { field: FieldDef; value: FieldValue; tax: Taxonomy; study: Study;
@@ -152,8 +137,9 @@ function FieldValueView({ field, value, tax, study, type, recordId, onOpen, onTo
       // untouched record showed a dash, which reads as "not decided" for something the study
       // has already decided.
       if (field.toggle && field.options?.length === 2)
-        return <span className="badge">{optionLabel(field, field.options[inForce(field, value)], type)}</span>;
-      return value ? <span className="badge" title={String(value)}>{optionLabel(field, String(value), type)}</span> : <span className="hint"> - </span>;
+        { const shown = optionLabel(field, field.options[inForce(field, value)], type);
+          return <span className="badge" title={shown}>{shown}</span>; }
+      return value ? <span className="badge" title={optionLabel(field, String(value), type)}>{optionLabel(field, String(value), type)}</span> : <span className="hint"> - </span>;
     }
     case "scale": {
       const v = typeof value === "number" ? value : 1;
@@ -213,6 +199,8 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const [modal, setModal] = useState<{ typeKey: string; record: EntityRecord | null } | null>(null);
   const foldKey = `${study.id}:${type.key}`;
   const [open, setOpen] = useState(() => !folded.has(foldKey));
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
   const fold = () => setOpen((o) => { o ? folded.add(foldKey) : folded.delete(foldKey); return !o; });
 
   const items = study.entities.filter((e) => e.type === type.key);
@@ -275,7 +263,11 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
 
       {open && showTools && <TableTools type={type} f={f} tax={tax} />}
 
-      {open && <div className="panel-body">
+      {/* `pinned` is set once the body has actually been scrolled sideways: the title column
+          is held in place only where something slides under it, so a table that fits carries
+          no seam. */}
+      {open && <div className={"panel-body" + (pinned ? " pinned" : "")} ref={bodyRef}
+        onScroll={(e) => setPinned(e.currentTarget.scrollLeft > 0)}>
         {items.length === 0 ? (
           <div className="empty" style={{ padding: "28px 16px" }}>No {typeLabelPlural(type).toLowerCase()} yet.</div>
         ) : shown.length === 0 ? (
@@ -283,7 +275,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
             {tr('ui.entitysection.nothing-matches', 'Nothing matches.')} <button className="btn ghost sm" onClick={clearAll}>{tr('ui.entitysection.clear-filters', 'Clear filters')}</button>
           </div>
         ) : (
-          <table className="tbl tbl-share" style={{ minWidth: groupFloor(tax, type.group) }}>
+          <table className="tbl tbl-cols" style={{ minWidth: groupMinWidth(tax, type.group, cols) }}>
             {/* The name column takes what the value columns leave. It used to be a percentage
                 with an empty column absorbing the remainder, which left a headerless gap -
                 103px on a register with five value columns, 403px on one with three - so
@@ -292,15 +284,11 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                 table's width and the leftover simply stays unallocated. The table is laid out
                 automatically instead, where the widths below are hints and the name column
                 takes the rest. */}
-            {/* Shares, not pixels. A pixel width is a floor as well as a preference: the
-                value columns held their exact width at every window size and the name column
-                gave up the whole reduction alone - 983px to 319px on the first tab, while
-                nothing beside it moved. Below the table's minimum every column now gives up
-                the same fraction, because a share of the table is what each one is. The
-                minWidth above is still the floor; past it the panel scrolls. */}
             <colgroup>
-              <col style={{ width: pctName(cols) }} />
-              {cols.map((c) => <col key={c.key} style={{ width: pctOf(c) }} />)}
+              {/* No width on the name: under a fixed layout the unsized column takes what the
+                  sized ones leave, so it grows with the window and there is no dead gutter. */}
+              <col />
+              {cols.map((c) => <col key={c.key} style={{ width: COL_WIDTH[c.type] }} />)}
             </colgroup>
             <thead>
               <tr>

@@ -109,7 +109,7 @@ function Sidebar({ route, go, hasStudy }: { route: Route; go: (r: Route) => void
             {/* Through the lookup like everything else shown, and the licence carries
                 no-break spaces: in a 250px sidebar "CC BY-SA 4.0" was split after "CC". */}
             {PRODUCT.credit.url
-              ? <a href={PRODUCT.credit.url} target="_blank" rel="noreferrer">{tr("product.credit", PRODUCT.credit.text)}</a>
+              ? <a href={PRODUCT.credit.url} target="_blank" rel="noreferrer" title={PRODUCT.credit.hover}>{tr("product.credit", PRODUCT.credit.text)}</a>
               : tr("product.credit", PRODUCT.credit.text)}
           </span>
         )}

@@ -2169,6 +2169,29 @@ try {
     await a.waitForSelector(".modal-lg", { timeout: 10000 });
     await a.waitForTimeout(300);
     ok("the packaging dialog says what it found", /file|Datei/i.test(await a.locator(".modal-lg-body").innerText()));
+    // The key ring is reachable FROM here. Addressing a file to a recipient needs their
+    // public key, and the only way to add one used to be a panel three views away - so the
+    // one thing the reader came here to do was the one thing they could not start. The
+    // choices survive the trip, which is what makes it a detour rather than a restart.
+    {
+      const before = await a.locator(".modal-lg-body").innerText();
+      const manage = a.locator(".modal-lg button", { hasText: /Manage keys|Schlüssel verwalten/ });
+      ok("the export offers the key ring without one being there already", (await manage.count()) === 1);
+      await manage.first().click(); await a.waitForTimeout(400);
+      const head = (await a.locator(".modal-lg-head h3").innerText()).trim();
+      ok("...it opens on the keys", /Keys you have named|Benannte Schlüssel/.test(head), head);
+      // The SAME panel as the change history's, not a second one that can only add a public
+      // key: creating a key, saving it and loading one back are the operations a sender
+      // actually needs, and they were all in the other view.
+      const kbody = await a.locator(".modal-lg-body").innerText();
+      ok("...and it is the whole key ring, creating included",
+        /Create a key|Schlüssel erzeugen/.test(kbody) && /public key|Öffentlicher Schlüssel|öffentlichen/i.test(kbody),
+        kbody.replace(/\s+/g, " ").slice(0, 90));
+      await a.locator(".modal-lg-head button", { hasText: /Back|Zurück/ }).click();
+      await a.waitForTimeout(400);
+      ok("...and back leaves every choice as it was",
+        (await a.locator(".modal-lg-body").innerText()) === before);
+    }
     await a.locator(".modal-lg-body .seg-btn", { hasText: /Archive|Archiv/ }).first().click();
     await a.waitForTimeout(300);
     const dl = a.waitForEvent("download");
@@ -2371,62 +2394,87 @@ try {
     ok("...no column is both headerless and empty", faults.filler.length === 0, faults.filler.join(", "));
     ok("...a header row and a data row hold the same number of cells", faults.ragged.length === 0, faults.ragged.join(", "));
     ok("...and the columns add up to the table", faults.slack.length === 0, faults.slack.join(", "));
+  }
 
-    // ── one grid across the registers of a workshop ───────────────────────────
-    //
-    // Reported as tables whose columns do not harmonise, and it was exact: the five
-    // registers of the first workshop put their column edges at 461/640/864, at
-    // 373/556/747 and at 678/942. Each width was a share of that table's own preferred
-    // width, so each table had a grid of its own.
-    //
-    // The invariant is measured from the RIGHT, because that is where the columns are laid
-    // from: every boundary of every register falls on the same ladder, and what differs is
-    // the name column, which takes the remainder.
-    {
-      await openWs(WS.GC, 500);
-      const grid = await page.evaluate(() => {
-        const out = [];
-        for (const t of document.querySelectorAll("table.tbl-share")) {
-          const tr = t.getBoundingClientRect();
-          const unit = tr.width * 0.04;
-          const edges = [...t.querySelectorAll("thead th")].slice(1)
-            .map((th) => tr.right - th.getBoundingClientRect().left);
-          out.push({ unit, edges, offGrid: edges.filter((e) => Math.abs(e / unit - Math.round(e / unit)) * unit > 1.5) });
+  // ── the columns, measured rather than assumed ────────────────────────────────
+  //
+  // The ladder of percentages that made every register of a workshop share one grid is
+  // gone: a share is a share of the TABLE, so on a narrow window the value columns gave up
+  // width they had no room to lose - at 1100px the category chips were sliced at the
+  // panel's edge - while the name column still held 355px. Every value column now carries
+  // the pixels its field type needs, the name takes the rest, and the table has a minimum
+  // of its own; past that the panel scrolls with the title column pinned.
+  {
+    await openWs(WS.GC, 500);
+    const cols = await page.evaluate(() => {
+      const out = [];
+      for (const t of document.querySelectorAll("table.tbl-cols")) {
+        const th = [...t.querySelectorAll("thead th")];
+        out.push({ name: Math.round(th[0].getBoundingClientRect().width),
+          values: th.slice(1).map((x) => Math.round(x.getBoundingClientRect().width)),
+          min: parseInt(t.style.minWidth || "0", 10),
+          width: Math.round(t.getBoundingClientRect().width) });
+      }
+      return out;
+    });
+    ok(`every register states its own minimum (${cols.length} tables)`,
+      cols.length >= 4 && cols.every((c) => c.min > 0 && c.width >= c.min - 1));
+    // A column of a given kind is the same width wherever it appears - that is what a
+    // pixel width by field type buys, and it is what makes two registers read as a pair.
+    const widths = new Set(cols.flatMap((c) => c.values));
+    ok(`a value column takes one of the declared widths (${[...widths].sort((a, b) => a - b).join(", ")})`,
+      [...widths].every((w) => [80, 96, 156, 148, 164].includes(w)), [...widths].join(", "));
+
+    // CONGRUENT. A minimum per register is why the tables of one workshop stopped lining
+    // up: the widest reached its own floor while the others still had room, so it stood
+    // 12px wider than the four beside it and its right edge sat outside theirs. They share
+    // the widest peer's minimum now, so they reach it together.
+    ok(`the registers of a workshop are one width (${[...new Set(cols.map((c) => c.width))].join(", ")})`,
+      new Set(cols.map((c) => c.width)).size === 1);
+
+    // And a column of pills has ONE left edge. Centred, a pill starts wherever its own
+    // length puts it: "MUSS" and "SOLLTE" began 4px apart and the tactic column at five
+    // different offsets, which is what reads as a fluttering edge.
+    const edges = await page.evaluate(() => {
+      const bad = [];
+      for (const tbl of document.querySelectorAll("table.tbl-cols")) {
+        const th = [...tbl.querySelectorAll("thead th")];
+        for (let c = 1; c < th.length; c++) {
+          const lefts = new Set();
+          for (const row of tbl.querySelectorAll("tbody tr.row-clickable")) {
+            const td = row.children[c], el = td?.firstElementChild;
+            if (!el) continue;
+            lefts.add(Math.round(el.getBoundingClientRect().left - td.getBoundingClientRect().left));
+          }
+          if (lefts.size > 1) bad.push(`${th[c].textContent.trim().slice(0, 18)}: ${[...lefts].join("/")}`);
         }
-        return out;
-      });
-      const off = grid.flatMap((g) => g.offGrid);
-      ok(`the registers of a workshop share one column grid (${grid.length} tables)`,
-        grid.length >= 4 && off.length === 0, off.map((x) => x.toFixed(1)).join(", "));
-      // The one the reader actually notices: the switches and badges that end each register
-      // stand in the same place, instead of five registers each putting them somewhere else.
-      // The one the reader notices: the switches and badges that end each register stand in
-      // the same place. That needs the registers to be the same WIDTH, which is why the
-      // floor belongs to the workshop - with a floor each, the widest stepped out below
-      // 1440 and from there its columns were on a ladder of a different size. Measured at
-      // 1150 before: 820, 806, 1060, 860, 860.
-      const spread = async () => page.evaluate(() => {
-        const t = [...document.querySelectorAll("table.tbl-share")];
-        return { widths: [...new Set(t.map((x) => Math.round(x.getBoundingClientRect().width)))],
-          lastAt: [...new Set(t.map((x) => {
-            const r = x.getBoundingClientRect();
-            return Math.round([...x.querySelectorAll("thead th")].pop().getBoundingClientRect().left - r.left);
-          }))] };
-      });
-      const wide2 = await spread();
-      ok("...and the column that ends each of them begins in the same place",
-        wide2.lastAt.length === 1, `${wide2.lastAt.join(", ")} across widths ${wide2.widths.join(", ")}`);
-      // Narrow enough that the widest register used to break out.
-      await page.setViewportSize({ width: 1150, height: 1000 });
-      await page.waitForTimeout(600);
-      const tight = await spread();
-      console.log(`   at 1150: ${tight.widths.length} table width(s), last column at ${tight.lastAt.join(", ")}`);
-      ok("...and they stay on one grid where the widest of them no longer fits",
-        tight.widths.length === 1 && tight.lastAt.length === 1);
-      await page.setViewportSize({ width: 1280, height: 900 });
-      await page.waitForTimeout(400);
-    }
+      }
+      return bad;
+    });
+    ok("...and every column has one left edge", edges.length === 0, edges.slice(0, 3).join(" | "));
 
+    // Narrow enough that the widest register cannot fit, which is where the title column
+    // has to hold: without it the second pass over a scrolled table is of rows that no
+    // longer say which record they belong to.
+    await page.setViewportSize({ width: 1100, height: 1000 });
+    await page.waitForTimeout(600);
+    const pin = await page.evaluate(() => {
+      const body = [...document.querySelectorAll(".panel-body")].find((b) => b.scrollWidth > b.clientWidth + 1);
+      if (!body) return null;
+      body.scrollLeft = 200; body.dispatchEvent(new Event("scroll", { bubbles: true }));
+      return new Promise((res) => setTimeout(() => {
+        const th = body.querySelector("thead th");
+        res({ pinned: body.className.includes("pinned"), pos: getComputedStyle(th).position,
+          left: Math.round(th.getBoundingClientRect().left - body.getBoundingClientRect().left) });
+      }, 250));
+    });
+    ok("a register too wide for its panel pins its title column when scrolled",
+      !!pin && pin.pinned && pin.pos === "sticky" && Math.abs(pin.left) < 2, JSON.stringify(pin));
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.waitForTimeout(400);
+  }
+
+  {
     // The workshops are not where every table lives: Documents hangs off the sidebar and
     // was outside the sweep. Aurelian Lite found that gap in their own version of this
     // check after we described ours.
@@ -2458,21 +2506,21 @@ try {
 
   // ── what a narrower window does to a register table ─────────────────────────
   //
-  // Reported as "the columns squeeze unevenly". Measured rather than looked at: the value
-  // columns used to hold their exact pixel width at every window size while the name column
-  // gave up the whole reduction alone, 983px to 319. A width on a col is a floor as much as
-  // a preference. The property asserted is the one that was missing - every column of a
-  // table gives up the SAME fraction - which needs two widths to say anything at all.
+  // The rule, and it is the opposite of what this checked before: a VALUE column holds the
+  // width its field type needs at every window size, and the NAME column - which is prose
+  // and reads at any width - gives up the difference, down to the floor the table's minimum
+  // sets. Past that the panel scrolls rather than squashing anything. A share of the table,
+  // which is what this used to assert, took width from the columns that had none to give:
+  // measured at 1100px, the category chips were sliced at the panel's edge.
   {
     await page.goto(file);
     await page.waitForTimeout(800);
     const shape = async () => page.evaluate(() => {
-      const t = [...document.querySelectorAll("table.tbl-share")]
+      const t = [...document.querySelectorAll("table.tbl-cols")]
         .find((x) => x.querySelectorAll("thead th").length >= 4);
       if (!t) return null;
-      const w = [...t.querySelectorAll("thead th")].map((th) => th.getBoundingClientRect().width);
-      const total = w.reduce((a, b) => a + b, 0);
-      return { share: w.map((x) => x / total), total };
+      const w = [...t.querySelectorAll("thead th")].map((th) => Math.round(th.getBoundingClientRect().width));
+      return { name: w[0], values: w.slice(1), total: w.reduce((a, b) => a + b, 0) };
     });
     await page.setViewportSize({ width: 1600, height: 1000 });
     await page.waitForTimeout(500);
@@ -2484,10 +2532,14 @@ try {
     await page.waitForTimeout(400);
     ok("a register table is measurable at two window widths",
       !!wide && !!narrow && narrow.total < wide.total, `${wide?.total} → ${narrow?.total}`);
-    const drift = wide && narrow
-      ? Math.max(...wide.share.map((s, i) => Math.abs(s - narrow.share[i]))) : 1;
-    ok("...and every column keeps its share of it, so the squeeze is shared",
-      drift < 0.02, `worst column moved ${(drift * 100).toFixed(1)}% of the table`);
+    const held = wide && narrow
+      && wide.values.length === narrow.values.length
+      && wide.values.every((w, i) => Math.abs(w - narrow.values[i]) <= 1);
+    ok("...the value columns hold the width their content needs",
+      !!held, `${wide?.values.join("/")} → ${narrow?.values.join("/")}`);
+    ok("...and the name column gives up the difference without falling under its floor",
+      !!wide && !!narrow && narrow.name < wide.name && narrow.name >= 300,
+      `${wide?.name} → ${narrow?.name}`);
   }
 
   // ── the switch is the only way in or out of the perimeter ───────────────────

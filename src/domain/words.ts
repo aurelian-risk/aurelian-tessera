@@ -725,6 +725,11 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.report.yes": "ja",
 
     // ── exportdlg ──
+    "ui.exportdlg.back": "Zurück",
+    "ui.exportdlg.back-to-export": "Zurück zum Export",
+    "ui.exportdlg.keys-title": "Benannte Schlüssel",
+    "ui.exportdlg.keys-note": "Eine an einen Schlüssel adressierte Datei öffnet, wer diesen Schlüssel hält, und sonst niemand. Dies ist derselbe Schlüsselbund wie im Änderungsverlauf; Ihre Auswahl hier bleibt erhalten.",
+    "ui.exportdlg.manage-keys": "Schlüssel verwalten…",
     "ui.exportdlg.scope": "Welche Studien",
     "ui.exportdlg.s-active": "Die geöffnete Studie",
     "ui.exportdlg.s-none-open": "Es ist keine Studie geöffnet.",
@@ -773,6 +778,22 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.exportdlg.cancel": "Abbrechen",
     "ui.exportdlg.export": "Exportieren",
     "ui.exportdlg.working": "Wird gepackt …",
+
+    // ── keys ──
+    "ui.keys.keep-it-encrypted": "behalten Sie ihn; die Datei wird mit dem Passwort verschlüsselt, das Sie hier angeben",
+    "ui.keys.password-for-this-file": "Passwort für diese Datei",
+    "ui.keys.password-of-that-file": "Passwort dieser Datei",
+    "ui.keys.created": "Schlüssel erzeugt.",
+    "ui.keys.discard": "Verwerfen",
+    "ui.keys.keep": "Behalten",
+    "ui.keys.loaded": "Schlüssel geladen.",
+    "ui.keys.name-this-key": "Diesen Schlüssel benennen",
+    "ui.keys.needs-password": "Die Schlüsseldatei braucht ein Passwort von mindestens 4 Zeichen.",
+    "ui.keys.not-a-key": "Keine Schlüsseldatei, oder das falsche Passwort.",
+    "ui.keys.not-public": "Keine Datei mit einem öffentlichen Schlüssel - oder sie behauptet einen Fingerabdruck, den sie nicht hat.",
+    "ui.keys.private-saved": "Privater Schlüssel gespeichert, verschlüsselt mit diesem Passwort.",
+    "ui.keys.public-saved": "Öffentlicher Schlüssel gespeichert. Er ist kein Geheimnis - schicken Sie ihn, wie Sie mögen, und lassen Sie die Gegenseite den Fingerabdruck prüfen.",
+    "ui.keys.who-it-belongs-to": "wem er gehört",
 
     // ── the engine's own completeness checks; the two this profile switches off are left out ──
     "check.actor-no-category.title": "Risk sources ohne Category",

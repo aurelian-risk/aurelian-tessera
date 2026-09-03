@@ -6,6 +6,36 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.6.6] - 2026-09-03
+
+### Changed
+
+- **The tables of a workshop line up again, and hold their shape on a narrow window.** Every
+  value column carries the pixels its field type needs, the title column takes the rest and
+  gives up the difference, and the registers of a workshop share the widest one's minimum, so
+  they are one width with one right edge. Past that minimum the panel scrolls and the title
+  column is pinned - a register read in two passes used to leave rows that no longer said
+  which record they belonged to. Measured at 1600/1440/1280/1100/960: tables that scroll
+  0/1/4/19/21, where the shares gave 0/5/15/24/24 and sliced the chips at the panel's edge.
+- **A column of pills has one left edge.** Centred, a pill starts wherever its own length puts
+  it: "MUSS" and "SOLLTE" began 4px apart and the tactic column at five offsets. Values are
+  set left under the heading this method's own stylesheet centres; each pill is one line,
+  clipped with the whole of it in the title where the word is longer than its column - 5 of
+  4273 in the example study, all of them values the BSI publishes.
+- **The title column is twelve pixels narrower at the same legibility**, taken out of the
+  cell's padding rather than out of the words: 70 titles wrap either way.
+- **The key ring is the same panel wherever a key is needed.** It lived in the change history;
+  the export could only add a public key, not create, save or load one. Both show the one
+  panel now, and the export returns to its choices unchanged.
+
+### Fixed
+
+- **Chain defence is given room.** The count under the ring sat in a 240px column, wrapped
+  mid-sentence, and its last line stood 1px from the heading below.
+- **A scenario name in the TTP panel was cut mid-word** at 1280px; the row takes a second line.
+- **The rights holder's full name took six lines of a 203px sidebar.** The abbreviation stands
+  there, the name is the link's title, and the licence carries a non-breaking hyphen.
+
 ## [0.6.5] - 2026-09-02
 
 ### Added

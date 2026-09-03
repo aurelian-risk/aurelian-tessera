@@ -158,16 +158,6 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
             <span><i style={{ background: "var(--color-state-success)" }} /> {tr("ui.mitigationcharts.blocked", "blocked")}</span>
             <span><i style={{ background: "var(--color-state-info, var(--primary))" }} /> {tr('ui.mitigationcharts.detected-in-time', 'detected in time')}</span>
             <span><i style={{ background: "var(--color-state-error)" }} /> {tr('ui.mitigationcharts.reaches-the-objective', 'reaches the objective')}</span>
-            {/* Two counted phrases, because two counts govern two verbs: with one detecting step
-                the sentence read "1 erkennen ihn". `tn` picks the form; the total is put in
-                afterwards, since a counted phrase only ever substitutes its own number. */}
-            <span className="mc-ring-sub">
-              {tn("ui.mitigationcharts.n-steps-block", gates,
-                  "{0} of {1} steps blocks an attacker", "{0} of {1} steps block an attacker")
-                .replace("{1}", String(totSteps))}
-              {" · "}
-              {tn("ui.mitigationcharts.n-detect-him", watched, "{0} detects him", "{0} detect him")}
-            </span>
           </div>
         </div>
 
@@ -195,7 +185,7 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
                   {present.map((t) => cell(flat, t, "all-" + t, "All scenarios"))}
                   {perScenario && scenarios.map((sc) => (
                     <div className="hm-scn" key={sc.id} style={{ display: "contents" }}>
-                      <div className="hm-rowlbl" title={sc.name}>{sc.name}</div>
+                      <div className="hm-rowlbl" title={sc.name}><span>{sc.name}</span></div>
                       {present.map((t) => cell(sc.tSteps, t, sc.id + "-" + t, sc.name))}
                     </div>
                   ))}
@@ -213,6 +203,19 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
           )}
         </div>
       </div>
+
+      {/* Two counted phrases, because two counts govern two verbs: with one detecting step
+          the sentence read "1 erkennen ihn". `tn` picks the form; the total is put in
+          afterwards, since a counted phrase only ever substitutes its own number.
+          UNDER the whole row rather than inside the ring's 240px column: there it wrapped
+          mid-sentence and its last line stood against the heading of the section below. */}
+      <p className="mc-foot">
+        {tn("ui.mitigationcharts.n-steps-block", gates,
+            "{0} of {1} steps blocks an attacker", "{0} of {1} steps block an attacker")
+          .replace("{1}", String(totSteps))}
+        {" · "}
+        {tn("ui.mitigationcharts.n-detect-him", watched, "{0} detects him", "{0} detect him")}
+      </p>
 
       {/* Per-step defense-in-depth: the drill-down. Each step's covering measures are
           stacked layers; the bar fills to the step's (saturating) coverage. */}

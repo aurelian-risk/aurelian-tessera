@@ -13,6 +13,7 @@
 import { useEffect, useState } from "react";
 import { t as tr, tn } from "../domain/i18n";
 import { Overlay } from "./ui";
+import { KeyManager } from "./KeyManager";
 import { knownKeys } from "../domain/keys";
 import { slug, type Format } from "../domain/persistence";
 
@@ -77,6 +78,14 @@ export function ExportDialog({ facts, onClose, onExport }: {
   const [documents, setDocuments] = useState(true);
   const [keys, setKeys] = useState(ring.length > 0);
   const [encrypt, setEncrypt] = useState<ExportChoice["encrypt"]>("none");
+  /** The key ring, opened FROM here rather than reached through the timeline.
+   *
+   *  Addressing a file to a recipient needs their public key, and until now the only way to
+   *  add one was the seal panel three views away - the reader had to leave the export they
+   *  were half-way through setting up and build it again afterwards. The same list is shown
+   *  here instead, and "back" returns to the export with every choice as it was. */
+  const [managing, setManaging] = useState(false);
+  const [, bumpRing] = useState(0);
   const [password, setPassword] = useState("");
   const [to, setTo] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -162,8 +171,18 @@ export function ExportDialog({ facts, onClose, onExport }: {
     <Overlay onClose={onClose}>
       <div className="modal-lg scope-dlg export-dlg" style={{ maxWidth: 580 }} onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-lg-head">
-          <h3>{tr("ui.exportdlg.title", "Export")}</h3>
+          {managing && (
+            <button className="btn ghost sm" onClick={() => setManaging(false)}
+              title={tr("ui.exportdlg.back-to-export", "Back to the export")}>← {tr("ui.exportdlg.back", "Back")}</button>
+          )}
+          <h3>{managing ? tr("ui.exportdlg.keys-title", "Keys you have named") : tr("ui.exportdlg.title", "Export")}</h3>
         </div>
+        {managing ? (
+          <div className="modal-lg-body">
+            <p className="hint">{tr("ui.exportdlg.keys-note", "A file addressed to a key can be opened by whoever holds that key, and by nobody else. This is the same key ring as the one in the change history; the choices you have made here are kept.")}</p>
+            <KeyManager onChange={() => bumpRing((n) => n + 1)} />
+          </div>
+        ) : (
         <div className="modal-lg-body">
           {/* Only where there is something to choose. With one study on the installation
               the two buttons produce the same file, and a choice between two identical
@@ -244,6 +263,15 @@ export function ExportDialog({ facts, onClose, onExport }: {
             { v: "keys", label: tr("ui.exportdlg.to-keys", "Named keys"), off: ring.length === 0,
               title: ring.length ? undefined : tr("ui.exportdlg.no-keys", "No keys are named on this installation.") },
           ])}
+          {/* Reachable WITHOUT a key already being there: addressing a file to a recipient
+              needs their public key, and the only way to add one used to be a panel three
+              views away - so the one thing the reader came here to do was the one thing they
+              could not start. */}
+          <div className="seg-note">
+            <button className="btn ghost sm" onClick={() => setManaging(true)}>
+              {tr("ui.exportdlg.manage-keys", "Manage keys…")}
+            </button>
+          </div>
 
           {encrypt === "password" && (
             <div className="field" style={{ marginTop: 10 }}>
@@ -274,9 +302,11 @@ export function ExportDialog({ facts, onClose, onExport }: {
               <span className="hint">
                 {tr("ui.exportdlg.recipients-note", "Each recipient costs one wrapped key, not a second copy of the data.")}
               </span>
+
             </div>
           )}
         </div>
+        )}
         <div className="modal-lg-foot">
           <span className="hint export-out">{outcome()}</span>
           <span className="spacer" />
