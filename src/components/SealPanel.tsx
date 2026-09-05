@@ -10,8 +10,7 @@ import { t as tr } from "../domain/i18n";
 import { createPortal } from "react-dom";
 import { useActiveStudy, useStore } from "../domain/store";
 import { verifyLog } from "../domain/audit";
-import { fingerprint, knownKey, ownKey, publicOf, readPublicKeyFile, rememberKey, setOwnKey, signingAvailable, verifyAllSeals, type Seal, type SealVerdict } from "../domain/keys";
-import { decryptText } from "../domain/crypto";
+import { fingerprint, knownKey, ownKey, publicOf, rememberKey, signingAvailable, verifyAllSeals, type Seal, type SealVerdict } from "../domain/keys";
 import { Icon } from "./ui";
 import { KeyManager } from "./KeyManager";
 
@@ -32,12 +31,12 @@ export function SealPanel() {
   const [mine, setMine] = useState<JsonWebKey | null>(null);
   const [kid, setKid] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
+  // "trust" stays HERE and is not part of KeyManager: naming a key that arrived on a
+  // SEAL is a different question from naming one out of a file. The key came with a
+  // signature, and what the reader does is vouch for the signer.
   const [dialog, setDialog] = useState<"none" | "keys" | "seal" | "explain" | "trust">("none");
   const [pending, setPending] = useState<{ kid: string; jwk: JsonWebKey } | null>(null);
   const [field, setField] = useState("");
-  const [pw, setPw] = useState("");
-  const keyFile = useState<{ el: HTMLInputElement | null }>({ el: null })[0];
-  const pubFile = useState<{ el: HTMLInputElement | null }>({ el: null })[0];
 
   useEffect(() => {
     const k = ownKey();
@@ -55,24 +54,8 @@ export function SealPanel() {
   if (!study) return null;
   if (!signingAvailable()) return <div className="guide warn">{tr('ui.seal.this-browser-exposes-no', 'This browser exposes no Web Crypto, so studies cannot be sealed here.')}</div>;
 
-  const close = () => { setDialog("none"); setPw(""); setField(""); setPending(null); };
+  const close = () => { setDialog("none"); setField(""); setPending(null); };
 
-  const loadKey = async (file: File) => {
-    setBusy(true);
-    try {
-      const jwk = JSON.parse(await decryptText(await file.text(), pw)) as JsonWebKey;
-      setOwnKey(jwk);
-      const fp = await fingerprint(publicOf(jwk));
-      rememberKey(fp, "you", publicOf(jwk), new Date().toISOString());
-      setMsg(`Key ${fp} loaded.`); setPw("");
-    } catch { setMsg("Not a key file, or the wrong password."); }
-    setBusy(false); bump((n) => n + 1);
-  };
-  const loadPublic = async (file: File) => {
-    const k = await readPublicKeyFile(await file.text());
-    if (!k) { setMsg("Not a public-key file — or it claims a fingerprint it does not have."); return; }
-    setPending({ kid: k.kid, jwk: k.jwk }); setField(k.name); setDialog("trust");
-  };
   const doSeal = async () => {
     if (!field.trim()) return;
     setBusy(true);
@@ -189,10 +172,6 @@ export function SealPanel() {
         </Modal>
       )}
 
-      <input ref={(el) => { keyFile.el = el; }} type="file" accept=".json" style={{ display: "none" }}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) loadKey(f); e.target.value = ""; }} />
-      <input ref={(el) => { pubFile.el = el; }} type="file" accept=".json" style={{ display: "none" }}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) loadPublic(f); e.target.value = ""; }} />
     </div>
   );
 }

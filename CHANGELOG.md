@@ -6,6 +6,24 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.6.7] - 2026-09-05
+
+### Fixed
+
+- **A file addressed to a key could be written in clear.** Choosing "Named keys", ticking a
+  recipient and exporting produced the study as a plain `.json` - no `.enc`, no error, and
+  readable by anyone who received it. The menu read the key ring once per its own render; the
+  export dialog can add a key without that render happening, so the chosen recipients were
+  filtered against a ring from before the key existed and came out empty. The archive path
+  refuses an empty recipient list and was never affected; the text path fell through to a
+  password that is empty in that mode. The ring is read when it is used now. Anyone who
+  exported to a named key between 0.6.6 and this release should check the file they sent:
+  an addressed one ends in `.enc` and begins `{"ebios-encrypted":1`.
+- **A recipient forgotten while the export was open stayed ticked** and dropped out silently
+  at packing time; where it was the only one, the same fall-through applied.
+- The seal panel still held the key loaders and file inputs that nothing has clicked since
+  the ring became its own component.
+
 ## [0.6.6] - 2026-09-03
 
 ### Changed

@@ -2135,6 +2135,80 @@ try {
     await page.getByText("Riverbend Municipal Utilities").first().click();
     await page.waitForSelector(".ws-tabs", { timeout: 10000 });
   }
+  // ── a file addressed to a key is not written in clear ───────────────────────
+  //
+  // Reported from Aurelian Lite's rebuild of this, and reproduced here before it was
+  // believed: the menu read the key ring ONCE per its own render, the export dialog can add
+  // a key without that render happening, so the chosen recipients were filtered against a
+  // ring from before the key existed and came out empty. The archive path refuses an empty
+  // recipient list; the text path falls through to a password that is empty in this mode
+  // and downloads the study as a plain .json - no .enc, no error, addressed to nobody.
+  //
+  // Driven along the path the feature exists for: an empty ring, a key made from inside the
+  // export, and the file read back off disk.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+    const k = await ctx.newPage();
+    k.on("pageerror", (e) => errors.push("pageerror: " + e.message));
+    await k.goto(file); await k.waitForSelector("#root .app", { timeout: 10000 });
+    await k.getByRole("button", { name: /Load sample study|Beispielstudie laden/i }).click();
+    await k.waitForSelector(".ws-tabs", { timeout: 10000 });
+    await k.waitForTimeout(400);
+    await k.getByRole("button", { name: /Export \/ Import/ }).click();
+    await k.waitForTimeout(300);
+    await k.locator(".menu-item", { hasText: /Export/ }).first().click();
+    await k.waitForSelector(".modal-lg", { timeout: 10000 });
+    const toKeys = k.locator(".modal-lg .seg-btn", { hasText: /Named keys|An Schlüssel/ }).first();
+    ok("with no key named, addressing a file to one is not on offer", await toKeys.isDisabled());
+    await k.locator(".modal-lg button", { hasText: /Manage keys|Schlüssel verwalten/ }).first().click();
+    await k.waitForTimeout(300);
+    await k.locator(".modal-lg button", { hasText: /Create a key|Schlüssel erzeugen/ }).first().click();
+    await k.waitForTimeout(900);
+    await k.locator(".modal-lg-head button", { hasText: /Back|Zurück/ }).click();
+    await k.waitForTimeout(300);
+    ok("...and a key made from inside the export opens it", !(await toKeys.isDisabled()));
+    await toKeys.click(); await k.waitForTimeout(300);
+    // The recipient row is the one carrying a FINGERPRINT: `.check-row` is also the
+    // "include the public keys" line, and ticking that one reads green without a recipient
+    // ever having been chosen.
+    const rec = k.locator(".modal-lg .check-row").filter({ has: k.locator(".ck-s.mono") }).first();
+    ok("...the recipient row is the one with a fingerprint", (await rec.count()) === 1);
+    await rec.locator("input[type=checkbox]").check();
+    await k.waitForTimeout(200);
+    const dl = k.waitForEvent("download");
+    await k.locator(".modal-lg-foot .primary").click();
+    const got = await dl;
+    const out = "/tmp/gspp-e2e-addressed";
+    await got.saveAs(out);
+    const head = readFileSync(out, "utf8").slice(0, 120);
+    ok("...and what is written is addressed, not the study in clear",
+      /\.enc$/.test(got.suggestedFilename()) && /"ebios-encrypted"/.test(head),
+      `${got.suggestedFilename()} · ${head.replace(/\s+/g, " ").slice(0, 60)}`);
+
+    // Forgetting the key while the dialog is open cannot leave it ticked: at packing time
+    // the kid drops out silently, and where it was the only one the file falls through to
+    // no encryption at all. (Exporting closes the dialog, so it is opened again first.)
+    await k.getByRole("button", { name: /Export \/ Import/ }).click();
+    await k.waitForTimeout(300);
+    await k.locator(".menu-item", { hasText: /Export/ }).first().click();
+    await k.waitForSelector(".modal-lg", { timeout: 10000 });
+    await k.locator(".modal-lg .seg-btn", { hasText: /Named keys|An Schlüssel/ }).first().click();
+    await k.waitForTimeout(200);
+    await k.locator(".modal-lg .check-row").filter({ has: k.locator(".ck-s.mono") }).first()
+      .locator("input[type=checkbox]").check();
+    await k.waitForTimeout(200);
+    await k.locator(".modal-lg button", { hasText: /Manage keys|Schlüssel verwalten/ }).first().click();
+    await k.waitForTimeout(300);
+    await k.locator(".sp-ring-row .btn.danger").first().click();
+    await k.waitForTimeout(400);
+    await k.locator(".modal-lg-head button", { hasText: /Back|Zurück/ }).click();
+    await k.waitForTimeout(400);
+    ok("...and a recipient that was forgotten is no longer ticked",
+      (await k.locator(".modal-lg .check-row").filter({ has: k.locator(".ck-s.mono") }).count()) === 0
+      && (await toKeys.isDisabled()));
+    await ctx.close();
+  }
+
   // ── an archive carries the documents, and another profile gets them back ─────
   //
   // The JSON export holds REFERENCES only, which is right for a file that has to stay

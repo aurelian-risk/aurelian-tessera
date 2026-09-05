@@ -10,7 +10,7 @@
 // what goes in, how it is written, and who may open it. Every option states its SIZE,
 // because that is what is being decided: a corpus is the difference between a 9 kB file
 // and a 60 MB one, and hiding that asks the reader to choose blind.
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t as tr, tn } from "../domain/i18n";
 import { Overlay } from "./ui";
 import { KeyManager } from "./KeyManager";
@@ -65,7 +65,19 @@ export function ExportDialog({ facts, onClose, onExport }: {
   onClose: () => void;
   onExport: (choice: ExportChoice) => Promise<void> | void;
 }) {
-  const ring = knownKeys();
+  const [ringVersion, bumpRing] = useState(0);
+  const ring = useMemo(() => knownKeys(), [ringVersion]);
+  /** A recipient the reader has just forgotten cannot stay ticked. The key ring can be
+   *  edited while this dialog is open - forgetting one is a click - and a tick left behind
+   *  drops out silently at packing time. Where it was the only one, the file falls through
+   *  to no encryption at all. */
+  useEffect(() => {
+    setTo((prev) => {
+      const live = new Set(ring.map((k) => k.kid));
+      if ([...prev].every((kid) => live.has(kid))) return prev;
+      return new Set([...prev].filter((kid) => live.has(kid)));
+    });
+  }, [ring]);
   const [what, setWhat] = useState<ExportChoice["what"]>("bundle");
   const [scope, setScope] = useState<ExportChoice["scope"]>(
     facts.studyCount <= 1 || !facts.activeName ? "all" : "active");
@@ -85,7 +97,6 @@ export function ExportDialog({ facts, onClose, onExport }: {
    *  were half-way through setting up and build it again afterwards. The same list is shown
    *  here instead, and "back" returns to the export with every choice as it was. */
   const [managing, setManaging] = useState(false);
-  const [, bumpRing] = useState(0);
   const [password, setPassword] = useState("");
   const [to, setTo] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);

@@ -125,7 +125,11 @@ export function KeyManager({ onChange }: { onChange?: () => void }) {
             {knownKeys().map((k) => (
               <div className="sp-ring-row" key={k.kid}>
                 <span className="mono">{k.kid}</span><span>{k.name}</span>
-                <button className="btn ghost sm danger" title={tr('ui.seal.forget-this-key', 'Forget this key')} onClick={() => { forgetKey(k.kid); bump((n) => n + 1); }}><Icon.trash /></button>
+                <button className="btn ghost sm danger" title={tr('ui.seal.forget-this-key', 'Forget this key')} // `changed`, not the local counter: forgetting a key has to reach the caller.
+                  // The export keeps a list of recipients, and one that is no longer in the ring
+                  // drops out silently at packing time - where it was the only one, the file then
+                  // falls through to no encryption at all.
+                  onClick={() => { forgetKey(k.kid); changed(); }}><Icon.trash /></button>
               </div>
             ))}
             <div className="sp-acts"><button className="btn sm" onClick={() => pubFile.el?.click()}><Icon.upload /> {tr('ui.seal.add-someone-s-public', "Add someone's public key…")}</button></div>

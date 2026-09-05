@@ -26,7 +26,19 @@ export function DataMenu({ studyScope, label = "Data" }: { studyScope?: Study; l
   const [facts, setFacts] = useState<ExportFacts | null>(null);
   useDismissOnEscape(open, () => setOpen(false));
   const [importing, setImporting] = useState(false);
-  const ring = knownKeys();
+  /** READ AT THE MOMENT IT IS USED, never once per render.
+   *
+   *  The export dialog can now add a key to the ring - that is what it is for - and this
+   *  component does not re-render when it does. Held from render time, the list is the one
+   *  from before the key existed, and filtering the chosen recipients against it gives an
+   *  empty set. The archive path survives that (`encryptBytesToRecipients` refuses an empty
+   *  list); the TEXT path does not: `exportToFile` reads `recipients?.length`, falls through
+   *  to a password that is empty in this mode, and downloads the study as a plain .json.
+   *  Reproduced end to end - a file the reader had addressed to a key, in clear.
+   *
+   *  `knownKeys()` reads localStorage, which is why it was hoisted; the cost is a JSON parse
+   *  of at most a few hundred bytes, once per export, and correctness is not a trade here. */
+  const currentRing = () => knownKeys();
   const store = useStore();
 
 
@@ -44,7 +56,7 @@ export function DataMenu({ studyScope, label = "Data" }: { studyScope?: Study; l
       endpoint: (await gen())?.getEndpoint?.(),
       userModels: getUserModels(),
     },
-    keys: ring.map((k) => ({ kid: k.kid, name: k.name, jwk: k.jwk as unknown, seen: k.seen })),
+    keys: currentRing().map((k) => ({ kid: k.kid, name: k.name, jwk: k.jwk as unknown, seen: k.seen })),
   });
 
   /** Measure first, then ask: every option in the dialog states its size, and a size that
@@ -75,7 +87,7 @@ export function DataMenu({ studyScope, label = "Data" }: { studyScope?: Study; l
       await exportToFile(store.exportState(), c.what, c.as, {
         studies: chosen, filename: c.filename, documents, settings: c.what === "taxonomy" ? undefined : carried.settings, keys,
         password: c.encrypt === "password" ? c.password : undefined,
-        recipients: c.encrypt === "keys" ? ring.filter((k) => c.recipients.has(k.kid)).map((k) => ({ kid: k.kid, name: k.name, jwk: k.jwk })) : undefined,
+        recipients: c.encrypt === "keys" ? currentRing().filter((k) => c.recipients.has(k.kid)).map((k) => ({ kid: k.kid, name: k.name, jwk: k.jwk })) : undefined,
       });
       return;
     }
@@ -103,7 +115,7 @@ export function DataMenu({ studyScope, label = "Data" }: { studyScope?: Study; l
     if (c.encrypt === "password") {
       downloadBytes(name.replace(/\.zip$/, ".zip.enc"), await encryptBytes(bytes, c.password), "application/octet-stream");
     } else if (c.encrypt === "keys") {
-      const picked = ring.filter((k) => c.recipients.has(k.kid)).map((k) => ({ kid: k.kid, name: k.name, jwk: k.jwk }));
+      const picked = currentRing().filter((k) => c.recipients.has(k.kid)).map((k) => ({ kid: k.kid, name: k.name, jwk: k.jwk }));
       downloadBytes(name.replace(/\.zip$/, ".zip.enc"), await encryptBytesToRecipients(bytes, picked), "application/octet-stream");
     } else {
       downloadBytes(name, bytes, "application/zip");
