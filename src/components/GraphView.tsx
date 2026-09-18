@@ -10,6 +10,7 @@ import { t as tr, tn } from "../domain/i18n";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
 import { buildGraph, spreadOut, type GNode } from "../domain/graph";
 import { getType, groupLabel, typeLabel } from "../domain/taxonomy";
+import { foldScope, getNudges, setNudges } from "../domain/viewstate";
 import { EntityInfoPanel } from "./EntityInfoPanel";
 import { EntityModal } from "./EntityModal";
 
@@ -88,12 +89,31 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
   const [inspect, setInspect] = useState<string | null>(null);
   const inspectNode = (id: string) => setInspect(id); // clicking a graph node is the ONLY thing that shows the box
 
-  // DRAG: a node can be pulled around; on release it springs back to its computed spot.
+  // DRAG: a node can be pulled around, and it STAYS there - the layout puts nodes where
+  // the structure says, which is right until two of them want the same spot. The push is
+  // an arrangement, so it is remembered outside the study (viewstate.ts), like a fold.
+  const nudgeScope = foldScope(study.id, "@graph");
   const offsets = useRef(new Map<string, { x: number; y: number; vx: number; vy: number }>());
+  const [nudged, setNudged] = useState(false);
+  const saveNudges = () => {
+    const m = new Map<string, { x: number; y: number }>();
+    for (const [id, o] of offsets.current) if (Math.abs(o.x) > 0.5 || Math.abs(o.y) > 0.5) m.set(id, { x: o.x, y: o.y });
+    setNudges(nudgeScope, m);
+    setNudged(m.size > 0);
+  };
   const dragRef = useRef<{ id: string; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
   const rafRef = useRef<number | undefined>(undefined);
   const [, bump] = useReducer((c: number) => c + 1, 0);
   useEffect(() => () => { if (rafRef.current != null) cancelAnimationFrame(rafRef.current); }, []);
+  useEffect(() => {
+    offsets.current = new Map([...getNudges(nudgeScope)].map(([id, p]) => [id, { ...p, vx: 0, vy: 0 }]));
+    setNudged(offsets.current.size > 0);
+    bump();
+  }, [nudgeScope]);
+
+  /** Put every pushed node back where the layout wants it, with the spring that used to
+   *  fire on every release. */
+  const resetNudges = () => { setNudges(nudgeScope, new Map()); setNudged(false); runSpring(); };
 
   const runSpring = () => {
     if (rafRef.current != null) return;
@@ -135,7 +155,7 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
     onPointerUp: (e: ReactPointerEvent) => {
       const d = dragRef.current; if (!d || d.id !== id) return;
       dragRef.current = null;
-      if (d.moved) runSpring(); else onTap(e.shiftKey);
+      if (d.moved) saveNudges(); else onTap(e.shiftKey);
     },
   });
 
@@ -303,6 +323,8 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
             ? <span className="item"><b style={{ color: "var(--fg)" }}>{nF} focuses</b>&nbsp;<span style={{ color: "var(--fg-subtle)" }}>{tr('ui.canvas.click-a-node-to', '· click a node to inspect · double-click to re-centre · Shift-click to add / remove')}</span></span>
             : primary && <span className="item"><b style={{ color: "var(--fg)" }}>{primary.label}</b>&nbsp;<span style={{ color: "var(--fg-subtle)" }}>· {tn("ui.graph.n-relationships", k, "{0} relationship", "{0} relationships")} {tr("ui.graph.click-to-inspect-double", "· click to inspect · double-click to re-centre · Shift-click to compare")}</span></span>}
           {nF > 1 && <button className="btn ghost sm" onClick={() => setFocusIds(primary ? [primary.id] : [])}>{tr('ui.graph.clear-extra', 'Clear extra')}</button>}
+          {nudged && <button className="btn ghost sm" onClick={resetNudges}
+            title={tr('ui.graph.put-every-node-back', 'Put every node back where the layout puts it')}>{tr('ui.graph.reset-positions', 'Reset positions')}</button>}
         </div>
         <div className="graph-wrap" ref={wrapRef}>
           <svg>

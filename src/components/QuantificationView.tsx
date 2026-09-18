@@ -8,12 +8,12 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { t as tr } from "../domain/i18n";
 import { createPortal } from "react-dom";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
-import { getType, recordTitle, scaleLabel, scaleMax } from "../domain/taxonomy";
+import { getType, isSetBack, recordTitle, scaleLabel, scaleMax } from "../domain/taxonomy";
 import { useStore } from "../domain/store";
 import { DEFAULT_CALIBRATION, type Calibration } from "../domain/calibration";
 import { simulate, type QuantInputs, type QuantResult, type Range } from "../domain/montecarlo";
 import { deriveInputs, meanOf, measureEfficacyOf, type Derived, type Prov } from "../domain/quantModel";
-import { effectClassOf, EFFECT_CHANNEL } from "../domain/controls";
+import { effectClassOf, effectChannel } from "../domain/controls";
 import { likelihoodCheck } from "../domain/frequency";
 import { DistInput, fmtVal, type Unit } from "./DistInput";
 import { FactorTrace } from "./FactorTrace";
@@ -42,9 +42,21 @@ export function QuantificationView({ tax, study, color }: { tax: Taxonomy; study
     && study.entities.some((s) => s.type === stepType?.key && s.values[parentF?.key ?? ""] === e.id)) : [];
   const { toggleQuantScenario } = useStore();
   const enabledIds = study.quantScenarios ?? [];
-  // Quantification is opt-in: only scenarios the user added get monetary figures.
-  const ops = allOps.filter((o) => enabledIds.includes(o.id));
-  const available = allOps.filter((o) => !enabledIds.includes(o.id));
+  // Quantification is opt-in: only scenarios the user added get monetary figures. And a
+  // scenario taken out of scope is out of the figures whether or not it was opted in -
+  // otherwise the view would answer a question the study has withdrawn. The opt-in is not
+  // cleared: put the scenario back in scope and its figures come back with it.
+  const ops = allOps.filter((o) => enabledIds.includes(o.id) && !isSetBack(tax, o));
+  const available = allOps.filter((o) => !enabledIds.includes(o.id) && !isSetBack(tax, o));
+  // Why the "add" button is off, when it is: either they are all in already, or what is
+  // left has been set back and is not part of this study's picture.
+  const setBackLeft = allOps.filter((o) => !enabledIds.includes(o.id) && isSetBack(tax, o)).length;
+  // No count in the wording on purpose: this view keeps its English, and a counted phrase
+  // would be the one English-only entry in a table that is otherwise complete in both.
+  const whyNoneLeft = available.length ? undefined
+    : setBackLeft
+      ? tr("ui.quantification.rest-set-back", "What is left has been set back, so it is not part of this study's picture.")
+      : tr("ui.quantification.all-quantified", "Every operational scenario is already quantified.");
   const [open, setOpen] = useState(0);
   const [adding, setAdding] = useState(false);
   useDismissOnEscape(adding, () => setAdding(false));
@@ -58,7 +70,10 @@ export function QuantificationView({ tax, study, color }: { tax: Taxonomy; study
         <span className="spacer" />
         <span className="hint" style={{ marginRight: 8 }}>{tr('ui.quantification.opt-in-per-scenario', 'opt-in per scenario')}</span>
         <div style={{ position: "relative" }}>
-          <button className="btn sm" disabled={!available.length} onClick={() => setAdding((v) => !v)}><Icon.plus /> {tr('ui.quantification.add-scenario', 'Add scenario')}</button>
+          {/* Refused with a reason. This was the one disabled control in the application
+              that said nothing, and there are two different reasons it can be off. */}
+          <button className="btn sm" disabled={!available.length} title={whyNoneLeft}
+            onClick={() => setAdding((v) => !v)}><Icon.plus /> {tr('ui.quantification.add-scenario', 'Add scenario')}</button>
           {adding && available.length > 0 && (
             <>
               <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setAdding(false)} />
@@ -353,7 +368,7 @@ function BreakExplain({ what, result, derived, tax, cal, onClose }: {
                   {line(
                     recordTitle(getType(tax, m.type)!, m),
                     p1(measureEfficacyOf(tax, m, cal)),
-                    <>{effectClassOf(m)} - {EFFECT_CHANNEL[effectClassOf(m)]}<br />
+                    <>{effectClassOf(m)} - {effectChannel(effectClassOf(m))}<br />
                       rolled out {lvlOf(m)} (×{lvlW(m).toPrecision(2)}) · {String(m.values.status ?? "no status")} (×{stW(m).toPrecision(2)})
                       {" "}· most one measure can protect {p0(cal.effect.controlCeiling)}</>,
                   )}

@@ -40,9 +40,13 @@ Your data stays in your browser's local storage. Nothing is uploaded, nothing is
 
 **Model the risk where the method demands it.** A process with high protection needs, a requirement left open: build the attack chain step by step, see which of your measures stop it where, and where residual risk sits after treatment. Grundschutz++ leaves this method open; this is one answer to it.
 
-**Model the attack in MITRE ATT&CK terms.** A chain is a sequence of steps, each carrying one of the 14 ATT&CK tactics and, where you want the detail, a technique - `T1078 Valid Accounts`, `T1486 Data Encrypted for Impact`. Fifty common techniques are bundled for an offline typeahead; the field is free text, so anything outside that set can be typed. Steps are not merely a list: a step names the ones that have to succeed before it, which makes the chain a directed graph rather than a straight line, and the graph is what the analysis reads.
+**Model the attack in MITRE ATT&CK terms.** A chain is a sequence of steps, each carrying one of the 15 ATT&CK v19 tactics and, where you want the detail, a technique - `T1078 Valid Accounts`, `T1486 Data Encrypted for Impact`. Every live technique and sub-technique is bundled for an offline typeahead, 697 of them; the field is free text, so anything outside that set can be typed. Steps are not merely a list: a step names the ones that have to succeed before it, which makes the chain a directed graph rather than a straight line, and the graph is what the analysis reads.
 
 Measures attach to steps, not to the chain as a whole, and each carries what it actually does - preventive, detective, corrective, deterrent, avoidance. From that the tool says where an attempt is stopped and where it is only watched: a chain can be fully attended to and still block nobody. The tactic heatmap shows the same by tactic, so a gap that runs across several chains is visible as a column rather than as an incident in one of them.
+
+**Take threat intelligence in.** *Import / Export → Import data…* reads a STIX 2.1 bundle - ATT&CK, a MISP or TAXII export, a vendor report - and opens it in columns: types, the objects of a type, the relations of an object. A row opens the next column, the box beside it chooses, a search runs over the whole bundle. What is chosen becomes records by one rule per STIX type: an actor a risk source, a technique an attack step, a campaign an attack scenario, a mitigation a measure. Before anything is written, the landing shows which workshops gain, which chain the steps make, what the bundle connects among them and what the study already holds; then the usual additive import review. Importing the same object twice updates rather than duplicates. The example bundle is `samples/stix-story.json`; the details are in [`docs/stix-import.md`](docs/stix-import.md).
+
+**Find anything.** One search over every workshop (`Ctrl K`): a hit names the record, the workshop and the field the word was found in, unfolds to a preview, and goes to its row.
 
 **Print the security concept.** Registers, figures, decisions and their reasons, the catalogue version you worked to, and the full change history - every edit with author, timestamp and reason, hash-chained so a later reader can verify nothing drifted.
 
@@ -56,7 +60,8 @@ Measures attach to steps, not to the chain as a whole, and each carries what it 
 | Mappings | IT-Grundschutz 2023 (1185 entries) and ISO/IEC 27001 Annex A (96), each with correspondence strength |
 | Published implementations | 35 BSI components, each naming the requirements it answers |
 | Currency | Ruleset and mappings are fetched from the BSI repository at every build; a running copy can be refreshed manually |
-| Attack modelling | 14 MITRE ATT&CK tactics, 50 bundled techniques for an offline typeahead, free text beyond them |
+| Attack modelling | the 15 MITRE ATT&CK v19 tactics, 697 techniques and sub-techniques for an offline typeahead, the `mitigates` relationships behind a technique-fit check, free text beyond them |
+| Threat intelligence | STIX 2.1 bundles, walked in columns and projected by one rule per type |
 | Conformance | measured against the BSI's own machine-readable method catalogue - [`docs/method-conformance.md`](docs/method-conformance.md) |
 
 ## Who it's for

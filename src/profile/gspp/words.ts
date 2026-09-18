@@ -175,6 +175,7 @@ const DE: Overlay = {
   "field.component_type.label": "Art",
   "field.confidentiality.label": "Wirkt auf Vertraulichkeit (0–2)",
   "field.covers.label": "Wirkt auf Angriffsschritte",
+  "field.mitigations.label": "ATT&CK-Mitigations",
   "field.criticality.label": "Bedeutung",
   "field.deadline.label": "Fällig",
   "field.decided_on.label": "Entschieden am",
@@ -559,6 +560,7 @@ const DE: Overlay = {
   "field.justification.help": "Hier werden keine Maßnahmen aufgezählt. Eine Maßnahme wirkt auf einen Angriffsschritt, und das Restrisiko folgt daraus.",
   "field.measure_type.help": "Was die Maßnahme tatsächlich tut. Präventiv hält den Angreifer an dem Schritt auf, den sie abdeckt. Detektiv erkennt ihn, sodass die Kette unterbrochen werden kann, bevor er sein Ziel erreicht. Korrektiv begrenzt den Schaden, wenn er eingetreten ist. Abschreckend bewirkt, dass weniger Versuche unternommen werden. Vermeidend entfernt die Angriffsfläche, sodass weniger anzugreifen ist.",
   "field.framework.help": "Aus welcher Bibliothek das stammt. Leer für eine eigene Maßnahme.",
+  "field.mitigations.help": "Die ATT&CK-Mitigation-IDs, die diese Maßnahme umsetzt, z. B. M1032 (Multi-factor Authentication), M1030 (Network Segmentation). Eine Prüfung vergleicht sie mit den Techniken der Schritte, auf die die Maßnahme wirkt, und sagt, wo ATT&CK keine Wirkung kennt.",
   "field.implements.help": "Die Anforderungen, die diese Umsetzung beantwortet, wie der Herausgeber sie benennt. Stammt aus den Bausteindefinitionen der BSI. Für eine eigene Maßnahme stattdessen „Erfüllt Anforderungen“ benutzen.",
   "field.supporting_asset.help": "Sie können die Stufe für ein einzelnes Zielobjekt ändern, statt für die Anforderung überall. (STM.3.1)",
   "field.authorised_by.help": "Wer es freigegeben hat - jemand hoch genug, um die Pflichten gegeneinander abzuwägen. (UMS.5.1)",
@@ -821,23 +823,29 @@ const DE: Overlay = {
 
   // ── the six steps of the method ────────────────────────────────────────────
   "group.gc.label": "Rahmen und Planung",
+  "group.gc.short": "Rahmen",
   "group.gc.description": "Schritt 1 - der Kontext der Institution, der Geltungsbereich, "
     + "die Rollen und der Schutzbedarf ihrer Geschäftsprozesse (Praktik GC)",
   "group.stm.label": "Anforderungsanalyse",
+  "group.stm.short": "Anforderungen",
   "group.stm.description": "Schritt 2 - der Informationsverbund, seine Zielobjekte, deren "
     + "Zielobjektkategorien und das daraus folgende Anforderungspaket (Praktik STM)",
   "group.risk.label": "Risikobetrachtung",
+  "group.risk.short": "Risiko",
   "group.risk.description": "Der Zweig aus Schritt 2, betreten über einen von vier Anlässen: "
     + "ein hoher Schutzbedarf, ein gesenktes Sicherheitsniveau, eine nicht umgesetzte "
     + "Anforderung oder ein Zielobjekt, das der Katalog nicht abdeckt",
   // Umsetzung, Monitoring-Evaluation and Verbesserung are the practice names as the BSI
   // publishes them; the step wording follows them here rather than translating around them.
   "group.ums.label": "Umsetzung",
+  "group.ums.short": "Umsetzung",
   "group.ums.description": "Schritt 3 - Umsetzungsstand, Maßnahmen, Verantwortliche und "
     + "Termine (Praktik UMS)",
   "group.perf.label": "Monitoring",
+  "group.perf.short": "Monitoring",
   "group.perf.description": "Schritt 4 - Kennzahlen, Audits und Wirksamkeit (Praktik PERF)",
   "group.vrb.label": "Verbesserung",
+  "group.vrb.short": "Verbesserung",
   "group.vrb.description": "Schritt 5 - Abweichungen und Korrekturmaßnahmen (Praktik VRB)",
 };
 

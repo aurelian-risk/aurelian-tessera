@@ -119,7 +119,11 @@ existing mapping.
   implementation layer, linked to their requirements through `alt-identifier`.
 - **Kill chain and effect model.** Measures act on attack steps rather than on a checklist.
   Grundschutz++ prescribes no risk method (GC.7.2), so this is a permitted choice - entered
-  from the triggers the method names.
+  from the triggers the method names. The vocabulary is ATT&CK v19 - 15 tactics, 697
+  techniques - and a STIX 2.1 bundle can be read into the chain: an actor becomes a risk
+  source, a technique an attack step, a campaign an attack scenario, a mitigation a measure.
+- **One search across every workshop**, and registers that order by a column head and put
+  columns away, per reader.
 - **The parameters behind the effect model exposed**, editable in the interface, every
   figure carrying its evidence grade (measured / derived / judgement).
 - **A hash-chained change record per study.** Every change with editor, time and comment,

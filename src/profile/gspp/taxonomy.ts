@@ -27,6 +27,7 @@
 //    option list can be refreshed from the source, an imported requirement gets the value
 //    written into it, and vocab-sync can re-derive the lists below. A list without the
 //    declaration is a copy that ages in silence.
+import { TACTICS as ATTACK_TACTICS } from "../../domain/mitre";
 import type { Taxonomy } from "../../domain/types";
 import { EFFECT_CLASSES } from "../../domain/controls";
 import { VOCABULARY, VOCABULARY_SOURCE } from "./vocabulary.generated";
@@ -75,13 +76,13 @@ const SCALE = ["low", "moderate", "high", "critical"];
 const LIKELIHOOD = ["low", "possible", "likely", "near-certain"];
 const GRAVITY = ["negligible", "noticeable", "severe", "existential"];
 const TREAT_STATUS = ["Proposed", "In progress", "Implemented", "Verified"];
-const TACTICS = [
-  "Reconnaissance", "Resource Development", "Initial Access", "Execution", "Persistence",
-  "Privilege Escalation", "Defense Evasion", "Credential Access", "Discovery", "Lateral Movement",
-  "Collection", "Command and Control", "Exfiltration", "Impact",
-];
+// The tactic vocabulary is ATT&CK's, in its matrix order, from the generated reference.
+const TACTICS = [...ATTACK_TACTICS];
 
-export const TAXONOMY_SCHEMA_VERSION = 2;
+/** Bumped whenever this taxonomy's vocabulary grows in a way stored studies should pick
+ *  up (see reconcileTaxonomy). 3 moved the tactics to ATT&CK v19 and gave the measure its
+ *  ATT&CK mitigations. */
+export const TAXONOMY_SCHEMA_VERSION = 3;
 
 export const DEFAULT_TAXONOMY: Taxonomy = {
   schemaVersion: TAXONOMY_SCHEMA_VERSION,
@@ -539,12 +540,12 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
     // practitioner works a step, and each step is carried by one ISMS practice. Risk sits
     // where the method puts it - a branch out of the requirements analysis, entered on a
     // trigger, not a stage everyone passes through.
-    { key: "gc", label: "Scope and Planning", description: "Step 1 - the institution's context, the scope, the roles, and the protection need of its business processes (practice GC)", color: "var(--gs-governance)" },
-    { key: "stm", label: "Requirements Analysis", description: "Step 2 - the information domain, its assets, their target-object categories, and the requirement package that follows (practice STM)", color: "var(--gs-structure)" },
-    { key: "risk", label: "Risk Consideration", description: "The branch out of step 2, entered on one of four triggers: a high protection need, a security level lowered, a requirement left unimplemented, or an asset the catalogue does not cover", color: "var(--gs-risk)" },
-    { key: "ums", label: "Implementation", description: "Step 3 - implementation status, measures, owners and dates (practice UMS)", color: "var(--gs-implementation)" },
-    { key: "perf", label: "Monitoring", description: "Step 4 - metrics, audits and effectiveness (practice PERF)", color: "var(--gs-monitoring)" },
-    { key: "vrb", label: "Improvement", description: "Step 5 - nonconformities and corrective action (practice VRB)", color: "var(--gs-improvement)" },
+    { key: "gc", label: "Scope and Planning", short: "Scope", description: "Step 1 - the institution's context, the scope, the roles, and the protection need of its business processes (practice GC)", color: "var(--gs-governance)" },
+    { key: "stm", label: "Requirements Analysis", short: "Requirements", description: "Step 2 - the information domain, its assets, their target-object categories, and the requirement package that follows (practice STM)", color: "var(--gs-structure)" },
+    { key: "risk", label: "Risk Consideration", short: "Risk", description: "The branch out of step 2, entered on one of four triggers: a high protection need, a security level lowered, a requirement left unimplemented, or an asset the catalogue does not cover", color: "var(--gs-risk)" },
+    { key: "ums", label: "Implementation", short: "Implementation", description: "Step 3 - implementation status, measures, owners and dates (practice UMS)", color: "var(--gs-implementation)" },
+    { key: "perf", label: "Monitoring", short: "Monitoring", description: "Step 4 - metrics, audits and effectiveness (practice PERF)", color: "var(--gs-monitoring)" },
+    { key: "vrb", label: "Improvement", short: "Improvement", description: "Step 5 - nonconformities and corrective action (practice VRB)", color: "var(--gs-improvement)" },
     // No "quant" group: the monetary loss expectation is a feature of Aurelian Lite.
     // GS++ leaves the risk method open (STM.4.1) and this product answers it
     // qualitatively - attack chain, coverage, treatment matrix. See QUANT_GROUP.
@@ -846,6 +847,11 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
           help: "The requirements this implementation answers, as the publisher names them. Comes from the BSI's component definitions. For a measure of your own, use \"Fulfils requirements\" instead." },
         { key: "component_type", label: "Kind", type: "text", column: false },
         { key: "covers", label: "Acts on attack steps", type: "multiref", refType: "kill_chain_step", relation: "acts on" },
+        // The ATT&CK mitigations this measure is: "M1032" for MFA, "M1030" for segmentation.
+        // A check holds them against the techniques of the steps it acts on. Read by key
+        // in lint.ts, so the key is the engine's.
+        { key: "mitigations", label: "ATT&CK mitigations", type: "text", column: false,
+          help: "The ATT&CK mitigation ids this measure implements, e.g. M1032 (Multi-factor Authentication), M1030 (Network Segmentation). A check compares them with the techniques of the steps the measure acts on and says where ATT&CK knows no effect." },
         { key: "protects", label: "Protects assets", type: "multiref", refType: "supporting_asset", relation: "protects" , column: false },
         // Declaring where the identifiers come from is what turns the published mapping
         // into a relation: the import resolves "implements" onto the requirement records.

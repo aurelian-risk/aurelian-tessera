@@ -134,13 +134,6 @@ export function DataMenu({ studyScope, label = "Data" }: { studyScope?: Study; l
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
           <div className="menu-pop">
-            <button className="menu-item stacked" onClick={askExport}>
-              <Icon.download />
-              <span className="mi-text">
-                {tr("ui.datamenu.export-dots", "Export…")}
-                <span className="menu-hint">{tr("ui.datamenu.hint-export", "choose what goes in and who may open it")}</span>
-              </span>
-            </button>
             <button className="menu-item stacked" onClick={() => { setOpen(false); setImporting(true); }}>
               <Icon.upload />
               <span className="mi-text">
@@ -148,10 +141,18 @@ export function DataMenu({ studyScope, label = "Data" }: { studyScope?: Study; l
                 <span className="menu-hint">{tr("ui.datamenu.hint-file-or-paste", "file, archive or paste")}</span>
               </span>
             </button>
+            <button className="menu-item stacked" onClick={askExport}>
+              <Icon.download />
+              <span className="mi-text">
+                {tr("ui.datamenu.export-dots", "Export…")}
+                <span className="menu-hint">{tr("ui.datamenu.hint-export", "choose what goes in and who may open it")}</span>
+              </span>
+            </button>
           </div>
         </>
       )}
       {importing && <ImportDialog onClose={() => setImporting(false)} />}
+
     </div>
   );
 }

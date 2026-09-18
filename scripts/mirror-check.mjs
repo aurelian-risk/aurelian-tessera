@@ -27,7 +27,7 @@ const mirror = process.env.MIRROR ? resolve(process.env.MIRROR) : resolve(root, 
 
 /** Never published. Each one says why, because "why not" is the part that gets forgotten. */
 const PRIVATE = [
-  [/^samples\/(?!test-corpus\.txt$)/, "licensed import fixtures - ISO, BSI, PCI subsets"],
+  [/^samples\/(?!(test-corpus\.txt|stix-story\.json)$)/, "licensed import fixtures - ISO, BSI, PCI subsets"],
   [/^docs\/media\/(?!demo\.webp$)/, "recorded video; only the still the README embeds goes"],
   [/^docs\/(method|frequency-model|resistance-model|control-effect-model)\.md$/,
     "the quantification and its design records - not this product's feature"],
@@ -88,7 +88,7 @@ const MIRROR_ONLY = [];
 /** Everything else is published as it stands. Listed as prefixes rather than assumed, so a
  *  new top-level file is undeclared rather than quietly shared. */
 const SHARED = [
-  /^src\//, /^scripts\//, /^docs\//, /^samples\/test-corpus\.txt$/, /^docs\/media\/demo\.webp$/,
+  /^src\//, /^scripts\//, /^docs\//, /^samples\/(test-corpus\.txt|stix-story\.json)$/, /^docs\/media\/demo\.webp$/,
   /^(README|CHANGELOG|NOTICE|MATURITY|TRADEMARK|THIRD-PARTY-NOTICES)\.md$/, /^LICENSE$/,
   /^(package|package-lock|tsconfig)\.json$/, /^(vite\.config\.ts|index\.html|\.gitignore)$/,
 ];
@@ -159,8 +159,8 @@ if (!existsSync(resolve(mirror, ".git"))) {
     if (cond) say(`✓ ${name}`);
     else { problems++; say(`✗ ${name}${detail ? ` — ${detail}` : ""}`); }
   };
-  ok("the mirror's samples/ holds the test corpus and nothing else",
-    samples.length === 1 && samples[0] === "samples/test-corpus.txt", samples.join(", ") || "empty");
+  ok("the mirror's samples/ holds the test corpus, the STIX story and nothing else",
+    samples.sort().join() === "samples/stix-story.json,samples/test-corpus.txt", samples.join(", ") || "empty");
   ok("the mirror's docs/media holds the still the README embeds and nothing else",
     media.length === 1 && media[0] === "docs/media/demo.webp", media.join(", ") || "empty");
 

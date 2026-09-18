@@ -7,6 +7,7 @@
 // A sibling product supplies its own file here and shares the entire engine.
 import type { Taxonomy } from "../../domain/types";
 import { EFFECT_CLASSES } from "../../domain/controls";
+import { TACTICS as ATTACK_TACTICS } from "../../domain/mitre";
 
 const SCALE = ["low", "moderate", "high", "critical"];
 const LIKELIHOOD = ["low", "possible", "likely", "near-certain"];
@@ -14,28 +15,26 @@ const GRAVITY = ["negligible", "noticeable", "severe", "existential"];
 const TREATMENT = ["Reduce", "Accept", "Share", "Avoid"];         // ISO 27005 risk-treatment options
 const TREAT_STATUS = ["Proposed", "In progress", "Implemented", "Verified"];
 const RELIABILITY = ["very low", "low", "good", "very good"];
-const TACTICS = [
-  "Reconnaissance", "Resource Development", "Initial Access", "Execution", "Persistence",
-  "Privilege Escalation", "Defense Evasion", "Credential Access", "Discovery", "Lateral Movement",
-  "Collection", "Command and Control", "Exfiltration", "Impact",
-];
+// The tactic vocabulary is ATT&CK's, in its matrix order, from the generated reference.
+const TACTICS = [...ATTACK_TACTICS];
 
 /** Bumped whenever the default taxonomy's vocabulary grows in a way stored studies
- *  should pick up (see reconcileTaxonomy). 3 added the "Avoidance" measure effect class. */
-export const TAXONOMY_SCHEMA_VERSION = 3;
+ *  should pick up (see reconcileTaxonomy). 3 added the "Avoidance" measure effect class;
+ *  4 added the measure's "fails_with" field; 5 its "strength"; 6 its costs; 7 its ATT&CK mitigations. */
+export const TAXONOMY_SCHEMA_VERSION = 8;
 
 export const DEFAULT_TAXONOMY: Taxonomy = {
   schemaVersion: TAXONOMY_SCHEMA_VERSION,
   name: "EBIOS RM-inspired",
   description: "Default risk-analysis taxonomy: foundation, risk sources, strategic and operational scenarios, treatment.",
   groups: [
-    { key: "ws1", label: "Assets & Scope", description: "Business assets, supporting assets, feared events", color: "var(--color-workshop-1)" },
-    { key: "ws2", label: "Risk Sources", description: "Threat actors and their objectives", color: "var(--color-workshop-2)" },
-    { key: "ws3", label: "Strategic Scenarios", description: "Ecosystem stakeholders and attack paths", color: "var(--color-workshop-3)" },
-    { key: "ws4", label: "Operational Scenarios", description: "Kill-chains with TTPs (tactics, techniques and procedures)", color: "var(--color-workshop-4)" },
-    { key: "ws5", label: "Treatment", description: "Security measures and coverage", color: "var(--color-workshop-5)" },
-    { key: "quant", label: "Risk Quantification", description: "Monte-Carlo annual-loss simulation, derived from the qualitative model", color: "var(--teal-bright)" },
-    { key: "compliance", label: "Compliance", description: "Framework requirements and coverage", color: "var(--violet)" },
+    { key: "ws1", label: "Assets & Scope", short: "Assets", description: "Business assets, supporting assets, feared events", color: "var(--color-workshop-1)" },
+    { key: "ws2", label: "Risk Sources", short: "Risk sources", description: "Threat actors and their objectives", color: "var(--color-workshop-2)" },
+    { key: "ws3", label: "Strategic Scenarios", short: "Strategic", description: "Ecosystem stakeholders and attack paths", color: "var(--color-workshop-3)" },
+    { key: "ws4", label: "Operational Scenarios", short: "Operational", description: "Kill-chains with TTPs (tactics, techniques and procedures)", color: "var(--color-workshop-4)" },
+    { key: "ws5", label: "Treatment", short: "Treatment", description: "Security measures and coverage", color: "var(--color-workshop-5)" },
+    { key: "quant", label: "Risk Quantification", short: "Quantification", description: "Monte-Carlo annual-loss simulation, derived from the qualitative model", color: "var(--teal-bright)" },
+    { key: "compliance", label: "Compliance", short: "Compliance", description: "Framework requirements and coverage", color: "var(--violet)" },
   ],
   entityTypes: [
     {

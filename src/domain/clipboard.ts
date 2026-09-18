@@ -6,6 +6,8 @@ import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy
 import { t as tr, tParts } from "./i18n";
 import { columnFields, fieldLabel, getType, groupDescription, groupLabel, optionLabel, recordTitle, scaleLabel, scaleMax, typeLabel, typeLabelPlural } from "./taxonomy";
 import { shortVersion } from "./vocabulary";
+import { llmContext, quantSeed } from "./llmcontext";
+import { band, type Band } from "./viz";
 import { PRODUCT } from "../profile";
 import { deriveInputs, hasQuantification, meanOf } from "./quantModel";
 import { residualPos } from "./treatment";
@@ -94,6 +96,9 @@ export function workshopMarkdown(tax: Taxonomy, study: Study, groupKey: string):
   L.push("## Data");
   for (const t of types) L.push(registerMarkdown(tax, study, t.key));
 
+  // The same records once more, as the application stores them - the half that can come
+  // back through the import dialog.
+  L.push(llmContext(tax, study, types.map((t) => t.key)));
   return L.join("\n").trim() + "\n";
 }
 
@@ -190,7 +195,10 @@ export function riskMatrixSvg(tax: Taxonomy, study: Study, opts?: { posFn?: (e: 
   if (!items.length) return null;
   const pos = opts?.posFn ?? ((e: EntityRecord) => ({ x: Number(e.values[xF.key]) || 1, y: Number(e.values[yF.key]) || 1 }));
   const at = (x: number, y: number) => items.filter((e) => { const p = pos(e); return p.x === x && p.y === y; });
-  const colorFor = (r: number) => r < 0.3 ? "#2fa36f" : r < 0.55 ? "#e0a13a" : r < 0.8 ? "#dd7a33" : "#d1495b";
+  // The same bands as the screen, in the report's own palette. Its edges used to be its
+  // own (.3/.55/.8), which is how the report and the matrix on screen could paint one
+  // scenario two colours - and the screen's second band was a blue the report never had.
+  const colorFor = (r: number) => HEX_BAND[band(1 - r)];
 
   // Wider cells + a per-label chip so long scenario names stay readable, and a
   // self-contained light card background so dark text is legible on ANY report
@@ -228,10 +236,15 @@ export function riskMatrixSvg(tax: Taxonomy, study: Study, opts?: { posFn?: (e: 
 
 // Shared hex palette for embedded report SVGs (theme-independent light cards).
 const HEX = { green: "#2fa36f", amber: "#e0a13a", orange: "#dd7a33", red: "#d1495b", ink: "#1c2430", muted: "#5a6675", card: "#f7f8fb", edge: "#d7dbe3", track: "#e5e8ee" };
+/** The four bands of domain/viz, in the palette this file can actually ship: a report
+ *  travels without the stylesheet, so it cannot use the tokens - but the EDGES are the
+ *  same ones, read from the same function. */
+const HEX_BAND: Record<Band, string> = { good: HEX.green, fair: HEX.amber, poor: HEX.orange, bad: HEX.red };
+
 /** Good→bad colour on a scale value, respecting polarity (positive = high is good). */
 function barColor(v: number, max: number, positive = false): string {
-  const r = (v - 1) / Math.max(1, max - 1), bad = positive ? 1 - r : r;
-  return bad < 0.25 ? HEX.green : bad < 0.5 ? HEX.amber : bad < 0.75 ? HEX.orange : HEX.red;
+  const r = (v - 1) / Math.max(1, max - 1);
+  return HEX_BAND[band(positive ? r : 1 - r)];
 }
 
 /** Colour-coded horizontal bar chart of ALL scale fields of one record (attacker
@@ -929,7 +942,9 @@ function mdToHtml(md: string): string {
   const inline = (s: string) => esc(s)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    // An external link leaves the report otherwise - and the report is the tab.
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, t: string, h: string) =>
+      /^https?:/i.test(h) ? `<a href="${h}" target="_blank" rel="noopener noreferrer">${t}</a>` : `<a href="${h}">${t}</a>`)
     .replace(/_([^_\n]+)_/g, "<em>$1</em>");
   // Inside an entity card, an attribute list item ("**Label:** value") is rendered
   // as a field chip: an uppercase caption plus an elevated value. A trailing (n/m)
@@ -1417,9 +1432,10 @@ export function quantLlmMarkdown(tax: Taxonomy, study: Study): string {
     "- Published incidence measures NOTICED events, so every rate here is biased downward by",
     "  an unknown amount. The bias runs the same way for all actor classes, so orderings are",
     "  sturdier than levels.",
-    "- Correlated control failure is not modelled: two measures sharing an administrator,",
-    "  platform or bypass fail together, but their resistance is treated as independent.",
-    "  Correlation is modelled only on the attacker's side, via the single capability draw.",
+    "- Correlated control failure is modelled only where a measure names what it fails with;",
+    "  two measures sharing an administrator, platform or bypass that do not say so are",
+    "  treated as independent. The attacker's side is always correlated, via the single",
+    "  capability draw.",
     "- Loss is one figure, not decomposed into productivity, response, replacement, fines and",
     "  reputation. The cap on recovery stands in for that distinction.",
     "- Magnitude is scenario-level; routes ending at different assets would strictly be",
@@ -1428,5 +1444,8 @@ export function quantLlmMarkdown(tax: Taxonomy, study: Study): string {
     "  assurance measurement.",
     "- The output is a structured argument about relative magnitude, useful for comparing",
     "  scenarios and showing what a measure buys. It is not a prediction.", "");
+  // The scenarios, steps and measures once more as the application stores them - the
+  // half that can come back through the import dialog.
+  P(llmContext(tax, study, quantSeed(tax)));
   return L.join("\n");
 }

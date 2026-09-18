@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { t as tr } from "../domain/i18n";
 import { useEffect, type ReactNode } from "react";
+import { scaleColor } from "../domain/viz";
 
 const P = (d: string) => (
   <svg className="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -104,17 +105,6 @@ export function Dialog({
   );
 }
 
-// Colour a scale value on a good→bad ramp (green → amber → orange → red), the
-// same ramp as the kill-chain implementation bar. `positive` flips the direction:
-// for positive properties (implementation, resistance, …) a HIGH value is good.
-function sevColor(value: number, max: number, positive = false): string {
-  const r = (value - 1) / Math.max(1, max - 1);
-  const bad = positive ? 1 - r : r; // 0 = good, 1 = bad
-  if (bad < 0.25) return "var(--color-state-success)";
-  if (bad < 0.5) return "var(--color-state-warning)";
-  if (bad < 0.75) return "color-mix(in oklch, var(--color-state-warning) 45%, var(--color-state-error))";
-  return "var(--color-state-error)";
-}
 
 /** The count a button is allowed to show.
  *
@@ -141,7 +131,7 @@ export function ScaleInput({
 }
 
 export function ScaleBadge({ value, max, label, positive }: { value: number; max: number; label: string; positive?: boolean }) {
-  const color = sevColor(value, max, positive);
+  const color = scaleColor(value, max, positive);
   return (
     <span className="badge" title={label}>
       <span className="scale">
@@ -162,7 +152,7 @@ export function ScaleBadge({ value, max, label, positive }: { value: number; max
 // Used in the expanded detail view so the same indicator isn't shown twice as the
 // row's horizontal badge.
 export function ScaleBars({ value, max, label, positive }: { value: number; max: number; label: string; positive?: boolean }) {
-  const color = sevColor(value, max, positive);
+  const color = scaleColor(value, max, positive);
   return (
     <span className="scalebars-wrap" title={label}>
       <span className="hbar"><span className="hbar-fill" style={{ width: `${(value / max) * 100}%`, background: color }} /></span>
@@ -206,7 +196,7 @@ export function useDismissOnEscape(open: boolean, close: () => void): void {
 }
 
 export function MultiSelect({
-  options, selected, onChange, placeholder = "add …", emptyHint, onClickChip, renderChipExtra, action,
+  options, selected, onChange, placeholder = "add …", emptyHint, onClickChip, renderChipExtra, chipClass, action,
 }: {
   options: { id: string; label: string; group?: string }[];
   selected: string[];
@@ -217,6 +207,8 @@ export function MultiSelect({
   onClickChip?: (id: string) => void;
   /** Optional extra content rendered inside each chip (e.g. a status mini-bar). */
   renderChipExtra?: (id: string) => import("react").ReactNode;
+  /** An extra class for a chip, for a state the chip's ground should show (e.g. hatched). */
+  chipClass?: (id: string) => string;
   /** One more entry at the foot of the list, for what is NOT in it yet - a catalogue to
    *  choose from, say. Belongs here rather than beside the control: the list is where
    *  someone looks for a thing, so it is where "not there? get one" has to be. */
@@ -227,7 +219,7 @@ export function MultiSelect({
   return (
     <div className="multi">
       {selected.map((id) => (
-        <span className={"chip" + (onClickChip ? " clickable" : "")} key={id}
+        <span className={"chip" + (onClickChip ? " clickable" : "") + (chipClass?.(id) ? " " + chipClass(id) : "")} key={id}
           role={onClickChip ? "button" : undefined} tabIndex={onClickChip ? 0 : undefined}
           title={onClickChip ? "Open" : undefined}
           onClick={onClickChip ? () => onClickChip(id) : undefined}

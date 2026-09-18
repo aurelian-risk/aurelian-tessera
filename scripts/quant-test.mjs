@@ -10,7 +10,7 @@
 import { pathToFileURL } from "node:url";
 
 const need = (n) => { const v = process.env[n]; if (!v) { console.error(`set ${n}`); process.exit(2); } return v; };
-const { chainOf, coverageOf, deriveInputs } = await import(pathToFileURL(need("MOD_Q")).href);
+const { chainOf, coverageOf, deriveInputs, stepDefence, stepPotential } = await import(pathToFileURL(need("MOD_Q")).href);
 const { simulate } = await import(pathToFileURL(need("MOD_MC")).href);
 const { DEFAULT_TAXONOMY } = await import(pathToFileURL(need("MOD_TAX")).href);
 const { treatmentEffect, residualPos } = await import(pathToFileURL(need("MOD_T")).href);
@@ -524,6 +524,58 @@ const plain = vulnOf(undefined);
     entryTechnique: "T1190 Exploit Public-Facing Application" }), F);
   ok("the multipliers together stay inside the cap", worst.total <= F.cap);
   band("...and the busiest plausible case is still a handful a year, not weekly", worst.total, 1, 12);
+}
+
+// ── recorded, but not in force ───────────────────────────────────────────────
+//
+// A measure that is only planned is worth nothing, and that zero used to be the whole
+// story: the tactic heatmap drew it exactly like a step nobody had treated, while the
+// mitigation table called the step defended because SOMETHING pointed at it. Both views
+// now read the pair below, so they cannot say different things about the same step.
+{
+  const s1 = step("s1", 1);
+  const planned = (id, level, status) => rec(id, "security_measure",
+    { name: id, measure_type: "Preventive", status, implementation_level: level, covers: ["s1"] });
+
+  const covOf = (extra) => coverageOf(study([OP, s1, ...extra]), tax, OP).steps[0];
+
+  const bare = covOf([]);
+  ok("a step nobody has treated is undefended", stepDefence(bare) === 0);
+  ok("...and has nothing pending either", stepPotential(tax, bare) === 0);
+
+  const onPaper = covOf([planned("m1", 1, "Planned")]);       // level 1 = "none"
+  ok("a measure that is only planned defends nothing today", stepDefence(onPaper) === 0);
+  ok("...but the step is not the same as an untreated one", stepPotential(tax, onPaper) > 0.5,
+    String(stepPotential(tax, onPaper)));
+
+  const working = covOf([planned("m2", 3, "Implemented")]);
+  ok("a measure in force defends the step", stepDefence(working) > 0);
+  ok("...and adds nothing pending, though it is short of the ceiling",
+    Math.abs(stepPotential(tax, working) - stepDefence(working)) < 1e-9,
+    `${stepPotential(tax, working)} vs ${stepDefence(working)}`);
+
+  const both = covOf([planned("m3", 3, "Implemented"), planned("m4", 1, "Planned")]);
+  ok("a planned measure beside a working one shows as the room it would add",
+    stepPotential(tax, both) > stepDefence(both) && stepDefence(both) > 0,
+    `${stepDefence(both)} → ${stepPotential(tax, both)}`);
+
+  // The lifecycle is what gets lifted, and it is lifted wherever it withholds something -
+  // not only where it withholds everything. This is the case the first cut was blind to:
+  // a control that is half rolled out and still only planned is working AND pending.
+  const halfPlanned = covOf([planned("m6", 2, "Planned")]);
+  ok("a planned measure that is partly rolled out defends something today",
+    stepDefence(halfPlanned) > 0.1 && stepDefence(halfPlanned) < 0.2, String(stepDefence(halfPlanned)));
+  ok("...and is still marked as withheld, at twice the figure",
+    Math.abs(stepPotential(tax, halfPlanned) - 2 * stepDefence(halfPlanned)) < 1e-9,
+    `${stepDefence(halfPlanned)} → ${stepPotential(tax, halfPlanned)}`);
+  const rec2 = covOf([planned("m7", 3, "Recommended")]);
+  ok("a recommended measure shows the far bigger part it withholds",
+    stepPotential(tax, rec2) / stepDefence(rec2) > 6, `${stepDefence(rec2)} → ${stepPotential(tax, rec2)}`);
+
+  // Class discipline holds here too, or the figure would promise defence from a backup.
+  const backup = covOf([rec("m5", "security_measure",
+    { name: "m5", measure_type: "Corrective", status: "Planned", implementation_level: 1, covers: ["s1"] })]);
+  ok("a planned CORRECTIVE measure promises no defence", stepPotential(tax, backup) === 0);
 }
 
 console.log(`\n${pass}/${pass + fail} quantification assertions passed · ${fail} failed`);

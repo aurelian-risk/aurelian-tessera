@@ -15,8 +15,8 @@ import {
   CALIBRATION_DOC, DEFAULT_CALIBRATION, SECTORS, isDefaultCalibration,
   type Band as Band2, type SectorRow, type TableDoc,
 } from "../domain/calibration";
-import { MITRE_TECHNIQUES } from "../domain/mitre";
-import { EFFECT_CHANNEL } from "../domain/controls";
+import { MITRE_TECHNIQUES, TACTICS } from "../domain/mitre";
+import { effectChannel } from "../domain/controls";
 import { hasQuantification } from "../domain/quantModel";
 import { Dial, DialRow, Seg } from "./CalInputs";
 import { DepthCurve } from "./CalDepth";
@@ -100,7 +100,7 @@ const GRADE_HINT: Record<string, string> = {
   judgement: "No published figure. Set by reasoning.",
 };
 /** The tactics the bundled reference knows, in the order it lists them. */
-const TACTIC_NAMES = [...new Set(MITRE_TECHNIQUES.map((t) => t.tactic))];
+const TACTIC_NAMES = TACTICS;
 
 /** `scope` decides which tables are shown. The quantification workshop takes the whole
  *  calibration; the treatment workshop takes only what a measure is worth, because that
@@ -436,7 +436,7 @@ export function CalibrationView({ study, color, scope = "all" }: {
           <div className="cal-class" key={cls}>
             <p className="cal-class-h">
               <b>{cls}</b>
-              <em>{EFFECT_CHANNEL[cls]}</em>
+              <em>{effectChannel(cls)}</em>
             </p>
             <div className="dial-rows">
               {rows.map(([k, name, hint]) => (

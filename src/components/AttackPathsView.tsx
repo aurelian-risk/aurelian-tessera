@@ -6,7 +6,7 @@
 // explicit predecessor that points at a step in another scenario. A *pass-through*
 // asset reached by more than one visible chain (i.e. attacks continue through it, so
 // it is not merely a shared final target) is highlighted as a choke point.
-import { useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { t as tr } from "../domain/i18n";
 import type { EntityRecord, Study, Taxonomy } from "../domain/types";
 import { getType, recordTitle, typeLabel } from "../domain/taxonomy";
@@ -33,6 +33,25 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
   const foldKey = foldScope(study.id, "attack-paths");
   const [collapsed, setCollapsed] = useState(() => getFolds(foldKey).has("panel"));
   const toggleCollapsed = () => setCollapsed((c) => { setFolds(foldKey, c ? new Set() : new Set(["panel"])); return !c; });
+
+  // Zoom and pan, the way the flow chart has them: the wheel zooms about the pointer, a
+  // drag on the ground pans, both on the same scroller. CSS `zoom` for the same reason as
+  // there - it scales the scrollable area on both axes, a transform leaves the height
+  // standing. The graph is laid out in unzoomed pixels (`W`, `H`, node `left`/`top`) and
+  // the browser scales the lot, so nothing here has to know the ratio but the scroll.
+  const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
+  zoomRef.current = zoom;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<{ px: number; py: number; cx: number; cy: number } | null>(null);
+  const panRef = useRef<{ x: number; y: number; left: number; top: number; moved: boolean } | null>(null);
+  useLayoutEffect(() => {
+    const sc = scrollRef.current, a = anchorRef.current;
+    if (!sc || !a) return;
+    anchorRef.current = null;
+    sc.scrollLeft = a.px * zoom - a.cx;
+    sc.scrollTop = a.py * zoom - a.cy;
+  }, [zoom]);
 
   const model = useMemo(() => {
     const stepType = tax.entityTypes.find((t) => t.fields.some((f) => f.type === "ref" && f.refType) && t.fields.some((f) => f.type === "number"));
@@ -163,6 +182,26 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
   const choke = (n: Node) => n.kind !== "step" && [...n.chains].filter(visibleChain).length >= 2 && hasOut.has(n.id);
   const chokeCount = vis.filter(choke).length;
 
+  // By hand, not onWheel: React's wheel listeners are passive, and a passive listener
+  // cannot keep the page from scrolling along with the zoom (measured on the flow chart).
+  useEffect(() => {
+    const sc = scrollRef.current; if (!sc) return;
+    const onWheel = (e: WheelEvent) => {
+      const z0 = zoomRef.current;
+      const z1 = Math.min(2, Math.max(0.4, z0 * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+      if (z1 === z0) return;
+      e.preventDefault();
+      const r = sc.getBoundingClientRect();
+      anchorRef.current = { px: (sc.scrollLeft + e.clientX - r.left) / z0, py: (sc.scrollTop + e.clientY - r.top) / z0,
+        cx: e.clientX - r.left, cy: e.clientY - r.top };
+      zoomRef.current = z1;
+      setZoom(z1);
+    };
+    sc.addEventListener("wheel", onWheel, { passive: false });
+    return () => sc.removeEventListener("wheel", onWheel);
+  // Re-attached whenever the scroller is (re)mounted: it exists only while a chain is
+  // shown, and a listener bound before the first chain was toggled on bound to nothing.
+  }, [collapsed, vis.length > 0]);
   const toggle = (id: string) => setShown((h) => { const n = new Set(h); n.has(id) ? n.delete(id) : n.add(id); return n; });
   // The edges are drawn from the same box height the boxes are drawn at. Reading NH here
   // while the boxes had shrunk is how a line ends up meeting nothing.
@@ -193,8 +232,26 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
         <div className="empty" style={{ padding: "44px 16px", textAlign: "center" }}>{tr('ui.attackpaths.toggle-a-scenario-above', 'Toggle a scenario above to display its attack path, then add more to see where they converge.')}</div>
       ) : (
       <div className="ap-stage">
-        <div className="ap-scroll">
-          <div className="ap-graph" style={{ width: W, height: H }}>
+        {zoom !== 1 && (
+          <button className="btn ghost sm ap-zoom" onClick={() => { zoomRef.current = 1; setZoom(1); }}
+            title={tr("ui.attackpaths.zoom-reset", "Back to 1:1")}>{Math.round(zoom * 100)} %</button>
+        )}
+        <div className="ap-scroll" ref={scrollRef}
+          onPointerDown={(e) => {
+            if (e.button !== 0 || (e.target as HTMLElement).closest(".ap-node, button")) return;
+            const sc = e.currentTarget;
+            panRef.current = { x: e.clientX, y: e.clientY, left: sc.scrollLeft, top: sc.scrollTop, moved: false };
+            sc.setPointerCapture(e.pointerId);
+            sc.classList.add("panning");
+          }}
+          onPointerMove={(e) => {
+            const p = panRef.current; if (!p) return;
+            p.moved = true;
+            e.currentTarget.scrollLeft = p.left - (e.clientX - p.x);
+            e.currentTarget.scrollTop = p.top - (e.clientY - p.y);
+          }}
+          onPointerUp={(e) => { if (!panRef.current) return; panRef.current = null; e.currentTarget.classList.remove("panning"); }}>
+          <div className="ap-graph" style={{ width: W, height: H, zoom }}>
             <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="ap-edges">
               <defs>
                 {/* kill-chain arrow inherits each edge's chain colour via context-stroke */}
@@ -247,6 +304,7 @@ export function AttackPathsView({ tax, study, color }: { tax: Taxonomy; study: S
               name and state only, tactic and technique on hover. Show fewer scenarios for the full box.</div>
           )}
         </div>
+        <div className="ap-hint">{tr("ui.attackpaths.zoom-hint", "scroll to zoom, drag to pan, click a node to open it")}</div>
       </div>
       )}
 

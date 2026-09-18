@@ -9,7 +9,7 @@ import { createPortal } from "react-dom";
 import type { EntityRecord, Taxonomy } from "../domain/types";
 import { fieldLabel, getType, recordTitle, scaleLabel, scaleMax } from "../domain/taxonomy";
 import type { Derived } from "../domain/quantModel";
-import { effectClassOf, EFFECT_CHANNEL } from "../domain/controls";
+import { effectClassOf, effectChannel } from "../domain/controls";
 import type { QuantInputs, Range } from "../domain/montecarlo";
 import type { FConf } from "./QuantificationView";
 import { DistInput, fmtVal, type Unit } from "./DistInput";
@@ -199,7 +199,7 @@ export function FactorTrace({ fkey, range, vals, derived, tax, unit, conf, accen
                     <span className="bad">{cs.terminal && sc?.detection ? "detected only once the damage is done" : "nothing here - the attacker walks through"}</span>
                   )}
                   {sc?.measures.map((mm) => (
-                    <span className="ft-step-m" key={mm.id} title={`${effectClassOf(mm)}: ${EFFECT_CHANNEL[effectClassOf(mm)]}`}>
+                    <span className="ft-step-m" key={mm.id} title={`${effectClassOf(mm)}: ${effectChannel(effectClassOf(mm))}`}>
                       {recordTitle(getType(tax, mm.type)!, mm)}
                       <i className="ft-cls">{effectClassOf(mm)}</i>
                     </span>

@@ -42,7 +42,7 @@ mkdirSync(shots, { recursive: true });
 
 const errors = [];
 const checks = [];
-const ok = (name, cond) => { checks.push({ name, cond }); console.log(`${cond ? "✓" : "✗"} ${name}`); };
+const ok = (name, cond, detail) => { checks.push({ name, cond }); console.log(`${cond ? "✓" : "✗"} ${name}${!cond && detail ? ` — ${detail}` : ""}`); };
 
 // The workshops, by position in DEFAULT_TAXONOMY.groups. The keys behind them are
 // gc / stm / risk / ums / perf / vrb. There is no quantification workshop: the
@@ -1135,6 +1135,19 @@ try {
   // Copy-for-LLM button present on a workshop
   await openWs(WS.STM, 150);
   ok("copy-for-LLM button present", await page.locator(".group-toolbar button", { hasText: "Copy for LLM" }).count() > 0);
+  // What the button copies carries the records once more in the shape the import reads
+  // back - a fenced YAML block with the study id and the records as id, type, values.
+  {
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.locator(".group-toolbar button", { hasText: "Copy for LLM" }).click();
+    await page.waitForTimeout(400);
+    const copied = await page.evaluate(() => navigator.clipboard.readText()).catch(() => "");
+    const yamlBlocks = [...copied.matchAll(/```yaml\n([\s\S]*?)```/g)].map((m) => m[1]);
+    const records = yamlBlocks.find((b) => /^studies:/m.test(b)) ?? "";
+    ok("...and the copied text ends in the records as the import reads them",
+      yamlBlocks.length >= 2 && /entityTypes:/.test(yamlBlocks[0]) && /- id: /.test(records) && /type: supporting_asset/.test(records),
+      `${yamlBlocks.length} yaml blocks, ${copied.length} chars`);
+  }
 
   // Flow (event-flow swimlane)
   await page.locator(".ws-tab", { hasText: "Flow" }).click();
@@ -1571,7 +1584,7 @@ try {
   ok('clear extra returns to a single focus', (await page.locator('.graph-index .gi-e.active').count()) === 1);
 
   // Import dialog: additive/destructive + paste source
-  await page.locator(".topbar button", { hasText: "Export / Import" }).click();
+  await page.locator(".topbar button", { hasText: "Import / Export" }).click();
   await page.waitForTimeout(150);
   await page.locator(".menu-item", { hasText: "Import data" }).click();
   await page.waitForTimeout(200);
@@ -2064,7 +2077,7 @@ try {
       await page.getByText("Riverbend Municipal Utilities").first().click();
       await page.waitForSelector(".ws-tabs", { timeout: 10000 });
     }
-    await page.locator("button", { hasText: "Export / Import" }).first().click();
+    await page.locator("button", { hasText: "Import / Export" }).first().click();
     await page.waitForSelector(".menu-pop", { timeout: 8000 });
     const menu = page.locator(".menu-pop").first();
     const body = await menu.innerText().catch(() => "");
@@ -2074,7 +2087,7 @@ try {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(250);
     ok("Escape closes the export menu", (await page.locator(".menu-pop").count()) === 0);
-    await page.locator("button", { hasText: "Export / Import" }).first().click();
+    await page.locator("button", { hasText: "Import / Export" }).first().click();
     await page.waitForSelector(".menu-pop", { timeout: 8000 });
     // Format, protection and recipients used to be asked here AND in a dialog beside it -
     // two places for one answer. They live in the dialog now; the menu is the way in.
@@ -2154,7 +2167,7 @@ try {
     await k.getByRole("button", { name: /Load sample study|Beispielstudie laden/i }).click();
     await k.waitForSelector(".ws-tabs", { timeout: 10000 });
     await k.waitForTimeout(400);
-    await k.getByRole("button", { name: /Export \/ Import/ }).click();
+    await k.getByRole("button", { name: /Import \/ Export/ }).click();
     await k.waitForTimeout(300);
     await k.locator(".menu-item", { hasText: /Export/ }).first().click();
     await k.waitForSelector(".modal-lg", { timeout: 10000 });
@@ -2188,7 +2201,7 @@ try {
     // Forgetting the key while the dialog is open cannot leave it ticked: at packing time
     // the kid drops out silently, and where it was the only one the file falls through to
     // no encryption at all. (Exporting closes the dialog, so it is opened again first.)
-    await k.getByRole("button", { name: /Export \/ Import/ }).click();
+    await k.getByRole("button", { name: /Import \/ Export/ }).click();
     await k.waitForTimeout(300);
     await k.locator(".menu-item", { hasText: /Export/ }).first().click();
     await k.waitForSelector(".modal-lg", { timeout: 10000 });
@@ -2237,7 +2250,7 @@ try {
           text: new TextDecoder().decode(bytes), file: new Blob([bytes], { type: "application/pdf" }) });
         tx.oncomplete = res; });
     });
-    await a.getByRole("button", { name: /Export \/ Import/ }).click();
+    await a.getByRole("button", { name: /Import \/ Export/ }).click();
     await a.waitForTimeout(300);
     await a.locator(".menu-item", { hasText: /Export/ }).first().click();
     await a.waitForSelector(".modal-lg", { timeout: 10000 });
@@ -2281,7 +2294,7 @@ try {
     c.on("pageerror", (e) => errors.push("pageerror: " + e.message));
     await c.goto(file); await c.waitForSelector("#root .app", { timeout: 10000 });
     // In a profile with no study the menu is the sidebar's "Data", not a study's
-    // "Export / Import" - the second is only drawn beside a study.
+    // "Import / Export" - the second is only drawn beside a study.
     // In a profile with no study the menu is the sidebar's "Data"; the import opens a
     // dialog first and the file picker sits inside it, so the chooser is armed there.
     await c.getByRole("button", { name: /^Data/ }).first().click();
@@ -2307,6 +2320,156 @@ try {
     ok("...with the document's text and its source file, not only a reference",
       !!back && back.text > 3000 && back.file > 3000, JSON.stringify(back));
     await ctx2.close();
+  }
+
+  // ── Taken from Aurelian Lite, 2026-09: tables, search, the workshop bar, the
+  //    mitigation views, threat intelligence ─────────────────────────────────────
+  //
+  // Each of these is a feature the parent built after 0.6.7 and this product took by
+  // cherry-pick. Asserted here in this product's own terms - its registers, its example
+  // study, its workshop names - so a later pick that breaks one says so here.
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const p = await ctx.newPage();
+    p.on("console", (m) => { if (m.type() === "error" && !benign(m.text())) errors.push(m.text()); });
+    p.on("pageerror", (e) => errors.push("pageerror: " + e.message));
+    await p.goto(file);
+    await p.waitForSelector("#root .app", { timeout: 10000 });
+    await p.getByText("Load sample study").click();
+    await p.waitForSelector(".ws-tabs", { timeout: 10000 });
+    const ws = (i) => p.locator(".ws-tabs .ws-steps .ws-tab").nth(i);
+    const sect = (heading) => p.locator(".panel", { has: p.locator(".panel-head h3", { hasText: heading }) });
+
+    // The workshop bar: one row of steps, the views a switch apart from them.
+    ok("workshop bar: the steps stand in one row and the views in a switch beside them",
+      (await p.locator("nav.ws-tabs .ws-steps .ws-tab").count()) === WS_LABELS.length
+      && (await p.locator("nav.ws-tabs .ws-views .ws-tab").count()) === 3);
+    await p.setViewportSize({ width: 1100, height: 900 });
+    await p.waitForTimeout(200);
+    const shortShown = await p.locator(".ws-steps .ws-tab .t-short").first().evaluate((e) => getComputedStyle(e).display !== "none");
+    const fullHidden = await p.locator(".ws-steps .ws-tab .t-title").first().evaluate((e) => getComputedStyle(e).display === "none");
+    ok("...and on a narrow window the steps keep their number and shorten their name", shortShown && fullHidden);
+    ok("...still in one row", (await p.locator("nav.ws-tabs").evaluate((n) => n.getBoundingClientRect().height)) < 70);
+    await p.setViewportSize({ width: 1440, height: 900 });
+
+    // Tables: a column head orders, a column can be put away, and only the catalogue
+    // tables carry a search.
+    await ws(WS.STM).click(); await p.waitForTimeout(400);
+    const reqs = sect("Requirements");
+    const head = reqs.locator("thead th.sortable").nth(1);
+    const before = await reqs.locator("tbody tr.row-clickable td:first-child").evaluateAll((els) => els.slice(0, 8).map((e) => e.textContent.trim()));
+    await head.click(); await p.waitForTimeout(250);
+    const asc = await reqs.locator("tbody tr.row-clickable td:first-child").evaluateAll((els) => els.slice(0, 8).map((e) => e.textContent.trim()));
+    ok("tables: a column head orders the register", (await head.getAttribute("aria-sort")) === "ascending" && asc.join() !== before.join());
+    await head.click(); await p.waitForTimeout(250);
+    ok("...a second press reverses it", (await head.getAttribute("aria-sort")) === "descending");
+    await head.click(); await p.waitForTimeout(250);
+    const back = await reqs.locator("tbody tr.row-clickable td:first-child").evaluateAll((els) => els.slice(0, 8).map((e) => e.textContent.trim()));
+    ok("...and a third goes back to the order the records were written in", (await head.getAttribute("aria-sort")) === "none" && back.join() === before.join());
+    ok("...the catalogue register carries a search, the hand-written ones do not",
+      (await reqs.locator(".tbl-search").count()) === 1 && (await sect("Assets").locator(".tbl-search").count()) === 0);
+    const cols = sect("Assets").locator(".cols-btn");
+    ok("...every register with columns to choose from has the column menu", (await cols.count()) === 1);
+    const thBefore = await sect("Assets").locator("thead th").count();
+    await cols.click(); await p.waitForTimeout(150);
+    ok("...which opens inside the panel rather than under the sidebar",
+      await p.locator(".facet-pop").evaluate((e) => { const r = e.getBoundingClientRect(), pr = e.closest(".panel").getBoundingClientRect(); return r.left >= pr.left - 1 && r.right <= pr.right + 1; }));
+    await p.locator(".facet-pop .facet-opt").nth(1).click(); await p.waitForTimeout(150);
+    ok("...putting a column away takes it out of the table", (await sect("Assets").locator("thead th").count()) === thBefore - 1
+      && /\d+\/\d+/.test(await cols.innerText()));
+    await p.keyboard.press("Escape");
+    // The arrangement is written 400 ms after the last change (viewstate.ts coalesces).
+    await p.waitForTimeout(700);
+    await p.reload(); await p.waitForSelector(".ws-tabs", { timeout: 10000 });
+    await ws(WS.STM).click(); await p.waitForTimeout(400);
+    ok("...and it stays away when the reader comes back", (await sect("Assets").locator("thead th").count()) === thBefore - 1);
+    await sect("Assets").locator(".cols-btn").click(); await p.waitForTimeout(150);
+    await p.locator(".facet-pop .facet-opt.more").click(); await p.waitForTimeout(150);
+    await p.keyboard.press("Escape");
+    ok("...until every column is asked for again", (await sect("Assets").locator("thead th").count()) === thBefore);
+
+    // One search across every workshop.
+    await p.keyboard.press("Control+k"); await p.waitForTimeout(250);
+    ok("search: Ctrl-K opens one search over the study", (await p.locator(".gs-sheet").count()) === 1);
+    await p.locator(".gs-input").fill("maintenance"); await p.waitForTimeout(400);
+    const hits = await p.locator(".gs-row").count();
+    ok("...a word that runs through the example study is found more than once", hits >= 4, String(hits));
+    const chips = await p.locator(".gs-facets .gs-chip").evaluateAll((els) => els.filter((e) => Number(e.querySelector(".gs-n")?.textContent) > 0).length);
+    ok("...in more than one workshop", chips >= 2, String(chips));
+    await p.locator(".gs-row").first().click(); await p.waitForTimeout(200);
+    ok("...a row unfolds to a preview that says where the word was found", (await p.locator(".gs-row.open .gs-preview").count()) === 1);
+    await p.locator(".gs-go").first().click(); await p.waitForTimeout(700);
+    ok("...and a hit goes to its row, which is opened and marked", (await p.locator("tr.row-revealed").count()) === 1);
+    ok("...with the sheet closed behind it", (await p.locator(".gs-sheet").count()) === 0);
+
+    // The mitigation views: a measure recorded but not in force is not nothing.
+    await ws(WS.UMS).click(); await p.waitForTimeout(500);
+    ok("mitigation: the tactic map's key names what is recorded but not in force",
+      (await p.locator(".hm-key-pending").count()) >= 1 && (await p.locator(".hm-cell").count()) > 0);
+    ok("...a measure's class is a label, not struck through",
+      (await p.locator(".dd-cls").count()) === 0 || await p.locator(".dd-cls").first().evaluate((e) => getComputedStyle(e).textDecorationLine !== "line-through"));
+    await ws(WS.RISK).click(); await p.waitForTimeout(500);
+    ok("...and every cell of the risk matrix is the same size", await p.locator(".rm-cell").evaluateAll((els) => {
+      const hs = new Set(els.map((e) => Math.round(e.getBoundingClientRect().height)));
+      return els.length > 0 && hs.size === 1;
+    }));
+
+    // Threat intelligence: the synthetic bundle in samples/, walked from the actor, its
+    // campaign and techniques chosen, landed, reviewed additively and applied - and
+    // applied a second time, which must add nothing.
+    const story = readFileSync(new URL("../samples/stix-story.json", import.meta.url), "utf8");
+    const run = async (first) => {
+      await p.locator(".topbar button", { hasText: "Import / Export" }).first().click(); await p.waitForTimeout(250);
+      await p.locator(".menu-item", { hasText: "Import data" }).click();
+      await p.waitForSelector(".modal-lg");
+      await p.locator(".modal-lg textarea").fill(story);
+      await p.getByText("Preview pasted →").click();
+      await p.waitForSelector(".stix-columns", { timeout: 10000 });
+      const col = (i) => p.locator(".stix-col").nth(i);
+      if (first) ok("STIX: the import dialog recognises a bundle in the paste and opens the columns",
+        (await p.locator(".modal-lg.stix").count()) === 1 && (await p.locator(".stix-row-type").count()) >= 12);
+      await p.locator(".stix-row-type", { hasText: "threat-actor" }).click(); await p.waitForTimeout(300);
+      await col(1).locator(".stix-row-open", { hasText: "Vireo Syndicate" }).click(); await p.waitForTimeout(300);
+      if (first) ok("...an actor's column lists what the bundle relates it to, grouped by relation",
+        (await p.locator(".stix-col").count()) === 3 && (await col(2).locator(".stix-group-head.rel").count()) >= 2);
+      await col(2).locator(".stix-group-head.rel", { hasText: "attack-pattern" }).locator("input").click();
+      await col(2).locator(".stix-group-head.rel", { hasText: "campaign" }).locator("input").click();
+      await col(2).locator(".stix-card-name input").click(); await p.waitForTimeout(200);
+      if (first) ok("...the tray counts the choice and names only the workshops that gain",
+        /9 chosen → 9 records/.test((await p.locator(".stix-tray-line").innerText()).replace(/\s+/g, " "))
+        && (await p.locator(".stix-tray .stix-ws-pill").allInnerTexts()).join(" ").includes("Risk Consideration"));
+      await p.getByRole("button", { name: /^Landing/ }).click();
+      await p.waitForSelector(".stix-landing");
+      if (first) {
+        const gaps = await p.locator(".stix-rec-head .stix-gap").evaluateAll((els) => els.map((e) => e.textContent.trim()));
+        ok("STIX landing: the steps say they have no scenario yet", gaps.length >= 7);
+      }
+      await p.locator(".stix-scn select").selectOption("@campaign"); await p.waitForTimeout(200);
+      if (first) {
+        ok("...attaching them to the campaign closes those gaps", (await p.locator(".stix-rec-head .stix-gap").count()) === 0);
+        const heads = await p.locator(".stix-chain-head").allInnerTexts();
+        ok("...the chain is previewed in tactic order, with the tactics ATT&CK v19 names",
+          heads.join().toLowerCase() === "initial access,execution,persistence,stealth,lateral movement,exfiltration,impact", heads.join());
+        ok("...techniques the example's chain already has are named as touches", (await p.locator(".stix-touch").count()) >= 1);
+      }
+      await p.getByRole("button", { name: /Review import/ }).click();
+      await p.waitForSelector("text=Review changes");
+      const body = await p.locator(".modal-lg").first().innerText();
+      if (first) ok("STIX review: additive only, and nine records added",
+        (await p.locator(".import-modes-inline label").allInnerTexts()).join() === "Additive" && /\+9 added/.test(body));
+      else ok("STIX: importing the same selection again changes nothing", /\+0 added/.test(body) && /~0 changed/.test(body), body.match(/\+\d+ added[^\n]*/)?.[0]);
+      await p.getByRole("button", { name: /Apply changes/ }).click();
+      await p.waitForTimeout(600);
+    };
+    await run(true);
+    await ws(WS.RISK).click(); await p.waitForTimeout(500);
+    await p.locator(".panel", { has: p.locator("text=Operation Bedside") }).locator("text=Operation Bedside").first().click(); await p.waitForTimeout(600);
+    const lane = await p.locator(".kc-tile .kc-step").evaluateAll((els) => els.map((e) => e.textContent.replace(/\s+/g, " ").trim()));
+    ok("...the campaign is an attack scenario whose steps lie in tactic order, the revoked technique read through to its successor",
+      lane.length === 7 && /^Spearphishing Attachment/.test(lane[0]) && /T1685/.test(lane[3]) && /Data Encrypted for Impact/.test(lane[6]), lane.join(" | "));
+    ok("...and the actor is a risk source of this study", (await p.locator("text=Vireo Syndicate").count()) >= 1);
+    await run(false);
+    await ctx.close();
   }
 
   const errorsBefore = errors.length;
@@ -2795,7 +2958,7 @@ try {
     // study still open, which is what the persistence is for.
     await page.goto(file);
     await page.waitForTimeout(900);
-    await page.locator(".topbar button", { hasText: "Export / Import" }).first().click({ timeout: 15000 });
+    await page.locator(".topbar button", { hasText: "Import / Export" }).first().click({ timeout: 15000 });
     await page.waitForTimeout(250);
     await page.locator(".menu-item", { hasText: "Import data" }).click();
     await page.waitForTimeout(400);

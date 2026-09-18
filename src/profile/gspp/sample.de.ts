@@ -292,6 +292,7 @@ export const SAMPLE_DE: Record<string, Record<string, string>> = {
   "security_measure/Multi-factor authentication for remote-maintenance access": {
     name: "Mehrfaktor-Authentisierung für den Fernwartungszugang",
     description: "Ein zweiter Faktor für jeden Zugriff des Herstellers, je Sitzung freigegeben.",
+    mitigations: "M1032",
     verantwortlich: "IT-Betrieb",
     termin: "2026-10-31",
   },
@@ -303,6 +304,7 @@ export const SAMPLE_DE: Record<string, Record<string, string>> = {
   "security_measure/Separation of the telecontrol network from the office IT": {
     name: "Trennung des Fernwirknetzes von der Büro-IT",
     description: "Getrennte Übertragungswege und ein kontrollierter Übergang zwischen den Zonen.",
+    mitigations: "M1030",
     verantwortlich: "Netzbetrieb",
   },
   "security_measure/Evaluation of the remote-maintenance logs": {

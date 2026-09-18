@@ -16,8 +16,6 @@
 // three out as one string would make a fourth category that no other row is ever in.
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue } from "./types";
 
-/** Below this many rows a table is readable as it stands, and a toolbar is clutter. */
-export const TOOLBAR_MIN_ROWS = 8;
 /** More distinct values than this and the chips become their own haystack. */
 const MAX_FACET_VALUES = 12;
 /** References are held to a wider limit. Their values are records the reader named, and
@@ -110,6 +108,63 @@ export function filterItems(items: EntityRecord[], type: EntityTypeDef, query: s
   if (!q && !Object.values(sel).some((v) => v?.length)) return items;
   return items.filter((r) =>
     matchesSelection(type, r, sel, display) && (!q || matchesQuery(haystack(type, r, display), q)));
+}
+
+export type Sort = { key: string; dir: "asc" | "desc" };
+
+/** Order a table by one column.
+ *
+ *  Three rules, and each of them is the difference between an order and a shuffle:
+ *
+ *  · An ENUM sorts by the order its options are declared in, not alphabetically. "high,
+ *    low, medium" is the alphabet's answer to a scale and it is useless - the taxonomy
+ *    already says which end is which, so the column reads low → high the way the field
+ *    was defined.
+ *  · A NUMBER sorts as a number. "10" before "9" is what comparing the text gives.
+ *  · An EMPTY value sorts LAST in both directions. A hole is not a small value, and
+ *    reversing the order should not fill the top of the table with blanks.
+ *
+ *  Stable: equal rows keep the order they came in, so sorting by a coarse column leaves
+ *  whatever the previous arrangement was intact underneath.
+ */
+export function sortItems(items: EntityRecord[], type: EntityTypeDef, sort: Sort | null,
+  display: Display, titleOf: (r: EntityRecord) => string): EntityRecord[] {
+  if (!sort) return items;
+  const field = type.fields.find((f) => f.key === sort.key) ?? null;
+  const sign = sort.dir === "asc" ? 1 : -1;
+
+  const rank = (r: EntityRecord): { empty: boolean; n: number | null; s: string } => {
+    if (!field) return { empty: false, n: null, s: titleOf(r) };
+    const raw = r.values[field.key] ?? null;
+    // `display` resolves a reference to the title it is shown as - see displayValue - so a
+    // reference column is ordered by what the chips SAY, which is the only thing the
+    // reader can order it by from the screen.
+    const list = display(field, raw);
+    const shown = list.join(", ").trim();
+    if (shown === "") return { empty: true, n: null, s: "" };
+    if (field.type === "enum" && field.options?.length) {
+      const at = field.options.indexOf(String(raw));
+      return { empty: false, n: at < 0 ? field.options.length : at, s: shown };
+    }
+    // A SCALE is a number wearing a label. Ordering it by the label gives "likely" before
+    // "possible" - the alphabet's opinion about a severity, which is no opinion at all.
+    if (field.type === "scale") {
+      return { empty: false, n: typeof raw === "number" ? raw : null, s: shown };
+    }
+    if (field.type === "number") {
+      const n = typeof raw === "number" ? raw : parseFloat(shown.replace(/[^\d.,-]/g, "").replace(",", "."));
+      return { empty: false, n: Number.isFinite(n) ? n : null, s: shown };
+    }
+    if (field.type === "multiref") return { empty: false, n: list.length, s: shown };
+    return { empty: false, n: null, s: shown };
+  };
+
+  return items.map((r, i) => ({ r, i, k: rank(r) })).sort((a, b) => {
+    if (a.k.empty !== b.k.empty) return a.k.empty ? 1 : -1;      // holes last, whichever way
+    if (a.k.n !== null && b.k.n !== null && a.k.n !== b.k.n) return sign * (a.k.n - b.k.n);
+    const c = a.k.s.localeCompare(b.k.s, undefined, { numeric: true, sensitivity: "base" });
+    return c !== 0 ? sign * c : a.i - b.i;                        // stable
+  }).map((x) => x.r);
 }
 
 export interface Group { key: string; items: EntityRecord[] }

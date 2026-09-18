@@ -66,6 +66,7 @@ for (const t of DEFAULT_TAXONOMY.entityTypes) {
 for (const g of DEFAULT_TAXONOMY.groups ?? []) {
   note(`group.${g.key}.label`, "group label");
   note(`group.${g.key}.description`, "group description");
+  if (g.short) note(`group.${g.key}.short`, "group short label");
 }
 const profileChecks = new Set(declaredChecks);
 for (const id of checkIds) {

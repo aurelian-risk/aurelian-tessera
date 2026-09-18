@@ -114,3 +114,32 @@ export function Seg({ value, onChange, options, dflt, name }: {
     </div>
   );
 }
+
+/** Add a technique to a table keyed by technique id. The bundled list is offered for
+ *  the tactic the table is about (an entry table wants Initial Access), and a free id
+ *  is accepted for anything ATT&CK has that the bundle does not - the model matches on
+ *  the id alone, so a technique outside the bundle works the moment it is keyed in. The
+ *  new row starts at the table's default, which is what an unlisted technique was
+ *  worth before it had a row; the reader then moves it. */
+export function AddTechnique({ have, tactic, options, onAdd, placeholder }: {
+  have: string[]; tactic?: string; options: readonly { id: string; name: string; tactics: readonly string[] }[];
+  onAdd: (id: string) => void; placeholder: string;
+}) {
+  const [free, setFree] = useState("");
+  const listed = options.filter((t) => !have.includes(t.id) && (!tactic || t.tactics.includes(tactic)));
+  const id = free.toUpperCase().match(/T\d{4}(\.\d{3})?/)?.[0] ?? null;
+  const add = (v: string) => { if (v && !have.includes(v)) onAdd(v); setFree(""); };
+  return (
+    <div className="dial-row cal-add-tech">
+      <span className="dial-k">{placeholder}</span>
+      <select className="cal-add-sel" value="" onChange={(e) => add(e.target.value)} aria-label={placeholder}>
+        <option value="">{listed.length ? "from the bundled list…" : "every bundled technique is listed"}</option>
+        {listed.map((t) => <option key={t.id} value={t.id}>{t.id} {t.name}</option>)}
+      </select>
+      <input className="cal-add-free mono" value={free} placeholder="or an id, T1234" aria-label="technique id"
+        onChange={(e) => setFree(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && id) { e.preventDefault(); add(id); } }} />
+      <button type="button" className="btn ghost sm" disabled={!id || have.includes(id)} onClick={() => id && add(id)}>+</button>
+    </div>
+  );
+}

@@ -105,6 +105,8 @@ const fieldLookup = (f: FieldDef, t: EntityTypeDef | undefined, part: string, au
 export const typeLabel = (t: EntityTypeDef): string => tr(`type.${t.key}.label`, t.label);
 export const typeLabelPlural = (t: EntityTypeDef): string => tr(`type.${t.key}.plural`, t.labelPlural);
 export const groupLabel = (g: GroupDef): string => tr(`group.${g.key}.label`, g.label);
+/** The short form for a tight row; the full label where none is declared. */
+export const groupShort = (g: GroupDef): string => (g.short ? tr(`group.${g.key}.short`, g.short) : groupLabel(g));
 export const groupDescription = (g: GroupDef): string | undefined =>
   g.description == null ? undefined : tr(`group.${g.key}.description`, g.description);
 export const fieldLabel = (f: FieldDef, t?: EntityTypeDef): string => fieldLookup(f, t, "label", f.label);
@@ -182,7 +184,16 @@ export function reconcileTaxonomy(tax: Taxonomy): Taxonomy {
       const missing = defOpts.filter((o) => !opts.includes(o));
       if (!missing.length) return next;
       typeChanged = true;
-      return { ...next, options: [...opts, ...missing] };
+      // Each new option goes where the default puts it - after the nearest option that
+      // precedes it there and is present here - not at the end. A vocabulary that IS an
+      // order (the ATT&CK tactics are the lanes of the kill chain) must stay one after
+      // it has grown; since schema 8, before that the new options were appended.
+      const grown = [...opts];
+      for (const o of missing) {
+        const before = defOpts.slice(0, defOpts.indexOf(o)).filter((x) => grown.includes(x)).pop();
+        grown.splice(before === undefined ? grown.length : grown.indexOf(before) + 1, 0, o);
+      }
+      return { ...next, options: grown };
     });
     return typeChanged ? { ...t, fields } : t;
   });

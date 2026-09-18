@@ -4,9 +4,9 @@ import { t as tr, tn } from "../domain/i18n";
 import { Sentence } from "./Sentence";
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldType, FieldValue, Study, Taxonomy } from "../domain/types";
 import { columnFields, fieldLabel, fieldRelation, getType, inForce, isSetBack, optionLabel, recordTitle, refFields, scaleLabel, scaleMax, setBackBlocked, titleField, typeLabel, typeLabelPlural, typeNameOf } from "../domain/taxonomy";
-import { foldScope, getFolds, setFolds } from "../domain/viewstate";
+import { foldScope, getFolds, getHiddenColumns, setFolds, setHiddenColumns } from "../domain/viewstate";
 import { scopeChange, deleteChange } from "../domain/scope";
-import { TOOLBAR_MIN_ROWS } from "../domain/tablefilter";
+import { isCatalogTarget } from "../domain/catalog";
 import { TableTools, refTypeLabel, useNameOf, useTableFilter } from "./TableTools";
 import { useStore } from "../domain/store";
 import { ChangeHistoryModal, IntegrityBadge } from "./ChangeHistoryModal";
@@ -186,9 +186,15 @@ function dimPredicate(tax: Taxonomy, typeKey: string): (r: EntityRecord) => bool
  *  back does not silently lay every thousand-row register out again. */
 const folded = new Set<string>();
 
-export function EntitySection({ type, study, tax, color, draggableRows, renderDetailExtra, headerExtra, hideAdd }:
+/** A row someone asked to be shown - from the study-wide search, where a hit names a
+ *  record that may sit behind a fold, a filter or three screens of charts. `n` makes a
+ *  second request for the same record a new one. */
+export interface Reveal { id: string; n: number }
+
+export function EntitySection({ type, study, tax, color, draggableRows, renderDetailExtra, headerExtra, hideAdd, reveal }:
   { type: EntityTypeDef; study: Study; tax: Taxonomy; color: string;
-    draggableRows?: boolean; renderDetailExtra?: (r: EntityRecord) => ReactNode; headerExtra?: ReactNode; hideAdd?: boolean }) {
+    draggableRows?: boolean; renderDetailExtra?: (r: EntityRecord) => ReactNode; headerExtra?: ReactNode; hideAdd?: boolean;
+    reveal?: Reveal | null }) {
   const deleteEntity = useStore((s) => s.deleteEntity);
   const updateEntity = useStore((s) => s.updateEntity);
   const dimmed = useMemo(() => dimPredicate(tax, type.key), [tax, type.key]);
@@ -204,7 +210,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const fold = () => setOpen((o) => { o ? folded.add(foldKey) : folded.delete(foldKey); return !o; });
 
   const items = study.entities.filter((e) => e.type === type.key);
-  const cols = columnFields(type);
+  const allCols = columnFields(type);
   const title = titleField(type);
 
   // One filter, shared with every other long table - see TableTools.
@@ -212,7 +218,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const tableScope = foldScope(study.id, type.key);
   const nameOf = useNameOf(tax, study);
   const f = useTableFilter(type, items,
-    { onGroupChange: () => setCollapsed(new Set()), nameOf, scope: tableScope });
+    { onGroupChange: () => setCollapsed(new Set()), nameOf, scope: tableScope, titleOf: (r) => recordTitle(type, r) });
   const { shown, groups, groupField, filtered } = f;
   // What this reader folded away here last time. Kept out of the study on purpose: a fold
   // belongs to whoever is reading, not to the analysis - see viewstate.ts. Grouping by a
@@ -220,8 +226,23 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const scope = foldScope(study.id, type.key, groupField?.key ?? "");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => getFolds(scope));
   useEffect(() => { setCollapsed(getFolds(scope)); }, [scope]);
-  // Only worth showing once a table is long enough to be hard to read.
-  const showTools = items.length >= TOOLBAR_MIN_ROWS;
+  // Which columns this reader put away. Independent of the grouping axis - the same
+  // choice of columns holds however the rows are arranged - so it hangs on the table's
+  // own name, and like the folds it stays out of the study.
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(() => getHiddenColumns(tableScope));
+  useEffect(() => { setHiddenCols(getHiddenColumns(tableScope)); }, [tableScope]);
+  const cols = allCols.filter((c) => !hiddenCols.has(c.key));
+  const setColumns = (next: Set<string>) => { setHiddenCols(next); setHiddenColumns(tableScope, next); };
+  // Search, facets and grouping belong to the two tables a catalogue fills, and to no
+  // other. A row count decided it before, and the reader could not see the rule: the same
+  // table carried a search box at nine rows and none at seven, and a two-row table got one
+  // because it happened to be wide.
+  const findable = isCatalogTarget(tax, type.key);
+  // The column choice is offered on every table that has columns to choose between. It
+  // used to hang on the table's width (wider than 960px of columns), and the reader could
+  // not see the rule: one register had the button, the one beside it did not, and "why?"
+  // was the only possible reaction. One rule everyone can see.
+  const showTools = findable || allCols.length > 2;
   const clearAll = f.clearAll;
   const toggleGroup = (k: string) => setCollapsed((c) => {
     const n = new Set(c); n.has(k) ? n.delete(k) : n.add(k);
@@ -229,10 +250,71 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
     return n;
   });
 
+  // Bringing a record into view is done in two steps, because the row has to EXIST before
+  // it can be scrolled to: first whatever hides it is undone - a filter that leaves it
+  // out, a fold that holds it - and the row is opened; then, once React has drawn it, it
+  // is scrolled to and marked for a moment so the eye lands on it among its neighbours.
+  // The mark is state, not a class added by hand: the row's className is React's, and the
+  // render that opens the row would write over anything put there from outside.
+  const [arrived, setArrived] = useState<string | null>(null);
+  const revealed = useRef<number>(0);
+  const arriveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!reveal || !items.some((r) => r.id === reveal.id)) return;
+    // The whole register may be folded away here; a row cannot be shown in a closed panel.
+    if (!open) fold();
+    if (!shown.some((r) => r.id === reveal.id)) clearAll();
+    const g = groups.find((gr) => gr.items.some((r) => r.id === reveal.id));
+    if (g && groupField && collapsed.has(g.key)) toggleGroup(g.key);
+    setExpanded(reveal.id);
+  // The row is looked up by what the reveal names; the list states are read once, when it changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reveal]);
+  useEffect(() => {
+    if (!reveal || revealed.current === reveal.n) return;
+    const tr = bodyRef.current?.querySelector<HTMLElement>(`tr[data-id="${CSS.escape(reveal.id)}"]`);
+    if (!tr) return;
+    revealed.current = reveal.n;
+    tr.scrollIntoView({ block: "center", behavior: "smooth" });
+    setArrived(reveal.id);
+    if (arriveTimer.current) clearTimeout(arriveTimer.current);
+    arriveTimer.current = setTimeout(() => setArrived(null), 2400);
+  });
+  useEffect(() => () => { if (arriveTimer.current) clearTimeout(arriveTimer.current); }, []);
+
   const refTargets = (typeKey: string) => study.entities.filter((e) => e.type === typeKey);
   const missingReq = type.fields.find((f) => f.type === "ref" && f.required && refTargets(f.refType ?? "").length === 0);
-  const targetLabel = missingReq ? typeNameOf(tax, missingReq.refType ?? "") : "";
-  const addBlocked = missingReq ? `Create a ${targetLabel} first - required by "${missingReq.label}".` : null;
+  const targetLabel = missingReq ? missingReq.refType ? typeNameOf(tax, missingReq.refType) : "entity" : "";
+  // Name BOTH ends. The field a reference sits in is usually named after the type it
+  // points at, so "Create a Business Asset first — required by \u201cBusiness Asset\u201d" told the
+  // reader the same word twice and left them to work out who was asking. The record they
+  // are trying to make is the missing half, and the field is only worth naming where it
+  // is called something else.
+  const blockField = missingReq ? fieldLabel(missingReq, type) : "";
+  // The German reading builds the sentence WITHOUT an article in front of the type name:
+  // a template cannot know that "Geschäftswert" takes "einen" and "Anforderung" takes
+  // "eine", and "braucht ein Geschäftswert" is what guessing produces.
+  const addBlocked = !missingReq ? null
+    : blockField === targetLabel
+      ? tr("ui.entitysection.needs-first", "A {0} refers to a {1} — create one of those first.")
+          .replace("{0}", typeLabel(type)).replace("{1}", targetLabel)
+      : tr("ui.entitysection.needs-first-field", "A {0} refers to a {1} for \u201c{2}\u201d — create one of those first.")
+          .replace("{0}", typeLabel(type)).replace("{1}", targetLabel).replace("{2}", blockField);
+
+  /** One column head: the label, its state, and the press that changes it. */
+  const sortableHead = (key: string, label: string) => {
+    const on = f.sort?.key === key ? f.sort.dir : null;
+    const next = !on ? tr("ui.entitysection.sort-asc", "Sort by {0}, lowest first")
+      : on === "asc" ? tr("ui.entitysection.sort-desc", "Sort by {0}, highest first")
+      : tr("ui.entitysection.sort-off", "Back to the order {0} was written in");
+    return (
+      <th key={key} className={"sortable" + (on ? " sorted " + on : "")}
+        aria-sort={on === "asc" ? "ascending" : on === "desc" ? "descending" : "none"}
+        title={next.replace("{0}", label)} onClick={() => f.toggleSort(key)}>
+        {label}<span className="th-sort" aria-hidden="true">{on === "asc" ? "\u2191" : on === "desc" ? "\u2193" : "\u2195"}</span>
+      </th>
+    );
+  };
 
   // Open a linked entity from ANOTHER workshop (or type) in the modal popup.
   const openEntity = (id: string) => { const r = study.entities.find((e) => e.id === id); if (r) setModal({ typeKey: r.type, record: r }); };
@@ -259,9 +341,15 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
         )}
       </div>
 
-      {open && addBlocked && <div style={{ padding: "12px 16px 0" }}><div className="guide warn">{addBlocked}</div></div>}
+      {/* Not `warn`: nothing has gone wrong. This is the order the method works in, said
+          before the reader presses a button that would refuse them. */}
+      {open && addBlocked && <div style={{ padding: "12px 16px 0" }}><div className="guide">{addBlocked}</div></div>}
 
-      {open && showTools && <TableTools type={type} f={f} tax={tax} />}
+      {open && showTools && <TableTools type={type} f={f} tax={tax} find={findable} columns={{
+        fields: allCols, hidden: hiddenCols,
+        toggle: (key) => { const n = new Set(hiddenCols); n.has(key) ? n.delete(key) : n.add(key); setColumns(n); },
+        showAll: () => setColumns(new Set()),
+      }} />}
 
       {/* `pinned` is set once the body has actually been scrolled sideways: the title column
           is held in place only where something slides under it, so a table that fits carries
@@ -269,7 +357,16 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
       {open && <div className={"panel-body" + (pinned ? " pinned" : "")} ref={bodyRef}
         onScroll={(e) => setPinned(e.currentTarget.scrollLeft > 0)}>
         {items.length === 0 ? (
-          <div className="empty" style={{ padding: "28px 16px" }}>No {typeLabelPlural(type).toLowerCase()} yet.</div>
+          // An empty table used to state the absence and stop there. On a study somebody
+          // has just created, that is every panel on the screen - the one moment where
+          // the reader most needs to be told what the next act is. Where the button is
+          // there, name it; where it is refused, the line above already says why.
+          <div className="empty" style={{ padding: "28px 16px" }}>
+            {hideAdd || addBlocked
+              ? tr("ui.entitysection.none-yet", "None yet.")
+              : tr("ui.entitysection.none-yet-add", "None yet — \u201c{0}\u201d above adds the first.")
+                  .replace("{0}", typeLabel(type))}
+          </div>
         ) : shown.length === 0 ? (
           <div className="empty" style={{ padding: "28px 16px" }}>
             {tr('ui.entitysection.nothing-matches', 'Nothing matches.')} <button className="btn ghost sm" onClick={clearAll}>{tr('ui.entitysection.clear-filters', 'Clear filters')}</button>
@@ -291,9 +388,12 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
               {cols.map((c) => <col key={c.key} style={{ width: COL_WIDTH[c.type] }} />)}
             </colgroup>
             <thead>
+              {/* A column head orders the table. Three steps - up, down, back to the order
+                  the records were written in - and the head says which state it is in, so
+                  a sorted table is never mistaken for the order somebody entered. */}
               <tr>
-                <th>{(() => { const f = type.fields.find((x) => x.key === title); return f ? fieldLabel(f, type) : "Name"; })()}</th>
-                {cols.map((c) => <th key={c.key}>{fieldLabel(c, type)}</th>)}
+                {sortableHead(title, (() => { const f = type.fields.find((x) => x.key === title); return f ? fieldLabel(f, type) : "Name"; })())}
+                {cols.map((c) => sortableHead(c.key, fieldLabel(c, type)))}
               </tr>
             </thead>
             {groups.map((g) => (
@@ -313,7 +413,8 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
                 const isOpen = expanded === r.id;
                 return (
                   <Fragment key={r.id}>
-                    <tr className={"row-clickable" + (isOpen ? " expanded" : "") + (draggableRows ? " row-drag" : "") + (dimmed(r) ? " row-dim" : "")}
+                    <tr className={"row-clickable" + (isOpen ? " expanded" : "") + (draggableRows ? " row-drag" : "") + (dimmed(r) ? " row-dim" : "") + (arrived === r.id ? " row-revealed" : "")}
+                      data-id={r.id}
                       draggable={draggableRows || undefined}
                       onDragStart={draggableRows ? (e) => { e.dataTransfer.setData("text/plain", r.id); e.dataTransfer.effectAllowed = "move"; } : undefined}
                       onClick={() => setExpanded(isOpen ? null : r.id)}>

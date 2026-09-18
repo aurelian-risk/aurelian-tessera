@@ -10,13 +10,13 @@
 //
 // The state and the filtering live in useTableFilter, so a view that is not a plain
 // entity table (the coverage matrix, say) gets the same behaviour by calling one hook.
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, type RefObject } from "react";
 import { t as tr } from "../domain/i18n";
-import { getGroupKey, setGroupKey as storeGroupKey } from "../domain/viewstate";
+import { getGroupKey, setGroupKey as storeGroupKey, getSort, setSort as storeSort } from "../domain/viewstate";
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy } from "../domain/types";
 import { fieldLabel, getType, recordTitle, scaleLabel, typeLabelPlural } from "../domain/taxonomy";
-import { facetsOf, countFacets, filterItems, groupItems, activeCount, type Selection } from "../domain/tablefilter";
-import { Icon } from "./ui";
+import { facetsOf, countFacets, filterItems, groupItems, sortItems, activeCount, type Selection, type Sort } from "../domain/tablefilter";
+import { Icon, useDismissOnEscape } from "./ui";
 
 /** Who a reference points at, by title. Without one, references read as nothing and are
  *  not offered - which is what every caller got before there was a way to resolve them. */
@@ -58,14 +58,20 @@ export interface TableFilter {
   shown: EntityRecord[];
   groupField: FieldDef | null;
   groups: ReturnType<typeof groupItems>;
+  /** Which column the table is ordered by, or null for the order it was written in. */
+  sort: Sort | null;
+  /** Cycle one column: ascending → descending → back to the written order. */
+  toggleSort: (key: string) => void;
   filtered: boolean;
   clearAll: () => void;
   total: number;
 }
 
 export function useTableFilter(type: EntityTypeDef, items: EntityRecord[],
-  opts?: { onGroupChange?: () => void; nameOf?: NameOf; scope?: string }): TableFilter {
-  const { onGroupChange, nameOf, scope } = opts ?? {};
+  opts?: { onGroupChange?: () => void; nameOf?: NameOf; scope?: string;
+    /** How a row READS, for ordering by the title column. */
+    titleOf?: (r: EntityRecord) => string }): TableFilter {
+  const { onGroupChange, nameOf, scope, titleOf } = opts ?? {};
   const display = useMemo<(f: FieldDef, v: FieldValue) => string[]>(
     () => (f, v) => displayValue(f, v, nameOf), [nameOf]);
   const [query, setQuery] = useState("");
@@ -74,10 +80,17 @@ export function useTableFilter(type: EntityTypeDef, items: EntityRecord[],
   // A table that silently holds fewer rows than it has, because of a facet set on a
   // previous visit, is a trap - see viewstate.ts.
   const [groupKey, setGroupKeyRaw] = useState(() => (scope ? getGroupKey(scope) : ""));
+  const [sort, setSortRaw] = useState<Sort | null>(() => (scope ? getSort(scope) : null));
+  useEffect(() => { setSortRaw(scope ? getSort(scope) : null); }, [scope]);
 
   const facetSet = useMemo(() => facetsOf(type, items, display), [type, items, display]);
   const facets = useMemo(() => countFacets(facetSet, items, type, query, sel, display), [facetSet, items, type, query, sel, display]);
-  const shown = useMemo(() => filterItems(items, type, query, sel, display), [items, type, query, sel, display]);
+  const matched = useMemo(() => filterItems(items, type, query, sel, display), [items, type, query, sel, display]);
+  // Sorted BEFORE grouping, so the groups keep their own order (by size) and the rows
+  // inside each one follow the column the reader chose.
+  const shown = useMemo(() => sortItems(matched, type, sort, display, titleOf ?? ((r) => r.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [matched, type, sort, display]);
   const groupField = groupKey ? type.fields.find((f) => f.key === groupKey) ?? null : null;
   const groups = useMemo(() => groupItems(shown, groupField, display), [shown, groupField, display]);
 
@@ -89,10 +102,18 @@ export function useTableFilter(type: EntityTypeDef, items: EntityRecord[],
     return out;
   });
   const setGroupKey = (k: string) => { setGroupKeyRaw(k); if (scope) storeGroupKey(scope, k); onGroupChange?.(); };
+  // Three steps, not two: the order the records were WRITTEN in is a state worth being
+  // able to get back to, and a two-way toggle makes it unreachable without a reload.
+  const toggleSort = (key: string) => {
+    const next: Sort | null = !sort || sort.key !== key ? { key, dir: "asc" }
+      : sort.dir === "asc" ? { key, dir: "desc" } : null;
+    setSortRaw(next);
+    if (scope) storeSort(scope, next);
+  };
 
   return {
     query, setQuery, sel, toggleFacet, groupKey, setGroupKey, facets, shown,
-    groupField, groups,
+    groupField, groups, sort, toggleSort,
     filtered: query.trim() !== "" || activeCount(sel) > 0,
     clearAll: () => { setQuery(""); setSel({}); },
     total: items.length,
@@ -102,33 +123,103 @@ export function useTableFilter(type: EntityTypeDef, items: EntityRecord[],
 /** Values shown inside an open facet menu before the rest fold behind a "show all". */
 const FACET_PREVIEW = 12;
 
+/** Which columns a table shows. The taxonomy decides which columns a type HAS; how many
+ *  of them fit the window someone reads in is not the taxonomy's business - see
+ *  EntitySection for the widths, and viewstate.ts for where the choice is kept. */
+export interface ColumnChoice {
+  fields: FieldDef[];
+  hidden: Set<string>;
+  toggle: (key: string) => void;
+  showAll: () => void;
+}
+
+/** Close when the click lands outside, or on Escape. Both menus in this toolbar dismiss
+ *  the same way, and Escape is the one place the other menus already use. */
+function useMenuDismiss(open: boolean, box: RefObject<HTMLDivElement | null>, close: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) close(); };
+    document.addEventListener("mousedown", away);
+    return () => document.removeEventListener("mousedown", away);
+  }, [open, box, close]);
+  useDismissOnEscape(open, close);
+}
+
+/** Which way a popup opens: leftwards from a button at the end of a full toolbar, so it
+ *  stays inside the panel that clips its overflow - but rightwards from a button that IS
+ *  the toolbar, as on a table with no search, where "leftwards" ran under the sidebar and
+ *  showed the last four letters of every column name. Measured, not assumed. */
+const opensLeft = (el: HTMLElement | null, width = 220): boolean => {
+  if (!el) return false;
+  const panel = el.closest(".panel") as HTMLElement | null;
+  const r = el.getBoundingClientRect(), pr = panel?.getBoundingClientRect();
+  const right = pr ? pr.right : window.innerWidth;
+  return r.left + width > right;
+};
+
+function ColumnsMenu({ columns, type }: { columns: ColumnChoice; type: EntityTypeDef }) {
+  const [open, setOpen] = useState(false);
+  const [toLeft, setToLeft] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useMenuDismiss(open, box, () => setOpen(false));
+  const shown = columns.fields.length - columns.hidden.size;
+  return (
+    <div className="facet-menu" ref={box}>
+      {/* Styled as a facet menu, but not one: the second class is what tells a check - and
+          a reader of the DOM - which of the two this button is. */}
+      <button type="button" className={"facet-btn cols-btn" + (columns.hidden.size ? " on" : "")}
+        aria-expanded={open} onClick={() => { setToLeft(opensLeft(box.current)); setOpen((o) => !o); }}
+        title={tr('ui.tabletools.which-columns-this-table-shows', 'Which columns this table shows')}>
+        {tr('ui.tabletools.columns', 'Columns')}
+        {columns.hidden.size > 0 && <span className="facet-n">{shown}/{columns.fields.length}</span>}
+        <span className="facet-caret"><Icon.chevron /></span>
+      </button>
+      {open && (
+        <div className={"facet-pop" + (toLeft ? " to-left" : "")}>
+          {columns.fields.map((c) => {
+            const on = !columns.hidden.has(c.key);
+            return (
+              <button key={c.key} type="button" className={"facet-opt" + (on ? " on" : "")}
+                aria-pressed={on} onClick={() => columns.toggle(c.key)}>
+                <span className="facet-tick">{on ? <Icon.check /> : null}</span>
+                <span className="facet-v">{fieldLabel(c, type)}</span>
+              </button>
+            );
+          })}
+          {columns.hidden.size > 0 && (
+            <button type="button" className="facet-opt more" onClick={columns.showAll}>
+              {tr('ui.tabletools.show-all-columns', 'show all {0}').replace('{0}', String(columns.fields.length))}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FacetMenu({ facet, chosen, onToggle, type }:
   { facet: TableFilter["facets"][number]; chosen: string[]; onToggle: (v: string) => void;
     /** The register the facet belongs to: a field key is not unique, so its name is looked
      *  up under the type as well. */
     type: EntityTypeDef }) {
   const [open, setOpen] = useState(false);
+  const [toLeft, setToLeft] = useState(false);
   const [all, setAll] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", away);
-    return () => document.removeEventListener("mousedown", away);
-  }, [open]);
+  useMenuDismiss(open, box, () => setOpen(false));
 
   const values = all ? facet.values : facet.values.slice(0, FACET_PREVIEW);
   const hidden = facet.values.length - values.length;
   return (
     <div className="facet-menu" ref={box}>
       <button type="button" className={"facet-btn" + (chosen.length ? " on" : "")}
-        aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        aria-expanded={open} onClick={() => { setToLeft(opensLeft(box.current)); setOpen((o) => !o); }}>
         {fieldLabel(facet.field, type)}
         {chosen.length > 0 && <span className="facet-n">{chosen.length}</span>}
         <span className="facet-caret"><Icon.chevron /></span>
       </button>
       {open && (
-        <div className="facet-pop">
+        <div className={"facet-pop" + (toLeft ? " to-left" : "")}>
           {values.map((v) => {
             const on = chosen.includes(v.value);
             return (
@@ -142,7 +233,7 @@ function FacetMenu({ facet, chosen, onToggle, type }:
           })}
           {hidden > 0 && (
             <button type="button" className="facet-opt more" onClick={() => setAll(true)}>
-              show the remaining {hidden}
+              {tr("ui.tabletools.show-remaining", "show the remaining {0}").replace("{0}", String(hidden))}
             </button>
           )}
         </div>
@@ -158,21 +249,26 @@ export function refTypeLabel(tax: Taxonomy | undefined, f: FieldDef | null): str
   return getType(tax, f.refType)?.label.toLowerCase() ?? "";
 }
 
-export function TableTools({ type, f, tax, groupable = true }:
-  { type: EntityTypeDef; f: TableFilter; tax?: Taxonomy; groupable?: boolean }) {
-  if (!f.facets.length && f.total < 8) return null;
+export function TableTools({ type, f, tax, groupable = true, find = true, columns }:
+  { type: EntityTypeDef; f: TableFilter; tax?: Taxonomy; groupable?: boolean; find?: boolean; columns?: ColumnChoice }) {
+  // Two separate reasons to be here, and either alone is enough: a table somebody has to
+  // search in (`find`, decided by the caller), and a wide table whose columns can be put
+  // away however short it is.
+  if (!find && !columns) return null;
   return (
     <div className="tbl-tools">
-      <label className="tbl-search">
-        <Icon.search />
-        <input type="search" value={f.query} placeholder={`Search ${typeLabelPlural(type).toLowerCase()}…`}
-          onChange={(e) => f.setQuery(e.target.value)} aria-label={`Search ${typeLabelPlural(type)}`} />
-      </label>
-      {f.facets.map((facet) => (
+      {find && (
+        <label className="tbl-search">
+          <Icon.search />
+          <input type="search" value={f.query} placeholder={`Search ${typeLabelPlural(type).toLowerCase()}…`}
+            onChange={(e) => f.setQuery(e.target.value)} aria-label={`Search ${typeLabelPlural(type)}`} />
+        </label>
+      )}
+      {find && f.facets.map((facet) => (
         <FacetMenu key={facet.field.key} facet={facet} type={type} chosen={f.sel[facet.field.key] ?? []}
           onToggle={(v) => f.toggleFacet(facet.field.key, v)} />
       ))}
-      {groupable && f.facets.length > 0 && (
+      {find && groupable && f.facets.length > 0 && (
         <select className="tbl-group" value={f.groupKey} onChange={(e) => f.setGroupKey(e.target.value)}
           aria-label={tr('ui.tabletools.group-by', 'Group by')} title={tr('ui.tabletools.group-the-rows-by', 'Group the rows by a column')}>
           <option value="">{tr("ui.tabletools.no-grouping", "no grouping")}</option>
@@ -186,9 +282,11 @@ export function TableTools({ type, f, tax, groupable = true }:
           a row appears under each {refTypeLabel(tax, f.groupField) || "one"} it names
         </span>
       )}
-      <span className="tbl-count">
+      {columns && columns.fields.length > 1 && <ColumnsMenu columns={columns} type={type} />}
+      {/* What the panel head already says, unless a filter has changed it. */}
+      {find && <span className="tbl-count">
         {f.filtered ? `${f.shown.length} of ${f.total}` : `${f.total}`}
-      </span>
+      </span>}
       {f.filtered && <button className="tbl-clear" onClick={f.clearAll} title={tr('ui.tabletools.clear-every-filter', 'Clear every filter')}><Icon.close /></button>}
     </div>
   );

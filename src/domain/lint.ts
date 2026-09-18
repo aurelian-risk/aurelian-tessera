@@ -5,6 +5,9 @@
 // deterministic and taxonomy-guarded: a rule is skipped if its types are absent.
 import type { EntityRecord, Study, Taxonomy } from "./types";
 import { declaredClass, effectClassOf, hasEffectField } from "./controls";
+import { techniqueId } from "./calibration";
+import { TECHNIQUE_MITIGATIONS, mitigationIds, mitigates } from "./attackMitigations";
+import { RETIRED_TACTICS, currentTechnique, techniqueById } from "./mitre";
 import { t as tr } from "./i18n";
 
 export type Severity = "high" | "medium" | "low";
@@ -138,6 +141,53 @@ export function lintStudy(tax: Taxonomy, study: Study): LintCheck[] {
     add("damage-control-only", "Kill-chain steps where nothing blocks or detects", "medium",
       "The measures on these steps act on the loss or on the number of attacks; none of them prevents or detects an attacker at the step itself. Add a preventive or detective measure, or accept the gap explicitly.",
       "kill_chain_step", steps.filter((s) => { const m = onStep(s.id); return m.length > 0 && !m.some(stops); }));
+
+    // Technique fit, from ATT&CK's own "mitigates" relationships: a measure that names
+    // what it is (M1032 = MFA) sitting on a step whose technique ATT&CK lists no such
+    // mitigation for. MFA on the phishing step is the classic case - it stops the use of
+    // the phished credential, which is a later step, not the mail. Only PREVENTIVE
+    // measures that name mitigations, on steps that name a technique, are judged: the
+    // relationships are about prevention, and ATT&CK describes detection through data
+    // sources instead, which this bundle does not carry.
+    const techOf = (st: EntityRecord) => techniqueId(st.values.technique);
+    const misfit = (m: EntityRecord) => {
+      const ids = mitigationIds(m.values.mitigations);
+      if (!ids.length || effectClassOf(m) !== "Preventive") return false;
+      return coversOf(m).some((sid) => {
+        const st = steps.find((x) => x.id === sid);
+        return !!st && mitigates(ids, techOf(st)) === false;
+      });
+    };
+    add("measure-technique-misfit", "Measures on a step their technique does not answer to", "medium",
+      "ATT&CK lists no relationship between what these preventive measures are (their mitigation ids) and the technique of a step they cover. Either the measure is anchored on the wrong step - MFA belongs where the credential is USED, not where it is phished - or the id is wrong. Move it, or record why it acts here.",
+      "security_measure", measures.filter(misfit));
+
+    // A technique ATT&CK marks as not easily mitigated by preventive controls, with a
+    // preventive measure on it and nothing watching: the lever there is detection.
+    add("step-hard-to-prevent", "Steps whose technique is hard to prevent, defended only by prevention", "low",
+      "ATT&CK lists no preventive mitigation for these steps' techniques - stealth, discovery - and says detection is the lever. The preventive measures here are credited as gates by the model; consider a detective measure on the step.",
+      "kill_chain_step", steps.filter((st) => {
+        const t = techOf(st); if (!t) return false;
+        const live = currentTechnique(t) ?? currentTechnique(t.split(".")[0]);
+        if (!live || (TECHNIQUE_MITIGATIONS[live.id.split(".")[0]]?.length ?? 0) > 0) return false;
+        const m = onStep(st.id);
+        return m.some((x) => effectClassOf(x) === "Preventive") && !m.some((x) => effectClassOf(x) === "Detective");
+      }));
+
+    // A tactic ATT&CK has since retired (v19 split Defense Evasion into Stealth and
+    // Defense Impairment). The step keeps it - which lane it belongs in is the analyst's
+    // call, not a rename's - but it stands outside the vocabulary until moved.
+    // Named whether or not the study's vocabulary still lists the old name: a migrated
+    // taxonomy keeps it (nothing is removed), and the step is no less out of date for that.
+    add("step-tactic-retired", "Kill-chain steps under a tactic ATT&CK has retired", "low",
+      "ATT&CK v19 split Defense Evasion into Stealth and Defense Impairment. These steps still carry the old tactic; move each to the successor that fits what the step does.",
+      "kill_chain_step", steps.filter((st) => String(st.values.tactic ?? "") in RETIRED_TACTICS));
+
+    // A technique ATT&CK has revoked and replaced. The checks already read through to the
+    // successor; the step should say what it means today.
+    add("step-technique-revoked", "Kill-chain steps under a technique ATT&CK has replaced", "low",
+      "ATT&CK has revoked these steps' techniques in favour of a successor. The checks read the successor; update the step's technique so it names what ATT&CK now calls it.",
+      "kill_chain_step", steps.filter((st) => { const t = techOf(st); return !!t && !!(techniqueById(t) ?? techniqueById(t.split(".")[0]))?.revokedBy; }));
 
     // Steps that never show up in the tactic view because they carry no tactic.
     add("step-no-tactic", "Kill-chain steps with no tactic", "low",

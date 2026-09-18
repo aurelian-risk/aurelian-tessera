@@ -9,16 +9,17 @@
 //     shows how the layers combine (each new layer closes a shrinking slice of the
 //     remaining gap = saturation), and every measure chip opens the entity.
 import { useMemo, useState } from "react";
+import { Sentence } from "./Sentence";
 import { t as tr, tn } from "../domain/i18n";
 import { createPortal } from "react-dom";
 import type { EntityRecord, EntityTypeDef, Study, Taxonomy } from "../domain/types";
 import { getType, recordTitle, scaleMax } from "../domain/taxonomy";
-import { coverageOf, deriveInputs, measureEfficacyOf, type StepCov } from "../domain/quantModel";
+import { coverageOf, deriveInputs, measureEfficacyOf, stepDefence, stepPotential, PENDING_GAP, type StepCov } from "../domain/quantModel";
 import { simulate } from "../domain/montecarlo";
-import { effectClassOf, EFFECT_CHANNEL, type EffectClass } from "../domain/controls";
-import { arcPath, heatColor } from "../domain/viz";
+import { effectClassOf, effectChannel, defendsStep, type EffectClass } from "../domain/controls";
+import { arcPath, goodColor, heatColor } from "../domain/viz";
 import { EntityModal } from "./EntityModal";
-import { Icon } from "./ui";
+import { Icon, Overlay } from "./ui";
 import { DEFAULT_CALIBRATION } from "../domain/calibration";
 
 /** Iterations behind the ring. Enough for a stable percentage, far below what the
@@ -26,7 +27,7 @@ import { DEFAULT_CALIBRATION } from "../domain/calibration";
 const RING_ITER = 6000;
 
 /** One kill-chain step as the tactic heatmap sees it. */
-interface HeatStep { tactic: string; coverage: number; st: StepCov; scenario: string }
+interface HeatStep { tactic: string; coverage: number; potential: number; st: StepCov; scenario: string }
 
 export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: Study; color: string }) {
   const [rec, setRec] = useState<EntityRecord | null>(null);
@@ -51,9 +52,6 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
     const implFrac = (m: EntityRecord) => (implF ? Number(m.values[implF.key] ?? 1) : implMax) / implMax;
     const allSteps = study.entities.filter((e) => e.type === stepType.key);
     const ops = study.entities.filter((e) => e.type === opType.key && allSteps.some((s) => s.values[parentF.key] === e.id));
-    // A step is DEFENDED to the extent it resists or is watched. Recovery is not part of
-    // this: a backup does not stop an attacker reaching the step, it pays for it later.
-    const defenceOf = (st: StepCov) => 1 - (1 - st.prevention) * (1 - st.detection);
     const scenarios = ops.map((op) => {
       const cov = coverageOf(study, tax, op, cal);
       // What becomes of an attempt on this chain, from the traversal itself.
@@ -65,8 +63,8 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
         gates: d.chain?.filter((s) => s.gate).length ?? 0,
         watched: d.chain?.filter((s) => s.interrupt > 0).length ?? 0,
         tSteps: cov.steps.map((st) => ({
-          tactic: String(st.step.values[tacticF.key] ?? ""), coverage: defenceOf(st),
-          st, scenario: recordTitle(opType, op),
+          tactic: String(st.step.values[tacticF.key] ?? ""), coverage: stepDefence(st),
+          potential: stepPotential(tax, st, cal), st, scenario: recordTitle(opType, op),
         })),
       };
     });
@@ -76,9 +74,17 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
     const order = tacticF.options ?? [];
     const present = order.filter((t) => flat.some((s) => s.tactic === t));
     const stepsFor = (steps: HeatStep[], tactic: string) => steps.filter((s) => s.tactic === tactic);
-    const covFor = (steps: HeatStep[], tactic: string): number | null => {
+    // Two figures per tactic, not one: what its steps are defended to, and what the
+    // measures already sitting on them would give once they are in force. Where the two
+    // differ the tile says so - otherwise a study of planned controls is drawn exactly
+    // like a study with none.
+    const covFor = (steps: HeatStep[], tactic: string): { now: number; could: number } | null => {
       const ts = stepsFor(steps, tactic);
-      return ts.length ? ts.reduce((a, s) => a + s.coverage, 0) / ts.length : null;
+      if (!ts.length) return null;
+      return {
+        now: ts.reduce((a, s) => a + s.coverage, 0) / ts.length,
+        could: ts.reduce((a, s) => a + Math.max(s.coverage, s.potential), 0) / ts.length,
+      };
     };
     // Layers are grouped by what they DO: the blocking ones stack first, then the
     // detecting ones, then those that act on another factor entirely - on the loss
@@ -89,7 +95,7 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
       const sorted = [...st.measures].sort((a, b) => ORDER.indexOf(effectClassOf(a)) - ORDER.indexOf(effectClassOf(b)));
       for (const m of sorted) {
         const cls = effectClassOf(m);
-        const defends = cls === "Preventive" || cls === "Detective";
+        const defends = defendsStep(m);
         const eff = measureEfficacyOf(tax, m, cal);
         segs.push({ m, cls, contrib: defends ? eff * remaining : 0, impl: implFrac(m), status: String(m.values.status ?? "") });
         if (defends) remaining *= (1 - eff);
@@ -121,19 +127,30 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
   const cell = (steps: HeatStep[], tactic: string, key: string, scope: string) => {
     const ratio = covFor(steps, tactic);
     if (ratio === null) return <div className="hm-cell empty" key={key} title={`${tactic}: not in this scenario`} />;
+    // Recorded but not in force: the tile keeps the colour of what holds today and is
+    // hatched, so a planned answer is visibly not an empty one. The tile shows ONE number.
+    // It carried the target too, as "→69%" in nine-point type, and at that size the arrow
+    // reads as a minus; the target is in the tooltip and in the working behind the click.
+    const pending = ratio.could - ratio.now > PENDING_GAP;
+    const title = pending
+      ? tr("ui.mitigation.tactic-pending", "{0}: {1}% defended now, {2}% once the measures already recorded here are in force - click to see how this is worked out")
+        .replace("{0}", tactic).replace("{1}", String(Math.round(ratio.now * 100))).replace("{2}", String(Math.round(ratio.could * 100)))
+      : tr("ui.mitigation.tactic-defended", "{0}: {1}% defended - click to see how this is worked out")
+        .replace("{0}", tactic).replace("{1}", String(Math.round(ratio.now * 100)));
     return (
-      <button type="button" className="hm-cell" key={key}
-        title={`${tactic}: ${Math.round(ratio * 100)}% ${tr("ui.mitigationcharts.defended-click-to-see", "defended - click to see how this is worked out")}`}
+      <button type="button" className={"hm-cell" + (pending ? " pending" : "")} key={key} title={title}
         onClick={() => setHeat({ tactic, scope, steps: stepsFor(steps, tactic) })}
-        style={{ background: heatColor(ratio, 0.55), borderColor: heatColor(ratio, 0.8) }}>{Math.round(ratio * 100)}%</button>
+        /* backgroundColor, not `background`: the shorthand would wipe the hatch that
+           `.hm-cell.pending` paints as a background-image. The hatch is deliberately
+           neutral rather than the colour of what it would reach - a green hatch over a
+           red tile reads as defence that is already there. The figure beside it says
+           the number. */
+        style={{ backgroundColor: heatColor(ratio.now, 0.55), borderColor: heatColor(ratio.now, 0.8) }}>
+        {Math.round(ratio.now * 100)}%
+      </button>
     );
   };
-  // The label column carries a scenario NAME and the others carry three digits, so it is
-  // not one share of five: at 1fr the names were cut after 13 characters. 1.6fr and a
-  // floor of 150px, and what still does not fit ends in an ellipsis with the name in the
-  // title - which needs .hm-rowlbl to be a block, since text-overflow does nothing on a
-  // flex container and the label was simply cropped mid-word.
-  const gridCols = `minmax(150px, 1.6fr) repeat(${present.length}, minmax(66px, 1fr))`;
+  const gridCols = `minmax(150px, 2fr) repeat(${present.length}, minmax(66px, 1fr))`;
   const mName = (m: EntityRecord) => recordTitle(measureType, m);
 
   return (
@@ -141,23 +158,30 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
       <div className="panel-head">
         <h3>{tr('ui.mitigationcharts.chain-defence', 'Chain defence')}</h3>
         <span className="spacer" />
-        <span className="hint">{tr('ui.mitigationcharts.outcome-of-an-attack', 'outcome of an attack attempt, from the same traversal as the risk figures')}</span>
+        <span className="hint">{tr("ui.mitigation.outcome-of-an-attempt", "outcome of an attack attempt, from the same traversal as the risk figures")}</span>
       </div>
       <div className="panel-body mc-body">
         <div className="mc-ring">
           <svg viewBox="0 0 184 184" width="164" height="164" role="img"
-            aria-label={`${pct}% ${tr("ui.mitigationcharts.attempts-stopped", "attempts stopped")} - ${Math.round(resisted * 100)}% resisted, ${Math.round(caught * 100)}% caught in the act, ${Math.round(through * 100)}% reach the objective`}>
+            aria-label={tr("ui.mitigation.ring-label", "{0}% of attempts stopped - {1}% resisted, {2}% caught in the act, {3}% reach the objective")
+              .replace("{0}", String(pct)).replace("{1}", String(Math.round(resisted * 100)))
+              .replace("{2}", String(Math.round(caught * 100))).replace("{3}", String(Math.round(through * 100)))}>
             <circle cx={cx} cy={cy} r={r} stroke="var(--track, var(--border))" strokeWidth={sw} fill="none" />
             {aRes > 0.5 && <path d={arcPath(cx, cy, r, 0, aRes)} fill="none" strokeWidth={sw} stroke="var(--color-state-success)" />}
             {aCau > 0.5 && <path d={arcPath(cx, cy, r, aRes, aRes + aCau)} fill="none" strokeWidth={sw} stroke="var(--color-state-info, var(--primary))" />}
             {aRes + aCau < 359.5 && <path d={arcPath(cx, cy, r, aRes + aCau, 360)} fill="none" strokeWidth={sw} stroke="var(--color-state-error)" />}
             <text x={cx} y={cy - 2} textAnchor="middle" fontSize="30" fontWeight="700" fill="var(--fg)">{pct}%</text>
-            <text x={cx} y={cy + 18} textAnchor="middle" fontSize="11" fill="var(--fg-subtle)">{tr("ui.mitigationcharts.attempts-stopped", "attempts stopped")}</text>
+            <text x={cx} y={cy + 18} textAnchor="middle" fontSize="11" fill="var(--fg-subtle)">{tr("ui.mitigation.attempts-stopped", "attempts stopped")}</text>
           </svg>
           <div className="mc-ring-legend">
-            <span><i style={{ background: "var(--color-state-success)" }} /> {tr("ui.mitigationcharts.blocked", "blocked")}</span>
-            <span><i style={{ background: "var(--color-state-info, var(--primary))" }} /> {tr('ui.mitigationcharts.detected-in-time', 'detected in time')}</span>
-            <span><i style={{ background: "var(--color-state-error)" }} /> {tr('ui.mitigationcharts.reaches-the-objective', 'reaches the objective')}</span>
+            <span><i style={{ background: "var(--color-state-success)" }} /> {tr("ui.mitigation.blocked", "blocked")}</span>
+            <span><i style={{ background: "var(--color-state-info, var(--primary))" }} /> {tr("ui.mitigation.detected-in-time", "detected in time")}</span>
+            <span><i style={{ background: "var(--color-state-error)" }} /> {tr("ui.mitigation.reaches-the-objective", "reaches the objective")}</span>
+            <span className="mc-ring-sub">
+              {tn("ui.mitigation.gates-of-steps", gates, "{0} of {1} steps blocks an attacker", "{0} of {1} steps block an attacker").replace("{1}", String(totSteps))}
+              {" · "}
+              {tn("ui.mitigation.steps-detect", watched, "{0} detects him", "{0} detect him")}
+            </span>
           </div>
         </div>
 
@@ -168,8 +192,7 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
             {scenarios.length > 1 && (
               <button className="btn ghost sm" onClick={() => setPerScenario((v) => !v)}>
                 <span className={"caret" + (perScenario ? " open" : "")}><Icon.chevron /></span>
-                {perScenario ? tr("ui.mitigationcharts.hide-per-scenario", "Hide per scenario")
-                  : tr("ui.mitigationcharts.break-down-per-scenario", "Break down per scenario")}
+                {perScenario ? tr("ui.mitigation.hide-per-scenario", "Hide per scenario") : tr("ui.mitigation.break-down-per-scenario", "Break down per scenario")}
               </button>
             )}
           </div>
@@ -185,44 +208,36 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
                   {present.map((t) => cell(flat, t, "all-" + t, "All scenarios"))}
                   {perScenario && scenarios.map((sc) => (
                     <div className="hm-scn" key={sc.id} style={{ display: "contents" }}>
-                      <div className="hm-rowlbl" title={sc.name}><span>{sc.name}</span></div>
+                      <div className="hm-rowlbl" title={sc.name}>{sc.name}</div>
                       {present.map((t) => cell(sc.tSteps, t, sc.id + "-" + t, sc.name))}
                     </div>
                   ))}
                 </div>
               </div>
               <div className="hm-key">
-                <span className="hm-key-l">{tr("ui.mitigationcharts.undefended", "undefended")}</span>
+                <span className="hm-key-l">{tr("ui.mitigation.undefended", "undefended")}</span>
                 <span className="hm-key-bar">
                   {[0, 0.2, 0.4, 0.6, 0.8, 1].map((v) => <i key={v} style={{ background: heatColor(v, 0.55) }} />)}
                 </span>
-                <span className="hm-key-l">{tr("ui.mitigationcharts.fully-defended", "fully defended")}</span>
-                <span className="hm-key-note">{tr('ui.mitigationcharts.click-a-tile-for', 'click a tile for the working')}</span>
+                <span className="hm-key-l">{tr("ui.mitigation.fully-defended", "fully defended")}</span>
+                <span className="hm-key-l hm-key-pending"><i /> {tr("ui.mitigation.recorded-not-in-force", "includes measures still planned")}</span>
+                <span className="hm-key-note">{tr("ui.mitigation.click-a-tile", "click a tile for the working")}</span>
               </div>
             </>
           )}
         </div>
       </div>
 
-      {/* Two counted phrases, because two counts govern two verbs: with one detecting step
-          the sentence read "1 erkennen ihn". `tn` picks the form; the total is put in
-          afterwards, since a counted phrase only ever substitutes its own number.
-          UNDER the whole row rather than inside the ring's 240px column: there it wrapped
-          mid-sentence and its last line stood against the heading of the section below. */}
-      <p className="mc-foot">
-        {tn("ui.mitigationcharts.n-steps-block", gates,
-            "{0} of {1} steps blocks an attacker", "{0} of {1} steps block an attacker")
-          .replace("{1}", String(totSteps))}
-        {" · "}
-        {tn("ui.mitigationcharts.n-detect-him", watched, "{0} detects him", "{0} detect him")}
-      </p>
-
       {/* Per-step defense-in-depth: the drill-down. Each step's covering measures are
           stacked layers; the bar fills to the step's (saturating) coverage. */}
       <div className="panel-body dd-wrap">
         <div className="d-sub" style={{ marginTop: 0 }}>{tr('ui.mitigationcharts.defense-in-depth-per', 'Defense in depth - per kill-chain step')}</div>
         <div className="hint" style={{ marginBottom: 8 }}>
-          {tr('ui.mitigationcharts.the-bar-counts-only', 'The bar counts only measures that stop an attacker')} <b>{tr('ui.mitigationcharts.at-this-step', 'at this step')}</b>{tr('ui.mitigationcharts.preventive-ones-block-him', ': preventive ones block him, detective ones catch him. The others get no bar because they act on a different factor -')} <b>{tr('ui.mitigationcharts.corrective-measures-act-on', 'corrective measures act on the loss')}</b> {tr('ui.mitigationcharts.damage-control-what-the', '(damage control: what the attack costs once it succeeds),')} <b>{tr('ui.mitigationcharts.deterrent-and-avoidance-measures', 'deterrent and avoidance measures act on the number of attacks')}</b>{tr('ui.mitigationcharts.both-move-the-risk', '. Both move the risk figures; neither changes whether this step is reached.')}
+          <Sentence k="ui.mitigation.bar-counts-explained" parts={[
+            <b>{tr("ui.mitigation.at-this-step", "at this step")}</b>,
+            <b>{tr("ui.mitigation.corrective-act-on-loss", "corrective measures act on the loss")}</b>,
+            <b>{tr("ui.mitigation.deterrent-act-on-attacks", "deterrent and avoidance measures act on the number of attacks")}</b>,
+          ]} en={"The bar counts only measures that stop an attacker {0}: preventive ones block him, detective ones catch him. The others get no bar because they act on a different factor — {1} (damage control: what the attack costs once it succeeds), {2}. Both move the risk figures; neither changes whether this step is reached."} />
         </div>
         {scenarios.map((sc) => {
           const isOpen = open.has(sc.id);
@@ -231,13 +246,13 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
               <button className="dd-scn-h" onClick={() => toggle(sc.id)}>
                 <span className={"caret" + (isOpen ? " open" : "")}><Icon.chevron /></span>
                 <span className="dd-scn-name">{sc.name}</span>
-                <span className="dd-scn-cov mono" title={tr("ui.mitigationcharts.attempts-this-chain-stops", "attempts this chain stops")}>{Math.round((sc.outcome.resisted + sc.outcome.caught) * 100)}%</span>
+                <span className="dd-scn-cov mono" title={tr("ui.mitigation.attempts-this-chain-stops", "attempts this chain stops")}>{Math.round((sc.outcome.resisted + sc.outcome.caught) * 100)}%</span>
               </button>
               {isOpen && (
                 <div className="dd-steps">
                   {sc.cov.steps.map((st, i) => {
                     const segs = layersOf(st);
-                    const defence = 1 - (1 - st.prevention) * (1 - st.detection);
+                    const defence = stepDefence(st);
                     const gap = 1 - defence;
                     const hue = (c: EffectClass) => (c === "Detective" ? "var(--color-state-info, var(--primary))" : "var(--color-state-success)");
                     return (
@@ -245,24 +260,24 @@ export function MitigationCharts({ tax, study, color }: { tax: Taxonomy; study: 
                         <div className="dd-step-h">
                           <span className="dd-num">{i + 1}</span>
                           <span className="dd-step-name">{recordTitle(stepType, st.step)}</span>
-                          <span className="dd-step-cov mono" style={{ color: defence > 0.6 ? "var(--color-state-success)" : defence > 0.3 ? "var(--color-state-warning)" : "var(--color-state-error)" }}>{Math.round(defence * 100)}%</span>
+                          <span className="dd-step-cov mono" style={{ color: goodColor(defence) }}>{Math.round(defence * 100)}%</span>
                         </div>
                         <div className="dd-bar" title={`${Math.round(st.prevention * 100)}% resisted, ${Math.round(st.detection * 100)}% watched, ${Math.round(gap * 100)}% open`}>
                           {segs.filter((s) => s.contrib > 0).map((s, j) => (
                             <span key={j} className="dd-seg" style={{ width: `${s.contrib * 100}%`, background: `color-mix(in oklch, ${hue(s.cls)} ${88 - j * 16}%, var(--bg-raised))` }}
-                              title={`${mName(s.m)} - ${s.cls.toLowerCase()} · ${s.status || "status unset"} · implementation ${Math.round(s.impl * 100)}% · contributes ${Math.round(s.contrib * 100)}%`} />
+                              title={`${mName(s.m)} — ${s.cls.toLowerCase()} · ${s.status || "status unset"} · implementation ${Math.round(s.impl * 100)}% · contributes ${Math.round(s.contrib * 100)}%`} />
                           ))}
                           {gap > 0.001 && <span className="dd-seg gap" style={{ width: `${gap * 100}%` }} title="open - nothing here blocks or detects an attacker" />}
                         </div>
                         <div className="dd-layers">
                           {segs.length ? segs.map((s) => (
                             <button key={s.m.id} className="chip link" onClick={() => setRec(s.m)}
-                              title={`${s.cls}: ${EFFECT_CHANNEL[s.cls]}`}>
+                              title={`${s.cls}: ${effectChannel(s.cls)}`}>
                               {mName(s.m)}
-                              <span className={"dd-cls" + (s.contrib > 0 ? "" : " off")}>{s.cls.toLowerCase()}</span>
+                              <span className="dd-cls">{s.cls.toLowerCase()}</span>
                               {s.status && s.status !== "Implemented" && <span className="dd-status"> · {s.status.toLowerCase()}</span>}
                             </button>
-                          )) : <span className="dd-nogap">{tr('ui.mitigationcharts.no-measure-fully-open', 'no measure - fully open')}</span>}
+                          )) : <span className="dd-nogap">no measure - fully open</span>}
                         </div>
                       </div>
                     );
@@ -291,7 +306,7 @@ function TacticExplain({ heat, stepType, measureType, onOpen, onClose }: {
   const pct = (x: number) => `${Math.round(x * 100)}%`;
   const mean = heat.steps.length ? heat.steps.reduce((a, s) => a + s.coverage, 0) / heat.steps.length : 0;
   return createPortal(
-    <div className="overlay" onMouseDown={onClose}>
+    <Overlay onClose={onClose}>
       <div className="ft-card" onMouseDown={(e) => e.stopPropagation()}>
         <header className="ft-head">
           <div>
@@ -303,7 +318,10 @@ function TacticExplain({ heat, stepType, measureType, onOpen, onClose }: {
         <div className="ft-body">
           <div className="tx-rows">
             {heat.steps.map((s) => {
-              const def = 1 - (1 - s.st.prevention) * (1 - s.st.detection);
+              const def = stepDefence(s.st);
+              // A step whose measures are all still on paper: the zero is right, and on
+              // its own it reads as "nobody has been here". Say which of the two it is.
+              const pending = def < 0.001 && s.potential > PENDING_GAP;
               return (
                 <div className="tx-row" key={s.st.step.id}>
                   <div className="tx-name">
@@ -317,12 +335,15 @@ function TacticExplain({ heat, stepType, measureType, onOpen, onClose }: {
                           <span>blocks <b>{pct(s.st.prevention)}</b></span>
                           <span>detects <b>{pct(s.st.detection)}</b></span>
                         </>
-                      : <span className="tx-none">{tr('ui.mitigationcharts.nothing-blocks-or-detects', 'nothing blocks or detects an attacker here')}</span>}
+                      : pending
+                        ? <span className="tx-none">{tr("ui.mitigation.recorded-none-in-force", "recorded here, none of it in force yet - {0} once it is")
+                            .replace("{0}", pct(s.potential))}</span>
+                        : <span className="tx-none">nothing blocks or detects an attacker here</span>}
                   </div>
                   <div className="tx-chips">
                     {s.st.measures.map((m) => (
                       <button className="chip link" key={m.id} onClick={() => onOpen(m)}
-                        title={`${effectClassOf(m)}: ${EFFECT_CHANNEL[effectClassOf(m)]}`}>
+                        title={`${effectClassOf(m)}: ${effectChannel(effectClassOf(m))}`}>
                         {recordTitle(measureType, m)}<span className="dd-cls">{effectClassOf(m)}</span>
                       </button>
                     ))}
@@ -331,23 +352,25 @@ function TacticExplain({ heat, stepType, measureType, onOpen, onClose }: {
               );
             })}
             <div className="tx-row tx-sum">
-              <div className="tx-name">average of {heat.steps.length} step{heat.steps.length === 1 ? "" : "s"}</div>
+              <div className="tx-name">average of {tn("ui.mitigationcharts.steps", heat.steps.length, "{0} step", "{0} steps")}</div>
               <div className="tx-val mono">{pct(mean)}</div>
             </div>
           </div>
 
-          <div className="tx-formula mono">{tr('ui.mitigationcharts.per-step-blocks-detects', 'per step: 1 − (1 − blocks) × (1 − detects)')}</div>
+          <div className="tx-formula mono">per step: 1 − (1 − blocks) × (1 − detects)</div>
           <p className="tx-note">
-            {tr('ui.mitigationcharts.a-second-measure-on', 'A second measure on the same step closes part of what the first left open. Each counts for how far it is implemented and where it stands in its lifecycle.')}
+            {tr('ui.mitigationcharts.a-second-measure-on', 'A second measure on the same step closes part of what the first left open. Each counts for how far it is\n            implemented and where it stands in its lifecycle.')}
           </p>
           <p className="tx-note">
-            <b>{tr('ui.mitigationcharts.corrective-deterrent-and-avoidance', 'Corrective, deterrent and avoidance measures are not counted here')}</b> {tr('ui.mitigationcharts.they-act-on-a', '- they act on a different factor. Corrective ones act on')} <b>the loss</b> {tr('ui.mitigationcharts.damage-control-what-the-2', '(damage control: what the attack costs once it succeeds), deterrent and avoidance ones on')} <b>{tr('ui.mitigationcharts.the-number-of-attacks', 'the number of attacks')}</b>. Both move the risk figures; neither changes whether a
+            <b>{tr('ui.mitigationcharts.corrective-deterrent-and-avoidance', 'Corrective, deterrent and avoidance measures are not counted here')}</b> — they act on a different factor.
+            Corrective ones act on <b>the loss</b> (damage control: what the attack costs once it succeeds), deterrent
+            and avoidance ones on <b>the number of attacks</b>. Both move the risk figures; neither changes whether a
             step is reached.
           </p>
           <p className="tx-note">
-            {tr('ui.mitigationcharts.this-measures-how-consistently', "This measures how consistently the tactic's steps are defended, not how likely an attack is to fail - that also depends on where those steps sit in the chain. See the ring.")}
+            {tr('ui.mitigationcharts.this-measures-how-consistently', "This measures how consistently the tactic's steps are defended, not how likely an attack is to fail — that\n            also depends on where those steps sit in the chain. See the ring.")}
           </p>
         </div>
       </div>
-    </div>, document.body);
+    </Overlay>, document.body);
 }

@@ -655,6 +655,9 @@ export function CanvasView({ tax, study }: { tax: Taxonomy; study: Study }) {
               <div className="flow-lane" key={type.key}>
                 <div className="lane-header" data-lane={type.key} style={{ borderColor: color }}>
                   <span className="lane-dot" style={{ background: color }} />
+                  {/* The lane header is the only thing saying which lane this is, and it
+                      clips: "Operational Scenarios" loses its last word at 1280. The full
+                      name is on the label itself, since there is nothing else to read. */}
                   <span className="lane-label" title={typeLabelPlural(type)}>{typeLabelPlural(type)}</span>
                   <span className="lane-count" style={{ color, borderColor: `color-mix(in oklch, ${color} 45%, transparent)` }}>{items.length}</span>
                   <button className="lane-add" title={tParts("ui.canvas.new-type", "New {0}").map((p) => (typeof p === "number" ? typeLabel(type) : p)).join("")} onClick={() => setModal({ typeKey: type.key, record: null })}><Icon.plus /></button>

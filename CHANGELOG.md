@@ -6,6 +6,68 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.7.0] - 2026-09-18
+
+Measured at the portable build: 459 end-to-end checks, 33 of them for this release.
+
+### Added
+
+- **Threat intelligence in.** *Import / Export → Import data…* recognises a STIX 2.1 bundle
+  - ATT&CK, a MISP or TAXII export, a vendor report - and opens it in columns: the types,
+  the objects of a type, the relations of an object. A row opens the next column, the box
+  beside it chooses, a search runs over the whole bundle. What is chosen becomes records by
+  one rule per type: an actor a risk source, a technique an attack step, a campaign an
+  attack scenario, a mitigation a measure. The landing says which workshops gain, previews
+  the chain in tactic order, draws what the bundle connects among the chosen and names what
+  the study already holds; every field can be adjusted before the additive review. The same
+  object imported again updates its record rather than adding a second. `docs/stix-import.md`;
+  the invented example is `samples/stix-story.json`.
+- **One search across every workshop**, `Ctrl K`. A hit names the record, the workshop and
+  the field the word was found in, unfolds to a preview, and goes to its row - unfolded,
+  filtered in, scrolled to and marked for a moment.
+- **A column head orders the register** - lowest first, highest first, back to the order
+  the records were written in - by the value's own kind: a scale by its number, an option
+  list by its declared order, a reference by the title it shows, a hole last either way.
+  The order comes back with the reader.
+- **A column can be put away**, from a menu on every register with columns to choose from,
+  and stays away for that study and register.
+- **ATT&CK v19.** Fifteen tactics - Defense Evasion split into Stealth and Defense
+  Impairment - and all 697 live techniques and sub-techniques for the typeahead, a revoked
+  one read through to its successor. A stored study gains the two tactics in matrix
+  position. Four new checks: a step under a tactic ATT&CK has retired, a step under a
+  technique it has replaced, a preventive measure on a step its technique does not answer to
+  (from ATT&CK's own `mitigates` relationships), and a technique ATT&CK marks as hard to
+  prevent defended only by prevention. A measure names the ATT&CK mitigations it is.
+- **A pushed graph node stays where it was pushed**, per study; *Reset positions* puts
+  them back.
+- **Copy for LLM carries the records once more as the import reads them.** After the prose,
+  the data-model excerpt and the records of the workshop as fenced YAML, with the study id
+  and each record as id, type and values - so an answer written against that shape can be
+  pasted into *Import → Additive*. The import reads a fenced block out of surrounding text
+  and fills what a record written outside the application leaves out.
+
+### Changed
+
+- **A measure recorded but not in force is not nothing.** The chain defence, the tactic map
+  and the kill-chain mitigation say *planned* in their own colour where every measure on a
+  step is still on paper; a tile keeps the colour of what holds today and is hatched up to
+  what it would hold; a planned chip is hatched. A study of planned controls used to read as
+  a study with none.
+- **One set of colour bands** for every figure on screen and in the report. Five copies had
+  grown up with five sets of edges, and the same 57 % was three colours on one screen.
+- **The workshop bar is one row**: the six steps on a shared baseline, the open one
+  underlined in its colour, the three views a switch apart from them. On a narrow window
+  the steps keep their number and shorten their name.
+- **Search, facets and grouping belong to the registers a catalogue fills** - requirements
+  and measures - and to no other. A row count decided it before, and the reader could not
+  see the rule.
+- **The menu reads Import / Export**, import above export.
+- **An empty register says what the next act is**, and a refused add names both ends of
+  the reference rather than the same word twice.
+- Every cell of the risk matrix is the same size, however full. The accent bar stands
+  above the pinned title column. A stored option value outside its list is shown, marked,
+  instead of the first option. An external link in the report opens in a new tab.
+
 ## [0.6.7] - 2026-09-05
 
 ### Fixed

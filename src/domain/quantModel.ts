@@ -7,7 +7,7 @@
 import type { EntityRecord, Study, Taxonomy } from "./types";
 import { getType, isSetBack, scaleLabel, scaleMax } from "./taxonomy";
 import { stepFields } from "./killchain";
-import { effectClassOf, type EffectClass } from "./controls";
+import { effectClassOf, type EffectClass, defendsStep } from "./controls";
 import { PERT_LAMBDA, type ChainStep, type QuantInputs, type Range } from "./montecarlo";
 import { DEFAULT_CALIBRATION, type Calibration } from "./calibration";
 import { demandOf, type DemandBreakdown, type DemandStep } from "./demand";
@@ -45,8 +45,47 @@ export function measureEfficacyOf(tax: Taxonomy, m: EntityRecord, cal: Calibrati
   const sw = cal.effect.statusWeight[statusF ? String(m.values[statusF.key] ?? "") : ""] ?? 1;
   return c01(lvl) * cal.effect.controlCeiling * sw;
 }
+
+/** The same measure once its LIFECYCLE is done with: status read as implemented, the
+ *  rolled-out level kept as recorded. A record that says nothing is rolled out yet
+ *  ("none") is read at the top instead, because for that one there is no other reading
+ *  of "in force".
+ *
+ *  This is the figure behind "0% → 49%": the withheld part, and nothing else. The level
+ *  is deliberately NOT lifted where it is set, or a control at "substantial" would be
+ *  reported as pending in every study - it is working, it is simply not everywhere. */
+export function measureEfficacyInForce(tax: Taxonomy, m: EntityRecord, cal: Calibration = DEFAULT_CALIBRATION): number {
+  const mt = getType(tax, m.type);
+  const implF = mt?.fields.find((f) => f.key === "implementation_level");
+  const lvl = implF ? sampleNum(cal.effect.levelWeight, scaleRatio(tax, m, implF.key, 1)) : 1;
+  return c01(lvl > 0 ? lvl : 1) * cal.effect.controlCeiling;
+}
 /** Defense-in-depth step coverage from the layers' efficacies: 1 - product(1-eff). */
 export const stepCoverage = (effs: number[]) => 1 - effs.reduce((p, e) => p * (1 - e), 1);
+/** How far a step is DEFENDED: resisted or watched. Recovery is not defence - a backup
+ *  does not stop an attacker reaching the step, it pays for it afterwards. */
+export const stepDefence = (st: StepCov) => 1 - (1 - st.prevention) * (1 - st.detection);
+/** What the step's defence would be once every measure on it is in force - the same
+ *  combination, each measure read through `measureEfficacyInForce`.
+ *
+ *  A study whose measures are entered as planned computes to a defence the model has
+ *  discounted for the lifecycle: half of it for "Planned", 85% of it for "Recommended",
+ *  all of it where the rollout is "none". On screen that discount is indistinguishable
+ *  from a step nobody has treated - flat, weak colour either way. The difference is a
+ *  fact about the study, and the views draw it from the pair (defence, potential).
+ *
+ *  It is the LIFECYCLE that is lifted, never the rolled-out level: a control at
+ *  "substantial" is working, and counting its room to the ceiling here would mark every
+ *  step of every study as pending. */
+/** How much a lifecycle has to withhold before it is worth marking, in points of
+ *  defence. A step already held by an implemented control gains two points when a second,
+ *  planned one is added; saying so puts an arrow on almost every step and buys the reader
+ *  nothing. Three points is the smallest lift that changes what anyone would do. */
+export const PENDING_GAP = 0.03;
+
+export function stepPotential(tax: Taxonomy, st: StepCov, cal: Calibration = DEFAULT_CALIBRATION): number {
+  return stepCoverage(st.measures.filter(defendsStep).map((m) => measureEfficacyInForce(tax, m, cal)));
+}
 export interface Coverage { mitigated: number; total: number; impl: number; value: number; steps: StepCov[] }
 export interface Refs { op: EntityRecord; strategic?: EntityRecord; riskSource?: EntityRecord; fearedEvent?: EntityRecord }
 export interface Derived {

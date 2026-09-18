@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { t as tr } from "../domain/i18n";
 import type { Study, Taxonomy } from "../domain/types";
 import { slug as slugify } from "../domain/persistence";
 import { useActiveStudy, useStore } from "../domain/store";
-import { groupDescription, groupLabel } from "../domain/taxonomy";
+import { groupDescription, groupLabel, groupShort } from "../domain/taxonomy";
 import { PRODUCT } from "../profile";
 import { workshopMarkdown, reportMarkdown, reportHtml, openReportHtml, downloadText, copyText } from "../domain/clipboard";
-import { EntitySection } from "./EntitySection";
+import { EntitySection, type Reveal } from "./EntitySection";
 import { RiskMatrix } from "./RiskMatrix";
 import { KillChainLane } from "./KillChainLane";
 import { AttackPathsView } from "./AttackPathsView";
@@ -26,6 +26,7 @@ import { catalogTargets } from "../domain/catalog";
 import { QUANT_GROUP, hasQuantification } from "../domain/quantModel";
 import { GraphView } from "./GraphView";
 import { CompletenessView } from "./CompletenessView";
+import { EMPTY_SEARCH, SearchSheet, type SearchState } from "./SearchSheet";
 import { CanvasView } from "./CanvasView";
 import { DataMenu } from "./DataMenu";
 import { Icon, useDismissOnEscape } from "./ui";
@@ -105,6 +106,22 @@ export function StudyView({ onBack }: { onBack: () => void }) {
   const tax = useStore((s) => s.taxonomy);
   const setActiveStudy = useStore((s) => s.setActiveStudy);
   const [tab, setTab] = useState<string>(tax.groups[0]?.key ?? "graph");
+  // One search across every workshop. Ctrl/Cmd-K because that is where a reader's hand
+  // already goes; the button beside the title is for the reader who has never been told.
+  const [searching, setSearching] = useState(false);
+  // The last search, kept across closings - see SearchState. Per study, because a word
+  // searched in one analysis is not a question about the next.
+  const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
+  // The record a search hit asked for. The tab switch mounts the sections fresh, so the
+  // target is state here rather than an event: a section that mounts later still reads it.
+  const [reveal, setReveal] = useState<Reveal | null>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearching(true); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   if (!study) return null;
   const back = () => { setActiveStudy(null); onBack(); };
@@ -130,32 +147,48 @@ export function StudyView({ onBack }: { onBack: () => void }) {
           <div className="sub">{study.organization || "no organization"}{study.sector && hasQuantification(tax) ? ` · ${study.sector}` : ""}</div>
         </div>
         <span className="spacer" />
+        <button className="btn ghost sm gs-open" onClick={() => setSearching(true)}
+          title={tr("ui.search.open-title", "Search every workshop of this study (Ctrl K)")}>
+          <Icon.search /> {tr("ui.search.search", "Search")}
+        </button>
         <ReportMenu tax={tax} study={study} />
-        <DataMenu studyScope={study} label={tr("ui.study.export-import", "Export / Import")} />
+        <DataMenu studyScope={study} label={tr("ui.study.export-import", "Import / Export")} />
       </div>
 
-      <div className="ws-tabs">
-        {tax.groups.map((g, i) => (
-          <button key={g.key} className={"ws-tab" + (tab === g.key ? " active" : "")}
-            style={{ ["--ws" as string]: g.color }} onClick={() => setTab(g.key)} title={groupDescription(g) || groupLabel(g)}>
-            <span className="num">{i + 1}</span>
-            <span className="t-title">{groupLabel(g)}</span>
+      {searching && <SearchSheet tax={tax} study={study} state={search} onState={setSearch} onClose={() => setSearching(false)}
+        onGoto={(g, id) => { setTab(g); setReveal((r) => ({ id, n: (r?.n ?? 0) + 1 })); }} />}
+
+      {/* The workshop bar: the seven workshops as one row of equal steps - the method's
+          own order, numbered, the open one underlined in its colour - and the three
+          views of the whole study as a separate switch on the right. One row at any
+          width: below 1180 px the steps keep their number and shorten their name, below
+          900 px only the open step keeps a name at all. */}
+      <nav className="ws-tabs" aria-label={tr("ui.study.workshops", "Workshops")}>
+        <div className="ws-steps" role="tablist">
+          {tax.groups.map((g, i) => (
+            <button key={g.key} role="tab" aria-selected={tab === g.key} className={"ws-tab" + (tab === g.key ? " active" : "")}
+              style={{ ["--ws" as string]: g.color }} onClick={() => setTab(g.key)} title={groupDescription(g) || groupLabel(g)}>
+              <span className="num">{i + 1}</span>
+              <span className="t-title">{groupLabel(g)}</span>
+              <span className="t-short">{groupShort(g)}</span>
+            </button>
+          ))}
+        </div>
+        <div className="ws-views" role="tablist">
+          <button role="tab" aria-selected={tab === "canvas"} className={"ws-tab plain" + (tab === "canvas" ? " active" : "")} onClick={() => setTab("canvas")} title={tr('ui.study.event-chains', 'Event chains')}>
+            <span className="num"><Icon.canvas /></span>
+            <span className="t-title">{tr('ui.study.flow', 'Flow')}</span>
           </button>
-        ))}
-        <span className="ws-sep" aria-hidden />
-        <button className={"ws-tab plain" + (tab === "canvas" ? " active" : "")} onClick={() => setTab("canvas")} title={tr('ui.study.event-chains', 'Event chains')}>
-          <span className="num"><Icon.canvas /></span>
-          <span className="t-title">{tr('ui.study.flow', 'Flow')}</span>
-        </button>
-        <button className={"ws-tab plain" + (tab === "graph" ? " active" : "")} onClick={() => setTab("graph")} title={tr('ui.study.relationships', 'Relationships')}>
-          <span className="num"><Icon.graph /></span>
-          <span className="t-title">{tr('ui.study.graph', 'Graph')}</span>
-        </button>
-        <button className={"ws-tab plain" + (tab === "checks" ? " active" : "")} onClick={() => setTab("checks")} title={tr('ui.study.analysis-completeness-checks', 'Analysis completeness checks')}>
-          <span className="num"><Icon.check /></span>
-          <span className="t-title">{tr('ui.study.checks', 'Checks')}</span>
-        </button>
-      </div>
+          <button role="tab" aria-selected={tab === "graph"} className={"ws-tab plain" + (tab === "graph" ? " active" : "")} onClick={() => setTab("graph")} title={tr('ui.study.relationships', 'Relationships')}>
+            <span className="num"><Icon.graph /></span>
+            <span className="t-title">{tr('ui.study.graph', 'Graph')}</span>
+          </button>
+          <button role="tab" aria-selected={tab === "checks"} className={"ws-tab plain" + (tab === "checks" ? " active" : "")} onClick={() => setTab("checks")} title={tr('ui.study.analysis-completeness-checks', 'Analysis completeness checks')}>
+            <span className="num"><Icon.check /></span>
+            <span className="t-title">{tr('ui.study.checks', 'Checks')}</span>
+          </button>
+        </div>
+      </nav>
 
       <div className="content">
         {tab === "graph" ? (
@@ -211,7 +244,7 @@ export function StudyView({ onBack }: { onBack: () => void }) {
                 const target = targets.find((tg) => tg.type.key === t.key);
                 return (
                   <Fragment key={t.key}>
-                    <EntitySection type={t} study={study} tax={tax} color={activeGroup.color}
+                    <EntitySection type={t} study={study} tax={tax} color={activeGroup.color} reveal={reveal}
                       draggableRows={t.key === stepType?.key}
                       hideAdd={!!target}
                       headerExtra={target ? <CatalogAdd tax={tax} study={study} target={target} /> : undefined}
