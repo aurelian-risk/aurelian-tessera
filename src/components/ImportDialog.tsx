@@ -13,6 +13,7 @@ import { fingerprint, knownKey, ownKey, publicOf, readPublicKeyFile, rememberKey
 import { taxonomyGap } from "../domain/taxonomy";
 import { isStix } from "../domain/stix";
 import { StixImport } from "./StixImport";
+import { STIX_EXAMPLE } from "../profile";
 import { getType, recordTitle } from "../domain/taxonomy";
 import { sealState } from "./SealPanel";
 import { importDocs } from "../domain/documents";
@@ -253,6 +254,10 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
             <div className="idiff-actions">
               <button className="btn" disabled={busy} onClick={fromFile}><Icon.upload /> {tr('ui.import.choose-file', 'Choose file…')}</button>
               {active && <button className="btn ghost" onClick={previewDemo} title={tr('ui.import.see-the-diff-without', 'See the diff without editing a file')}>{tr('ui.import.preview-a-demo-revision', 'Preview a demo revision')}</button>}
+              {/* The example study has a threat-intelligence bundle written for it; offered
+                  there only, because its actor, targets and techniques are that study's. */}
+              {active?.example && STIX_EXAMPLE && <button className="btn ghost" onClick={() => takeStix(STIX_EXAMPLE!, tr("ui.import.stix-example-source", "example STIX bundle"))}
+                title={tr("ui.import.stix-example-hint", "An invented STIX 2.1 bundle written for the example study: an actor, its campaign, techniques and mitigations")}>{tr("ui.import.stix-example", "Example threat intelligence")}</button>}
               <span style={{ flex: 1 }} />
               <button className="btn primary" disabled={busy || !text.trim()} onClick={fromText}>{tr('ui.import.preview-pasted', 'Preview pasted →')}</button>
             </div>

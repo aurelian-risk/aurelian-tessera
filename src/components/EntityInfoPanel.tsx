@@ -1,21 +1,26 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 // Shared right-frame info panel for the graph and the flow canvas: type, all
 // field values, and clickable incoming/outgoing relationships (navigate).
-import type { EntityRecord, FieldDef, FieldValue, Study, Taxonomy } from "../domain/types";
+import type { EntityRecord, EntityTypeDef, FieldDef, FieldValue, Study, Taxonomy } from "../domain/types";
 import { t as tr } from "../domain/i18n";
-import { fieldLabel, fieldRelation, getType, recordTitle, refFields, scaleLabel, typeLabel } from "../domain/taxonomy";
+import { fieldLabel, fieldRelation, getType, inForce, optionLabel, recordTitle, refFields, scaleLabel, typeLabel } from "../domain/taxonomy";
 import { Icon } from "./ui";
 
-function valueText(tax: Taxonomy, study: Study, f: FieldDef, v: FieldValue): string {
+/** A value as the register shows it: a switch reads its empty state as the table does, a
+ *  stored option in the reader's language. The panel printed stored values raw - an asset the
+ *  register called "in scope" read "-" here, and a BSI category stayed in German in English. */
+function valueText(tax: Taxonomy, study: Study, type: EntityTypeDef, f: FieldDef, v: FieldValue): string {
   const nameOf = (id: string) => {
     const r = study.entities.find((e) => e.id === id);
     const t = r && getType(tax, r.type);
     return r && t ? recordTitle(t, r) : "?";
   };
+  if (f.type === "enum" && f.toggle && f.options?.length) return optionLabel(f, f.options[inForce(f, v)], type);
   if (v == null || v === "") return " - ";
   switch (f.type) {
+    case "enum": return optionLabel(f, String(v), type);
     case "scale": return typeof v === "number" ? scaleLabel(f, v) : String(v);
-    case "boolean": return v ? "yes" : "no";
+    case "boolean": return v ? tr("ui.entityinfo.yes", "yes") : tr("ui.entityinfo.no", "no");
     case "ref": return typeof v === "string" ? nameOf(v) : " - ";
     case "multiref": return Array.isArray(v) && v.length ? (v as string[]).map(nameOf).join(", ") : " - ";
     default: return String(v);
@@ -68,7 +73,7 @@ export function EntityInfoPanel({ tax, study, id, onSelect, onEdit, onClose }: {
 
       <div className="ip-fields">
         {type.fields.filter((f) => f.type !== "ref" && f.type !== "multiref").map((f) => {
-          const txt = valueText(tax, study, f, rec.values[f.key] ?? null);
+          const txt = valueText(tax, study, type, f, rec.values[f.key] ?? null);
           if (f.type === "textarea") return txt === " - " ? null : <p key={f.key} className="ip-desc">{txt}</p>;
           return <div key={f.key} className="ip-row"><span className="ip-k">{fieldLabel(f, type)}</span><span className="ip-v">{txt}</span></div>;
         })}

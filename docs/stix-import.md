@@ -4,7 +4,8 @@
 and, instead of the diff, opens a column browser: from any object to a set of records for
 the open study. Nothing is written until the same additive review every import goes
 through. The sample bundle `samples/stix-story.json` (74 objects, invented, strictly valid
-against the OASIS 2.1 schemas) is there to try it on.
+against the OASIS 2.1 schemas) is there to try it on; with the example study open, the
+dialog offers it as *Example threat intelligence*.
 
 ## What reads
 

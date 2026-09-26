@@ -229,7 +229,9 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     // ── entityinfo ──
     "ui.entityinfo.close": "Schließen",
     "ui.entityinfo.edit": "Bearbeiten",
+    "ui.entityinfo.no": "nein",
     "ui.entityinfo.relationships": "Beziehungen",
+    "ui.entityinfo.yes": "ja",
 
     // ── entitysection ──
     "ui.entitysection.disable-record": "{0} deaktivieren",
@@ -338,7 +340,11 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.frameworkradar.requirements-fulfilled-per-framework": "erfüllte Anforderungen je Rahmenwerk",
 
     // ── graph ──
-    "ui.graph.click-to-inspect-double": "· anklicken zum Ansehen · Doppelklick zentriert neu · Umschalt-Klick vergleicht",
+    "ui.graph.back": "← Zurück",
+    "ui.graph.hint-one": "Knoten anklicken zum Ansehen · Doppelklick zentriert neu · Umschalt-Klick vergleicht",
+    "ui.graph.hint-many": "Knoten anklicken zum Ansehen · Doppelklick zentriert neu · Umschalt-Klick nimmt hinzu oder heraus",
+    "ui.graph.n-in-focus.many": "{0} im Fokus",
+    "ui.graph.n-in-focus.one": "{0} im Fokus",
     "ui.graph.n-relationships.many": "{0} Beziehungen",
     "ui.graph.n-relationships.one": "{0} Beziehung",
     "ui.graph.shift-click-to-add": "Umschalt-Klick nimmt es in den Fokus auf",
@@ -374,6 +380,10 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.import.paste-a-bundle-study": "Fügen Sie hier ein Bundle, Studiendaten oder eine Taxonomy ein…",
     "ui.import.paste-json-yaml": "JSON / YAML einfügen",
     "ui.import.preview-a-demo-revision": "Eine Beispiel-Revision ansehen",
+    "ui.import.stix-example": "Beispiel-Bedrohungslage",
+    "ui.hscroll.label": "Register seitwärts verschieben",
+    "ui.import.stix-example-hint": "Ein erfundenes STIX-2.1-Bündel zur Beispielstudie: ein Akteur, seine Kampagne, Techniken und Gegenmaßnahmen",
+    "ui.import.stix-example-source": "Beispiel-STIX-Bündel",
     "ui.import.preview-pasted": "Eingefügtes ansehen →",
     "ui.import.see-the-diff-without": "Den Unterschied sehen, ohne eine Datei zu bearbeiten",
     "ui.import.signature-valid-sender-unconfirmed": "Signatur gültig, Absender unbestätigt",
@@ -591,6 +601,8 @@ export const ENGINE_WORDS: Record<string, Overlay> = {
     "ui.sectorsection.without-a-sector-the": "Ohne Branche benutzt die Quantification die veröffentlichten Basisraten unverändert. Eine zu wählen ändert die Angriffsrate nur dort, wo eine dokumentierte Abweichung vorliegt.",
 
     // ── study ──
+    "ui.study.back-to-studies": "← Studien",
+    "ui.study.no-organization": "keine Organisation",
     "ui.study.export-import": "Import / Export",
     "ui.study.analysis-completeness-checks": "Vollständigkeitsprüfungen der Analyse",
     "ui.study.checks": "Prüfungen",

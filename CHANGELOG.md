@@ -6,6 +6,49 @@ All notable changes to Aurelian Tessera++ are documented here. The format is bas
 downloadable single-file build under
 [Releases](https://github.com/aurelian-risk/aurelian-tessera/releases).
 
+## [0.7.1] - 2026-09-26
+
+Measured at the portable build: 474 end-to-end checks, 15 of them for this release.
+
+### Added
+
+- **Example threat intelligence.** With the example study open, *Import / Export → Import
+  data…* offers the invented STIX bundle written for it: three actors, two campaigns - one
+  of them the takeover of the remote-maintenance access the study models - and the
+  techniques and mitigations they use. `samples/stix-story.json` is the same file, retold
+  for Riverbend; its ids are unchanged.
+
+### Changed
+
+- **The heads stay in view.** The title bar and the workshop bar stay at the top of the
+  window; a register's heading and its column heads stay under them while its rows go by.
+- **The registers of a workshop move sideways together**, under one thin bar below the
+  workshop bar, drawn by the application so the desktop cannot hide it. A sideways wheel or
+  trackpad over a register moves the group. The title column moves with the table rather
+  than staying pinned as it did since 0.6.6.
+- The open workshop is marked by one line on the baseline, where two stood.
+- The graph's head holds the name and its relationship count on one line and the gestures
+  on a second, so a long name is cut rather than wrapped into them.
+
+### Fixed
+
+- **A field a release adds reaches a study already stored.** A stored type gains the fields
+  its default has since added, once, where the default puts them; one removed afterwards
+  stays removed. Until now such a field never arrived - the ATT&CK mitigations on a measure
+  from 0.7.0 included.
+- **The audit's rule could not be answered.** *Results communicated to* (PERF.3.2.2) stood
+  on the management report, the rule asked for it on the audit. It is on the audit now; a
+  value written on a management report stays there.
+- A risk source no longer carries the requirement's two parameter fields in a new study.
+- The detail panel of the graph and the flow reads a value as the register does: a switch
+  without a value as its default state, an option in the reader's language, yes and no
+  translated.
+- *← Studies* and *no organization* follow the language setting.
+- The hint of the check on processes rated *hoch* names the record it asks for, a loss
+  event.
+- The reference documents' file name keeps umlauts as the export does: *Netzführung*
+  becomes `netzfuehrung`, not `netzf-hrung`.
+
 ## [0.7.0] - 2026-09-18
 
 Measured at the portable build: 459 end-to-end checks, 33 of them for this release.

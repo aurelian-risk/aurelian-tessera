@@ -346,6 +346,7 @@ export const SAMPLE_DE: Record<string, Record<string, string>> = {
     geplant_fuer: "2026-09-15",
     durchgefuehrt_am: "2026-09-17",
     bericht: "Der Zugang wird je Auftrag freigegeben und wie verlangt aufgezeichnet. Die Sitzungsaufzeichnungen werden gesammelt, aber nicht ausgewertet: niemand ist als Auswertender benannt, ein Missbrauch wäre also erst im Nachhinein sichtbar. Die Zweifaktor-Authentisierung ist bei drei von fünf Konten eingerichtet.",
+    kommuniziert_an: "Geschäftsführung und Sicherheitsgremium am 2026-09-24; IT-Betrieb und Wartungsdienstleister am 2026-09-25, der Dienstleister nur für den Teil, der seinen eigenen Zugang betrifft.",
   },
   "audit/Surveillance audit of the telecontrol network": {
     name: "Überwachungsaudit des Fernwirknetzes",

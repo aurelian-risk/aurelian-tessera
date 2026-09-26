@@ -22,6 +22,7 @@ import { documentCredits, documentHtml, registerMarkdown } from "../../domain/cl
 import { DOC_DE, HEADING_DE, LABEL_DE, TITLE_DE, VALUE_DE } from "./exportterms";
 import type { EntityRecord, Study, Taxonomy } from "../../domain/types";
 import { shortVersion } from "../../domain/vocabulary";
+import { slug } from "../../domain/persistence";
 
 /** When the publisher's library was last read for a Grundschutz++ certification scheme.
  *  ROADMAP.md §2 re-checks it at each `npm run sync`; the two say the same date or one of
@@ -198,8 +199,7 @@ export function referenceDocuments(
   // language, because a licence has to be readable by whoever receives it.
   L.push(...documentCredits(DOC_DE.credits));
 
-  const slug = study.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "study";
-  return { filename: `${slug}-referenzdokumente.md`, text: L.join("\n").trim() + "\n" };
+  return { filename: `${slug(study.name || "study")}-referenzdokumente.md`, text: L.join("\n").trim() + "\n" };
 }
 
 /** The same set as a page, set the way the report is: read in the browser, printed from

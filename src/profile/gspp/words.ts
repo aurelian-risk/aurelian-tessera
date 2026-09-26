@@ -526,7 +526,7 @@ const DE: Overlay = {
   // nachverfolgung
   "field.nachverfolgung.kommuniziert_an.label": "Kommuniziert an",
   // managementbericht
-  "field.managementbericht.kommuniziert_an.label": "Ergebnisse kommuniziert an",
+  "field.audit.kommuniziert_an.label": "Ergebnisse kommuniziert an",
   "field.managementbericht.audit.label": "Zugrunde liegende Audits",
   // abweichung
   "field.abweichung.audit.label": "Festgestellt durch",
@@ -646,12 +646,8 @@ const DE: Overlay = {
   "field.security_measure.scope.help": "Die BSI veröffentlicht, was ihre Anforderungen umsetzt, und es steht vollständig hier, damit es auffindbar ist. Schalten Sie ein, was Sie tatsächlich einsetzen; der Rest bleibt sichtbar für den Tag, an dem er relevant wird.",
   // requirement
   "field.requirement.params.help": "Was der Katalog Ihnen zum Ausfüllen lässt - eine Frist, eine Rolle, ein Standard. Der Formulierungsvorschlag steht bereits im Anforderungstext, in «Guillemets». (STM.5.1)",
-  // risk_origin
-  "field.risk_origin.params.help": "STM.5.1. Was der Katalog der Institution überlässt, als Kennung und Formulierungsvorschlag. Der Vorschlag steht bereits im Anforderungstext, in Guillemets.",
   // requirement
   "field.requirement.parameter_values.help": "Was Sie festgelegt haben und wer es entschieden hat. Solange die Parameter offen sind, ist die Anforderung noch nicht die Ihre.",
-  // risk_origin
-  "field.risk_origin.parameter_values.help": "Was diese Institution festgelegt hat und durch wessen Entscheidung. Eine Anforderung mit offenen Parametern ist noch keine Anforderung dieser Institution.",
   // requirement
   "field.requirement.prioritaet.help": "Wann das dran ist, neben allem anderen. Zu entscheiden aus dem Risiko, aus dem, worauf es wartet, und aus den Leuten, die Sie haben. Die Aufwandsstufe des Katalogs sagt, was es kostet, nicht wann es fällig ist. (UMS.2.2)",
   // verbesserung
@@ -679,7 +675,7 @@ const DE: Overlay = {
   // nachverfolgung
   "field.nachverfolgung.kommuniziert_an.help": "Wem das Ergebnis mitgeteilt wurde. Eine Runde, deren Zahlen bei dem geblieben sind, der sie zusammengetragen hat, hat nichts verändert. (UMS.6.1)",
   // managementbericht
-  "field.managementbericht.kommuniziert_an.help": "Welchen interessierten Parteien mitgeteilt wurde, was das Audit ergeben hat. Verlangt ist die Unterrichtung, und ein Audit, dessen Ergebnis beim Auditor geblieben ist, hat nichts verändert. (PERF.3.2.2)",
+  "field.audit.kommuniziert_an.help": "Welchen interessierten Parteien mitgeteilt wurde, was das Audit ergeben hat. Verlangt ist die Unterrichtung, und ein Audit, dessen Ergebnis beim Auditor geblieben ist, hat nichts verändert. (PERF.3.2.2)",
   "field.managementbericht.audit.help": "Die Audits, die diese Bewertung liest. Jedes trägt seinen eigenen Bericht, deshalb genügt es, sie hier zu benennen, wie PERF.4.1.4 es verlangt - die Abweichungen, das Verbesserungspotenzial und die bereits erfolgten Korrekturen stehen im Audit und werden hier nicht wiederholt. (PERF.4.1.4)",
   // abweichung
   "field.abweichung.audit.help": "Das Audit, das dies festgestellt hat, damit die Feststellung darauf zurückgeführt werden kann. (PERF.3.2, VRB.2)",
@@ -725,7 +721,7 @@ const DE: Overlay = {
   // The requirement identifiers stay as they are printed. They are what a reader looks up.
   "check.gspp-high-need-unassessed.title": "Geschäftsprozesse mit Schutzbedarf hoch ohne Risikobetrachtung",
   "check.gspp-high-need-unassessed.hint": "Ein Prozess mit Schutzbedarf hoch verlangt eine Risikobetrachtung. "
-    + "Ergänzen Sie ein Bedrohungsszenario, das ihn benennt - oder senken Sie den Schutzbedarf und schreiben Sie auf, warum. (GC.7.2)",
+    + "Erfassen Sie ein Schadensereignis, das ihn benennt - oder senken Sie den Schutzbedarf und schreiben Sie auf, warum. (GC.7.2)",
   "check.gspp-unimplemented-unexcepted.title": "Nicht umgesetzte Anforderungen ohne Ausnahme",
   "check.gspp-unimplemented-unexcepted.hint": "Eine Anforderung, die Sie nicht umgesetzt haben, braucht entweder "
     + "eine genehmigte Ausnahme oder ein festgehaltenes Restrisiko. Legen Sie die Ausnahme an, oder schreiben Sie auf, was Sie tragen. (UMS.5, STM.4.1)",

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
 // Does a STIX bundle read as a graph, walk from any object, and project onto the study?
 //
-// Two sources: a synthetic CTI bundle (samples/stix-story.json - an invented actor,
-// campaign and feed-own technique around real ATT&CK ids, with a dangling and a revoked
-// relationship on purpose), and, when it is on disk, the real ATT&CK Enterprise bundle
+// Two sources: a synthetic CTI bundle written for the example study (samples/stix-story.json
+// - an invented actor, campaign and feed-own technique around real ATT&CK ids, with a
+// dangling and a revoked relationship on purpose), and, when it is on disk, the real ATT&CK
+// Enterprise bundle
 // (docs/sources/enterprise-attack.json, 54 MB, not in git) for the sizes a walk has to
 // cope with.
 //
@@ -29,7 +30,7 @@ const ix = readStix(readFileSync("samples/stix-story.json", "utf8"));
 const id = (t, n) => `${t}--00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const actor = id("threat-actor", 10), nightjar = id("intrusion-set", 11), campaign = id("campaign", 20);
 const t1566 = id("attack-pattern", 30), t1566001 = id("attack-pattern", 35), t1021 = id("attack-pattern", 31), t1562 = id("attack-pattern", 32), own = id("attack-pattern", 34);
-const hospital = id("identity", 1), mfa = id("course-of-action", 50);
+const utility = id("identity", 1), mfa = id("course-of-action", 50);
 
 ok("the bundle reads: every object indexed", ix.bundle.objects === 74, String(ix.bundle.objects));
 ok("a dangling relationship is set aside, not thrown", ix.aside.dangling === 1);
@@ -42,7 +43,7 @@ const fromActor = hops(ix, actor);
 const g = (rel, dir, type) => fromActor.find((h) => h.rel === rel && h.dir === dir && h.type === type);
 ok("actor → uses attack-pattern: seven techniques, grouped", g("uses", "out", "attack-pattern")?.items.length === 7);
 ok("actor → uses malware and tool: each its own group", g("uses", "out", "malware")?.items.length === 1 && g("uses", "out", "tool")?.items.length === 1);
-ok("actor → targets identity: the hospital and its class; the location apart", g("targets", "out", "identity")?.items.length === 2 && g("targets", "out", "identity")?.items.some((x) => x.id === hospital) && g("targets", "out", "location")?.items.length === 1);
+ok("actor → targets identity: the utility and its class; the location apart", g("targets", "out", "identity")?.items.length === 2 && g("targets", "out", "identity")?.items.some((x) => x.id === utility) && g("targets", "out", "location")?.items.length === 1);
 ok("actor ← attributed-to campaign: the campaign comes along", g("attributed-to", "in", "campaign")?.items[0]?.id === campaign);
 ok("actor ← object_refs report, ← sighting_of_ref sighting: embedded refs are edges too", g("object_refs", "in", "report")?.items.length === 1 && g("sighting_of_ref", "in", "sighting")?.items.length === 1);
 ok("the dangling relationship is not a hop, nor the revoked attribution", !fromActor.some((h) => h.items.some((x) => !x)) && !fromActor.some((h) => h.rel === "attributed-to" && h.dir === "out"));
@@ -55,15 +56,15 @@ ok("technique ← mitigates: the training that answers to phishing", hops(ix, t1
 ok("technique ← mitigates course-of-action", hops(ix, t1021).some((h) => h.rel === "mitigates" && h.dir === "in" && h.items[0].id === mfa));
 
 // From a sector: who targets it.
-const fromSector = hops(ix, hospital);
-ok("the hospital ← targets: the two actors and the campaign that go after it", fromSector.filter((h) => h.rel === "targets" && h.dir === "in").reduce((n, h) => n + h.items.length, 0) === 3);
+const fromSector = hops(ix, utility);
+ok("the utility ← targets: the two actors and the campaign that go after it", fromSector.filter((h) => h.rel === "targets" && h.dir === "in").reduce((n, h) => n + h.items.length, 0) === 3);
 ok("...and not the one that targets another sector", !fromSector.some((h) => h.items.some((x) => x.id === nightjar)));
 
 // From a dead end: what the story reaches beyond the first hop.
 const wanted = (t) => !!rule(t);
 const fromIndicator = reach(ix, id("indicator", 60), wanted);
 ok("indicator: nothing mappable one hop away, the actor two hops away via the malware",
-  !fromIndicator.some((r) => r.depth === 1) && fromIndicator.some((r) => r.obj.id === actor && r.depth === 2 && r.via.length === 1 && r.via[0].name === "Bedside Loader"));
+  !fromIndicator.some((r) => r.depth === 1) && fromIndicator.some((r) => r.obj.id === actor && r.depth === 2 && r.via.length === 1 && r.via[0].name === "Sluice Loader"));
 ok("...and its techniques three hops away, shortest path kept", fromIndicator.filter((r) => r.obj.type === "attack-pattern").length === 8 && fromIndicator.every((r) => r.depth <= 3));
 
 // A revoked relationship is not walked.
@@ -71,7 +72,7 @@ ok("a revoked relationship is not a hop", !hops(ix, nightjar).some((h) => h.item
 
 // Labels and tactics.
 ok("a technique is labelled by ATT&CK id and name", labelOf(ix.objects.get(t1566)) === "T1566 Phishing");
-ok("a feed-own technique has no ATT&CK id and keeps its name", extId(ix.objects.get(own)) === null && labelOf(ix.objects.get(own)) === "Badge cloning at the loading dock");
+ok("a feed-own technique has no ATT&CK id and keeps its name", extId(ix.objects.get(own)) === null && labelOf(ix.objects.get(own)) === "Badge cloning at an unmanned substation");
 ok("an old phase name reads to the successor tactic", tacticsOf(ix.objects.get(t1562)).join() === "Stealth");
 ok("a current phase name reads to its tactic", tacticsOf(ix.objects.get(t1021)).join() === "Lateral Movement");
 ok("a revoked technique's value names what ATT&CK calls it now", /^T1685 /.test(techniqueValueOf(ix.objects.get(t1562)) ?? ""), techniqueValueOf(ix.objects.get(t1562)));
@@ -79,11 +80,11 @@ ok("a revoked technique's value names what ATT&CK calls it now", /^T1685 /.test(
 // ── projection ────────────────────────────────────────────────────────────────
 const pa = project(ix, ix.objects.get(actor), rule("threat-actor"));
 const roType = typeOf("risk_origin");
-ok("a threat-actor projects to a risk source", pa.type === "risk_origin" && pa.values.name === "Vireo Syndicate");
+ok("a threat-actor projects to a risk source", pa.type === "risk_origin" && pa.values.name === "Millrace Syndicate");
 ok("category from threat_actor_types, in the taxonomy's vocabulary", roType.fields.find((f) => f.key === "category").options.includes(pa.values.category) && pa.values.category === "Cybercriminals");
 ok("capability from sophistication, on the scale", pa.values.capability === 3);
 ok("resources from resource_level, on the scale", pa.values.resources === 3);
-ok("aliases and goals composed into the description", /Aliases: VIREO, GOLD FINCH/.test(pa.values.description) && /Goals: Extort a ransom/.test(pa.values.description));
+ok("aliases and goals composed into the description", /Aliases: MILLRACE, COPPER WREN/.test(pa.values.description) && /Goals: Extort a ransom/.test(pa.values.description));
 ok("no gaps where the feed said everything", pa.gaps.length === 0, JSON.stringify(pa.gaps));
 const pi = project(ix, ix.objects.get(id("threat-actor", 12)), rule("threat-actor"));
 ok("an insider archetype reads to Insider, minimal to 1, individual to 1", pi.values.category === "Insider" && pi.values.capability === 1 && pi.values.resources === 1);
@@ -91,14 +92,14 @@ ok("the record id is a function of the STIX id", pa.id === stixRecordId(actor) &
 ok("provenance names the object", pa.source === `stix:${actor}`);
 
 const pn = project(ix, ix.objects.get(nightjar), rule("intrusion-set"));
-ok("an intrusion-set with no sophistication lists capability as a gap; its resource level is read", pn.values.name === "Nightjar" && pn.gaps.some((x) => x.field === "capability") && pn.gaps.some((x) => x.field === "category") && pn.values.resources === 4);
+ok("an intrusion-set with no sophistication lists capability as a gap; its resource level is read", pn.values.name === "Quiet Relay" && pn.gaps.some((x) => x.field === "capability") && pn.gaps.some((x) => x.field === "category") && pn.values.resources === 4);
 ok("...and the ATT&CK id in the description", /ATT&CK: G0999/.test(pn.values.description));
 
 const pt = project(ix, ix.objects.get(t1562), rule("attack-pattern"));
 ok("a technique projects to a step under its tactic", pt.type === "kill_chain_step" && pt.values.tactic === "Stealth");
 ok("...with the technique read through to what ATT&CK calls it now", pt.values.technique === "T1685 Disable or Modify Tools", pt.values.technique);
 const po = project(ix, ix.objects.get(own), rule("attack-pattern"));
-ok("a feed-own technique still becomes a step, by name", po.values.name === "Badge cloning at the loading dock" && po.values.tactic === "Initial Access");
+ok("a feed-own technique still becomes a step, by name", po.values.name === "Badge cloning at an unmanned substation" && po.values.tactic === "Initial Access");
 
 const pc = project(ix, ix.objects.get(campaign), rule("campaign"));
 ok("a campaign projects to an operational scenario with its dates", pc.type === "operational_scenario" && /First seen: 2026-01-10/.test(pc.values.description));
@@ -120,7 +121,7 @@ ok("...within the taxonomy's vocabularies", smType.fields.find((f) => f.key === 
   const renamed = [{ ...pa, values: { ...pa.values, name: "Organised cybercrime" } }];
   const byName = touches(renamed, study.entities, titleOf);
   ok("the same name on the same type is a touch; the id stays its own", byName.length === 1 && byName[0].kind === "same-name" && byName[0].recordId === pa.id);
-  const aliased = [{ ...pa, values: { ...pa.values, description: "Aliases: Organised cybercrime, VIREO" } }];
+  const aliased = [{ ...pa, values: { ...pa.values, description: "Aliases: Organised cybercrime, MILLRACE" } }];
   ok("an alias counts as a name", touches(aliased, study.entities, titleOf).some((t) => t.kind === "same-name"));
   ok("a record already in the study by id (a repeat import) is not a touch", touches([{ ...pa, id: study.entities[0].id, type: study.entities[0].type, values: study.entities[0].values }], study.entities, titleOf).length === 0);
 }

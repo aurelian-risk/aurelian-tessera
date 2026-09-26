@@ -20,7 +20,7 @@
       "created": "2026-03-01T00:00:00.000Z",
       "modified": "2026-03-01T00:00:00.000Z",
       "name": "Aurelian Threat Desk (fictional)",
-      "description": "The invented producer of this sample bundle. Nothing in it describes a real organisation, incident or actor; the ATT&CK ids are real.",
+      "description": "The invented producer of this example bundle. Nothing in it describes a real organisation, incident or actor; the ATT&CK ids are real.",
       "identity_class": "organization",
       "sectors": [
         "technology"
@@ -39,13 +39,14 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Riverside General Hospital Trust",
-      "description": "A regional hospital group - the organisation the sample study describes.",
+      "name": "Riverbend Municipal Utilities",
+      "description": "A municipal utility supplying electricity and heat - the organisation the example study describes.",
       "identity_class": "organization",
       "sectors": [
-        "healthcare"
+        "utilities",
+        "energy"
       ],
-      "contact_information": "soc@riverside.example"
+      "contact_information": "soc@riverbend.example"
     },
     {
       "type": "identity",
@@ -57,11 +58,11 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Regional Savings Bank",
-      "description": "A retail bank; targeted by the second actor.",
+      "name": "Regional Transmission Operator",
+      "description": "Operates the high-voltage grid Riverbend feeds from; targeted by the second actor.",
       "identity_class": "organization",
       "sectors": [
-        "financial-services"
+        "energy"
       ]
     },
     {
@@ -74,11 +75,11 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Healthcare providers, western Europe",
+      "name": "Municipal utilities, western Europe",
       "description": "The class of organisations the first actor goes after.",
       "identity_class": "class",
       "sectors": [
-        "healthcare"
+        "utilities"
       ]
     },
     {
@@ -105,11 +106,11 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Vireo Syndicate",
-      "description": "Financially motivated crew running double-extortion ransomware against hospitals in Europe. Buys initial access, moves fast, encrypts within days.",
+      "name": "Millrace Syndicate",
+      "description": "Financially motivated crew running double-extortion ransomware against municipal utilities in Europe. Gets in through the manufacturers and service firms that maintain the control systems, moves fast, encrypts within days.",
       "aliases": [
-        "VIREO",
-        "GOLD FINCH"
+        "MILLRACE",
+        "COPPER WREN"
       ],
       "threat_actor_types": [
         "crime-syndicate"
@@ -126,7 +127,7 @@
       ],
       "goals": [
         "Extort a ransom",
-        "Sell patient data"
+        "Sell customer and billing data"
       ],
       "first_seen": "2024-02-01T00:00:00.000Z",
       "last_seen": "2026-02-15T00:00:00.000Z"
@@ -141,8 +142,8 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Contract engineer with a grievance",
-      "description": "An insider archetype: legitimate remote-maintenance access, low tooling, high knowledge of the environment.",
+      "name": "Service technician with a grievance",
+      "description": "An insider archetype at a maintenance provider: legitimate remote access to the control system, low tooling, high knowledge of the plant.",
       "threat_actor_types": [
         "insider-disgruntled"
       ],
@@ -150,7 +151,7 @@
       "resource_level": "individual",
       "primary_motivation": "revenge",
       "goals": [
-        "Disrupt clinical operations"
+        "Disrupt grid operation"
       ]
     },
     {
@@ -163,16 +164,16 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Nightjar",
-      "description": "Espionage group; tooling maturity high, patient, targets the financial sector for long-term access.",
+      "name": "Quiet Relay",
+      "description": "State-sponsored group; tooling maturity high, patient. Holds long-term access to the telecontrol of transmission operators and is thought to be preparing sabotage rather than theft.",
       "aliases": [
-        "NIGHTJAR",
-        "APT-NJ"
+        "QUIET RELAY",
+        "APT-QR"
       ],
       "first_seen": "2021-06-01T00:00:00.000Z",
       "last_seen": "2026-01-20T00:00:00.000Z",
       "resource_level": "government",
-      "primary_motivation": "organizational-gain",
+      "primary_motivation": "dominance",
       "external_references": [
         {
           "source_name": "mitre-attack",
@@ -194,14 +195,14 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Operation Bedside",
-      "description": "Spring 2026 wave against clinical networks: phishing the maintenance provider, lateral movement over RDP, encryption of the hospital information system.",
+      "name": "Operation Sluice",
+      "description": "Spring 2026 wave against municipal utilities: phishing the control-system manufacturer's service staff, taking over the remote-maintenance access, moving over RDP into the control room, encrypting the control-room servers.",
       "aliases": [
-        "Bedside"
+        "Sluice"
       ],
       "first_seen": "2026-01-10T00:00:00.000Z",
       "last_seen": "2026-03-01T00:00:00.000Z",
-      "objective": "Encrypt clinical systems and demand payment"
+      "objective": "Encrypt control-room systems and demand payment"
     },
     {
       "type": "campaign",
@@ -213,11 +214,11 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Ledgerfall",
-      "description": "Slow-burn intrusion into a bank's treasury systems over months.",
+      "name": "Dark Feeder",
+      "description": "Slow-burn intrusion into a transmission operator's telecontrol over months.",
       "first_seen": "2025-09-01T00:00:00.000Z",
       "last_seen": "2026-01-20T00:00:00.000Z",
-      "objective": "Persistent access to payment infrastructure"
+      "objective": "Persistent access to switching infrastructure"
     },
     {
       "type": "attack-pattern",
@@ -255,7 +256,7 @@
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
       "name": "Spearphishing Attachment",
-      "description": "Phishing with a malicious attachment, aimed at the maintenance provider's staff.",
+      "description": "Phishing with a malicious attachment, aimed at the service staff of the control-system manufacturer.",
       "external_references": [
         {
           "source_name": "mitre-attack",
@@ -280,7 +281,7 @@
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
       "name": "Exploit Public-Facing Application",
-      "description": "The bank's VPN appliance, via a published vulnerability.",
+      "description": "The transmission operator's VPN appliance, via a published vulnerability.",
       "external_references": [
         {
           "source_name": "mitre-attack",
@@ -305,7 +306,7 @@
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
       "name": "Valid Accounts",
-      "description": "Legitimate maintenance credentials, bought or phished.",
+      "description": "Legitimate remote-maintenance credentials, bought or phished.",
       "external_references": [
         {
           "source_name": "mitre-attack",
@@ -388,7 +389,7 @@
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
       "name": "Remote Desktop Protocol",
-      "description": "RDP from the maintenance host into the clinical VLAN.",
+      "description": "RDP from the maintenance jump host into the control-room network.",
       "external_references": [
         {
           "source_name": "mitre-attack",
@@ -438,7 +439,7 @@
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
       "name": "Exfiltration to Cloud Storage",
-      "description": "Patient records staged and pushed to a cloud share before encryption.",
+      "description": "Plant documentation and customer billing data staged and pushed to a cloud share before encryption.",
       "external_references": [
         {
           "source_name": "mitre-attack",
@@ -463,7 +464,7 @@
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
       "name": "Data Encrypted for Impact",
-      "description": "Encryption of the hospital information system and imaging archive.",
+      "description": "Encryption of the control-room servers and the historian; remote control of the grid is lost.",
       "external_references": [
         {
           "source_name": "mitre-attack",
@@ -487,8 +488,8 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Badge cloning at the loading dock",
-      "description": "A feed's own technique, with no ATT&CK id: cloning a contractor badge to enter the plant room.",
+      "name": "Badge cloning at an unmanned substation",
+      "description": "A feed's own technique, with no ATT&CK id: cloning a service contractor's badge to enter a substation's relay room.",
       "kill_chain_phases": [
         {
           "kill_chain_name": "mitre-attack",
@@ -506,7 +507,7 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Bedside Loader",
+      "name": "Sluice Loader",
       "description": "First-stage loader delivered by the phishing attachment.",
       "is_family": true,
       "malware_types": [
@@ -554,7 +555,7 @@
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
       "name": "CVE-2025-0001 (fictional)",
-      "description": "A pre-auth flaw in a VPN appliance; the bank had not patched.",
+      "description": "A pre-auth flaw in a VPN appliance; the transmission operator had not patched.",
       "external_references": [
         {
           "source_name": "cve",
@@ -572,7 +573,7 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Bedside C2 hosting",
+      "name": "Sluice C2 hosting",
       "description": "Rented virtual servers used for command and control.",
       "infrastructure_types": [
         "command-and-control"
@@ -657,12 +658,12 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Bedside C2 domain",
+      "name": "Sluice C2 domain",
       "description": "Command-and-control domain of the loader.",
       "indicator_types": [
         "malicious-activity"
       ],
-      "pattern": "[domain-name:value = 'bedside-updates.example']",
+      "pattern": "[domain-name:value = 'sluice-updates.example']",
       "pattern_type": "stix",
       "pattern_version": "2.1",
       "valid_from": "2026-01-10T00:00:00.000Z"
@@ -677,7 +678,7 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Vireo Syndicate - Q1 2026",
+      "name": "Millrace Syndicate - Q1 2026",
       "description": "Quarterly write-up of the actor, its campaign and the techniques seen.",
       "published": "2026-03-05T00:00:00.000Z",
       "report_types": [
@@ -702,8 +703,8 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "abstract": "Analyst note on Operation Bedside",
-      "content": "Dwell before encryption was 4 to 9 days across the three known victims; exfiltration preceded encryption in all three.",
+      "abstract": "Analyst note on Operation Sluice",
+      "content": "Dwell before encryption was 4 to 9 days across the three known victims, all of them municipal utilities. Exfiltration preceded encryption in all three, and every entry ran through a manufacturer's remote-maintenance access.",
       "authors": [
         "Aurelian Threat Desk (fictional)"
       ],
@@ -721,8 +722,8 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "name": "Bedside - everything seen",
-      "description": "Working set of the Bedside investigation.",
+      "name": "Sluice - everything seen",
+      "description": "Working set of the Sluice investigation.",
       "context": "suspicious-activity",
       "object_refs": [
         "campaign--00000000-0000-4000-8000-000000000020",
@@ -741,7 +742,7 @@
       "object_marking_refs": [
         "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
       ],
-      "description": "Three attempts by the actor against the hospital's maintenance provider in the quarter.",
+      "description": "Three attempts by the actor against Riverbend's remote-maintenance provider in the quarter.",
       "sighting_of_ref": "threat-actor--00000000-0000-4000-8000-000000000010",
       "where_sighted_refs": [
         "identity--00000000-0000-4000-8000-000000000001"
@@ -796,7 +797,7 @@
       "relationship_type": "uses",
       "source_ref": "threat-actor--00000000-0000-4000-8000-000000000010",
       "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000033",
-      "description": "Encrypts the hospital information system."
+      "description": "Encrypts the control-room servers."
     },
     {
       "type": "relationship",
@@ -808,7 +809,7 @@
       "relationship_type": "uses",
       "source_ref": "threat-actor--00000000-0000-4000-8000-000000000010",
       "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000040",
-      "description": "Exfiltrates records to cloud storage before encrypting."
+      "description": "Exfiltrates plant and customer data to cloud storage before encrypting."
     },
     {
       "type": "relationship",
@@ -868,7 +869,7 @@
       "relationship_type": "targets",
       "source_ref": "threat-actor--00000000-0000-4000-8000-000000000010",
       "target_ref": "identity--00000000-0000-4000-8000-000000000001",
-      "description": "Targeted in Operation Bedside."
+      "description": "Targeted in Operation Sluice."
     },
     {
       "type": "relationship",
@@ -917,7 +918,7 @@
       "relationship_type": "targets",
       "source_ref": "intrusion-set--00000000-0000-4000-8000-000000000011",
       "target_ref": "identity--00000000-0000-4000-8000-000000000002",
-      "description": "Long-term access to treasury systems."
+      "description": "Long-term access to the telecontrol of the transmission grid."
     },
     {
       "type": "relationship",
@@ -989,7 +990,7 @@
       "relationship_type": "targets",
       "source_ref": "threat-actor--00000000-0000-4000-8000-000000000012",
       "target_ref": "identity--00000000-0000-4000-8000-000000000001",
-      "description": "Their employer's client."
+      "description": "The utility whose control system their employer maintains."
     },
     {
       "type": "relationship",
@@ -1025,7 +1026,7 @@
       "relationship_type": "uses",
       "source_ref": "campaign--00000000-0000-4000-8000-000000000020",
       "target_ref": "attack-pattern--00000000-0000-4000-8000-000000000035",
-      "description": "Initial access in every known Bedside case."
+      "description": "Initial access in every known Sluice case."
     },
     {
       "type": "relationship",

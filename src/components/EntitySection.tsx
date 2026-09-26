@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0 · Copyright (c) Aurelian-Risk
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { t as tr, tn } from "../domain/i18n";
 import { Sentence } from "./Sentence";
 import type { EntityRecord, EntityTypeDef, FieldDef, FieldType, FieldValue, Study, Taxonomy } from "../domain/types";
@@ -13,6 +13,7 @@ import { ChangeHistoryModal, IntegrityBadge } from "./ChangeHistoryModal";
 import { deletedRefs, entryOf } from "../domain/audit";
 import { EntityModal } from "./EntityModal";
 import { Icon, Overlay, ScaleBadge, ScaleBars, useDismissOnEscape } from "./ui";
+import { useHScrollMember, useHeightVar } from "./HScroll";
 
 const clip = (s: string, n = 90) => (s.length > n ? s.slice(0, n) + "…" : s);
 
@@ -47,7 +48,7 @@ const BACKREF_PREVIEW = 12;
  *  column still held 355px. A pixel width is a floor as well as a preference: the value
  *  columns keep exactly what their content needs at every window size, and the name column,
  *  which is prose and reads at any width, gives up the difference until the table reaches
- *  its own minimum. Past that the panel scrolls, with the title column pinned. */
+ *  its own minimum. Past that the workshop's registers move sideways together (HScroll.tsx). */
 const COL_WIDTH: Record<FieldType, number> = {
   number: 80,
   boolean: 96,
@@ -206,7 +207,11 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   const foldKey = `${study.id}:${type.key}`;
   const [open, setOpen] = useState(() => !folded.has(foldKey));
   const bodyRef = useRef<HTMLDivElement>(null);
-  const [pinned, setPinned] = useState(false);
+  // The body moves sideways with the other registers of the workshop, under one bar, and
+  // its heading and column heads stay in view while the rows go by (HScroll.tsx).
+  const joinScroll = useHScrollMember();
+  const bodyEl = useCallback((el: HTMLDivElement | null) => { bodyRef.current = el; joinScroll(el); }, [joinScroll]);
+  const headEl = useHeightVar("--ph", (el) => el.parentElement);
   const fold = () => setOpen((o) => { o ? folded.add(foldKey) : folded.delete(foldKey); return !o; });
 
   const items = study.entities.filter((e) => e.type === type.key);
@@ -322,7 +327,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
   return (
     <>
     <div className={"panel ws-accent" + (open ? "" : " folded")} style={{ ["--ws-color" as string]: color, marginBottom: 20 }}>
-      <div className="panel-head">
+      <div className="panel-head" ref={headEl}>
         {/* The heading is the switch: a workshop holding several registers of a thousand
             rows is unreadable if every one of them is always laid out in full. */}
         <button className="panel-fold" aria-expanded={open} onClick={fold}
@@ -351,11 +356,7 @@ export function EntitySection({ type, study, tax, color, draggableRows, renderDe
         showAll: () => setColumns(new Set()),
       }} />}
 
-      {/* `pinned` is set once the body has actually been scrolled sideways: the title column
-          is held in place only where something slides under it, so a table that fits carries
-          no seam. */}
-      {open && <div className={"panel-body" + (pinned ? " pinned" : "")} ref={bodyRef}
-        onScroll={(e) => setPinned(e.currentTarget.scrollLeft > 0)}>
+      {open && <div className="panel-body" ref={bodyEl}>
         {items.length === 0 ? (
           // An empty table used to state the absence and stop there. On a study somebody
           // has just created, that is every panel on the screen - the one moment where

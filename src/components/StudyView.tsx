@@ -30,6 +30,7 @@ import { EMPTY_SEARCH, SearchSheet, type SearchState } from "./SearchSheet";
 import { CanvasView } from "./CanvasView";
 import { DataMenu } from "./DataMenu";
 import { Icon, useDismissOnEscape } from "./ui";
+import { HScrollGroup, useHeightVar } from "./HScroll";
 
 
 
@@ -115,6 +116,11 @@ export function StudyView({ onBack }: { onBack: () => void }) {
   // The record a search hit asked for. The tab switch mounts the sections fresh, so the
   // target is state here rather than an event: a section that mounts later still reads it.
   const [reveal, setReveal] = useState<Reveal | null>(null);
+  // The title bar and the workshop bar stay at the top as one block; how tall it is tells
+  // a register's heading and column heads where to stop (HScroll.tsx).
+  const headEl = useHeightVar("--head-h", (el) => el.closest<HTMLElement>(".main"));
+  // Where the workshop's sideways bar is drawn: in the head, under the workshop bar.
+  const [barSlot, setBarSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearching(true); }
@@ -140,11 +146,15 @@ export function StudyView({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="main">
+      {searching && <SearchSheet tax={tax} study={study} state={search} onState={setSearch} onClose={() => setSearching(false)}
+        onGoto={(g, id) => { setTab(g); setReveal((r) => ({ id, n: (r?.n ?? 0) + 1 })); }} />}
+
+      <div className="study-head" ref={headEl}>
       <div className="topbar">
-        <button className="btn ghost sm" onClick={back}>← Studies</button>
+        <button className="btn ghost sm" onClick={back}>{tr("ui.study.back-to-studies", "← Studies")}</button>
         <div>
           <div className="title">{study.name}</div>
-          <div className="sub">{study.organization || "no organization"}{study.sector && hasQuantification(tax) ? ` · ${study.sector}` : ""}</div>
+          <div className="sub">{study.organization || tr("ui.study.no-organization", "no organization")}{study.sector && hasQuantification(tax) ? ` · ${study.sector}` : ""}</div>
         </div>
         <span className="spacer" />
         <button className="btn ghost sm gs-open" onClick={() => setSearching(true)}
@@ -154,9 +164,6 @@ export function StudyView({ onBack }: { onBack: () => void }) {
         <ReportMenu tax={tax} study={study} />
         <DataMenu studyScope={study} label={tr("ui.study.export-import", "Import / Export")} />
       </div>
-
-      {searching && <SearchSheet tax={tax} study={study} state={search} onState={setSearch} onClose={() => setSearching(false)}
-        onGoto={(g, id) => { setTab(g); setReveal((r) => ({ id, n: (r?.n ?? 0) + 1 })); }} />}
 
       {/* The workshop bar: the seven workshops as one row of equal steps - the method's
           own order, numbered, the open one underlined in its colour - and the three
@@ -189,6 +196,8 @@ export function StudyView({ onBack }: { onBack: () => void }) {
           </button>
         </div>
       </nav>
+      <div className="hbar-slot" ref={setBarSlot} />
+      </div>
 
       <div className="content">
         {tab === "graph" ? (
@@ -198,7 +207,7 @@ export function StudyView({ onBack }: { onBack: () => void }) {
         ) : tab === "canvas" ? (
           <CanvasView tax={tax} study={study} />
         ) : activeGroup ? (
-          <>
+          <HScrollGroup key={activeGroup.key} barSlot={barSlot}>
             <div className="group-toolbar">
               {groupDescription(activeGroup) && (
                 <div className="guide" style={{ flex: 1, marginBottom: 0 }}>
@@ -290,7 +299,7 @@ export function StudyView({ onBack }: { onBack: () => void }) {
               const reqType = tax.entityTypes.find((t) => t.group === activeGroup.key && t.fields.some((f) => f.key === "framework"));
               return reqType ? <CoverageMatrix tax={tax} study={study} reqType={reqType} color={activeGroup.color} /> : null;
             })()}
-          </>
+          </HScrollGroup>
         ) : null}
       </div>
     </div>

@@ -91,6 +91,9 @@ const wsTab = (i) => page.locator(".ws-tabs .ws-tab:not(.plain)").nth(i);
 const openWs = async (i, wait = 250) => { await wsTab(i).click(); await page.waitForTimeout(wait); };
 /** The panel a table sits in, addressed through its heading. */
 const section = (heading) => page.locator(".panel", { has: page.locator(".panel-head h3", { hasText: heading }) });
+/** A control past the part of a register in view. The registers of a workshop move together
+ *  under one bar and cannot be scrolled by the browser; focusing a control moves the bar to it. */
+const reach = async (loc) => { await loc.focus(); await page.waitForTimeout(150); return loc; };
 
 try {
   await page.goto(file);
@@ -117,6 +120,40 @@ try {
     tabTitles.length === WS_LABELS.length && WS_LABELS.every((l, i) => tabTitles[i] === l));
   ok("the diagram views sit apart from the workshops",
     (await page.locator(".ws-tabs .ws-tab.plain").count()) === 3);
+
+  // The open workshop is marked once. The product's stylesheet once drew a border of its
+  // own under the engine's bar, and the open step carried two lines of different width.
+  {
+    const mark = await wsTab(0).evaluate((el) => {
+      const s = getComputedStyle(el), a = getComputedStyle(el, "::after");
+      return { border: parseFloat(s.borderBottomWidth), bar: parseFloat(a.height), on: +a.opacity };
+    });
+    ok("the open workshop is marked by one bar, not a bar and a border", mark.border === 0 && mark.bar > 0 && mark.on === 1, JSON.stringify(mark));
+  }
+
+  // Scrolled down a long register, the reader still sees the workshops, which register the
+  // rows belong to and what each column is.
+  {
+    await openWs(WS.STM, 500);
+    await page.evaluate(() => { document.querySelector(".main").scrollTop = 1500; });
+    await page.waitForTimeout(300);
+    const at = await page.evaluate(() => {
+      const top = (el) => el ? Math.round(el.getBoundingClientRect().top) : null;
+      const head = document.querySelector(".study-head");
+      const panel = [...document.querySelectorAll(".hs-group .panel")].find((p) => {
+        const r = p.getBoundingClientRect(); return r.top < 300 && r.bottom > 300; });
+      return { scrolled: document.querySelector(".main").scrollTop, headBottom: Math.round(head.getBoundingClientRect().bottom),
+        tabs: top(document.querySelector(".ws-tabs")), heading: top(panel?.querySelector(".panel-head")),
+        headingBottom: panel ? Math.round(panel.querySelector(".panel-head").getBoundingClientRect().bottom) : null,
+        columns: top(panel?.querySelector("thead th")) };
+    });
+    ok("scrolled 1500px down, the workshop bar stays in view", at.scrolled === 1500 && at.tabs > 0 && at.tabs < at.headBottom, JSON.stringify(at));
+    ok("...the heading of the register being read stays right under it", at.heading !== null && Math.abs(at.heading - at.headBottom) < 2, JSON.stringify(at));
+    // Tucked 2px under the heading, which covers the open top edge of a collapsed border.
+    ok("...and so do that register's column heads", at.columns !== null && Math.abs(at.columns - (at.headingBottom - 2)) < 2, JSON.stringify(at));
+    await page.evaluate(() => { document.querySelector(".main").scrollTop = 0; });
+    await openWs(WS.GC, 300);
+  }
 
   // Every workshop holds the records the method puts there. The needles are sample data.
   const wsExpect = [
@@ -258,7 +295,7 @@ try {
       ok("...and none of them is dimmed", (await assets.locator("tbody tr.row-dim").count()) === 0);
     }
     const off = sec.locator("tbody tr.row-dim .cell-toggle").first();
-    await off.click();
+    await (await reach(off)).click();
     await page.waitForTimeout(500);
     ok("...and one press brings a requirement into scope",
       (await sec.locator("tbody tr.row-dim").count()) === dim - 1
@@ -946,6 +983,26 @@ try {
     await page.waitForTimeout(500);
   }
 
+  // A rule can only be answered where its record is edited. The audit's rule asks who was
+  // told what it found; the field for it stood on the management report from 0.5.0 to 0.7.0,
+  // so an audit held by anyone but the example was a finding nobody could clear.
+  const formOf = async (heading) => {
+    const sec = section(heading);
+    await sec.locator("tbody tr.row-clickable").first().locator(".name").click(); await page.waitForTimeout(200);
+    await sec.locator(".detail .btn", { hasText: "Edit" }).first().click();
+    await page.waitForSelector(".modal-lg");
+    const text = await page.locator(".modal-lg").innerText();
+    await page.keyboard.press("Escape"); await page.waitForTimeout(200);
+    await sec.locator("tbody tr.row-clickable").first().locator(".name").click(); await page.waitForTimeout(150);
+    return text;
+  };
+  await openWs(WS.PERF, 400);
+  ok("the audit's form asks who was told what it found, which its rule asks for (PERF.3.2.2)",
+    /Results communicated to/.test(await formOf("Audits")));
+  await openWs(WS.RISK, 400);
+  ok("...and a risk source's form carries no requirement parameters",
+    !/Parameters left open|Parameters as set/.test(await formOf("Risk sources")));
+
   await page.locator(".ws-tab", { hasText: "Checks" }).click();
   await page.waitForTimeout(250);
 
@@ -1567,6 +1624,19 @@ try {
   await page.locator('.detail-dock .info-panel button[aria-label="Close"]').click();
   await page.waitForTimeout(150);
   ok('detail box close button hides the dock', (await page.locator('.detail-dock').count()) === 0);
+  // The box reads a value as the register does: an asset with no scope stored is in scope
+  // there, and a category the BSI publishes in German reads in the reader's language.
+  {
+    await page.locator(".graph-wrap svg g", { hasText: "Control system (SCADA)" }).last()
+      .locator("circle,rect,path").first().click({ force: true });
+    await page.waitForTimeout(250);
+    const rows = await page.locator(".detail-dock .ip-row").evaluateAll((rs) =>
+      Object.fromEntries(rs.map((r) => [r.querySelector(".ip-k").textContent.trim(), r.querySelector(".ip-v").textContent.trim()])));
+    ok("the detail box reads an unstored switch as the register does", rows["In scope"] === "in scope", JSON.stringify(rows));
+    ok("...and a published category in the reader's language", rows["Target-object category"] === "IT systems", JSON.stringify(rows));
+    await page.locator('.detail-dock .info-panel button[aria-label="Close"]').click();
+    await page.waitForTimeout(150);
+  }
   // Shift-click builds a multi-focus selection (index clicks still open no box); "Clear extra" collapses back
   await page.locator('.graph-search').fill('');
   await page.waitForTimeout(150);
@@ -1574,7 +1644,7 @@ try {
   // otherwise the second click takes a focus away instead of adding one.
   await page.locator('.graph-index .gi-e:not(.active)').first().click({ modifiers: ['Shift'] });
   await page.waitForTimeout(200);
-  ok('shift-click builds a multi-focus selection', (await page.locator('.graph-index .gi-e.active').count()) >= 2 && (await page.locator('.graph-legend', { hasText: 'focuses' }).count()) > 0 && (await page.locator('.detail-dock').count()) === 0);
+  ok('shift-click builds a multi-focus selection', (await page.locator('.graph-index .gi-e.active').count()) >= 2 && (await page.locator('.graph-legend', { hasText: 'in focus' }).count()) > 0 && (await page.locator('.detail-dock').count()) === 0);
   await page.locator('.graph-index .gi-e:not(.active)').first().click({ modifiers: ['Shift'] });
   await page.waitForTimeout(200);
   ok('...and each shift-click adds one', (await page.locator('.graph-index .gi-e.active').count()) === 3);
@@ -2418,6 +2488,19 @@ try {
     // campaign and techniques chosen, landed, reviewed additively and applied - and
     // applied a second time, which must add nothing.
     const story = readFileSync(new URL("../samples/stix-story.json", import.meta.url), "utf8");
+    // The example study offers the bundle written for it, without a file.
+    await p.locator(".topbar button", { hasText: "Import / Export" }).first().click(); await p.waitForTimeout(250);
+    await p.locator(".menu-item", { hasText: "Import data" }).click();
+    await p.waitForSelector(".modal-lg");
+    await p.locator(".modal-lg button", { hasText: "Example threat intelligence" }).click();
+    await p.waitForSelector(".stix-columns", { timeout: 10000 });
+    ok("STIX: the example study offers its own bundle, and it opens in the columns",
+      (await p.locator(".stix-row-type", { hasText: "threat-actor" }).count()) === 1);
+    await p.locator(".stix-row-type", { hasText: "threat-actor" }).click(); await p.waitForTimeout(300);
+    ok("...its actor is the one that comes in through the remote-maintenance access",
+      (await p.locator(".stix-col").nth(1).locator(".stix-row-open", { hasText: "Millrace Syndicate" }).count()) === 1);
+    await p.keyboard.press("Escape"); await p.waitForTimeout(200);
+    if (await p.locator(".modal-lg").count()) { await p.locator(".modal-lg-head button[aria-label]").last().click(); await p.waitForTimeout(200); }
     const run = async (first) => {
       await p.locator(".topbar button", { hasText: "Import / Export" }).first().click(); await p.waitForTimeout(250);
       await p.locator(".menu-item", { hasText: "Import data" }).click();
@@ -2429,7 +2512,7 @@ try {
       if (first) ok("STIX: the import dialog recognises a bundle in the paste and opens the columns",
         (await p.locator(".modal-lg.stix").count()) === 1 && (await p.locator(".stix-row-type").count()) >= 12);
       await p.locator(".stix-row-type", { hasText: "threat-actor" }).click(); await p.waitForTimeout(300);
-      await col(1).locator(".stix-row-open", { hasText: "Vireo Syndicate" }).click(); await p.waitForTimeout(300);
+      await col(1).locator(".stix-row-open", { hasText: "Millrace Syndicate" }).click(); await p.waitForTimeout(300);
       if (first) ok("...an actor's column lists what the bundle relates it to, grouped by relation",
         (await p.locator(".stix-col").count()) === 3 && (await col(2).locator(".stix-group-head.rel").count()) >= 2);
       await col(2).locator(".stix-group-head.rel", { hasText: "attack-pattern" }).locator("input").click();
@@ -2463,11 +2546,11 @@ try {
     };
     await run(true);
     await ws(WS.RISK).click(); await p.waitForTimeout(500);
-    await p.locator(".panel", { has: p.locator("text=Operation Bedside") }).locator("text=Operation Bedside").first().click(); await p.waitForTimeout(600);
+    await p.locator(".panel", { has: p.locator("text=Operation Sluice") }).locator("text=Operation Sluice").first().click(); await p.waitForTimeout(600);
     const lane = await p.locator(".kc-tile .kc-step").evaluateAll((els) => els.map((e) => e.textContent.replace(/\s+/g, " ").trim()));
     ok("...the campaign is an attack scenario whose steps lie in tactic order, the revoked technique read through to its successor",
       lane.length === 7 && /^Spearphishing Attachment/.test(lane[0]) && /T1685/.test(lane[3]) && /Data Encrypted for Impact/.test(lane[6]), lane.join(" | "));
-    ok("...and the actor is a risk source of this study", (await p.locator("text=Vireo Syndicate").count()) >= 1);
+    ok("...and the actor is a risk source of this study", (await p.locator("text=Millrace Syndicate").count()) >= 1);
     await run(false);
     await ctx.close();
   }
@@ -2695,18 +2778,59 @@ try {
     // longer say which record they belong to.
     await page.setViewportSize({ width: 1100, height: 1000 });
     await page.waitForTimeout(600);
-    const pin = await page.evaluate(() => {
-      const body = [...document.querySelectorAll(".panel-body")].find((b) => b.scrollWidth > b.clientWidth + 1);
-      if (!body) return null;
-      body.scrollLeft = 200; body.dispatchEvent(new Event("scroll", { bubbles: true }));
-      return new Promise((res) => setTimeout(() => {
-        const th = body.querySelector("thead th");
-        res({ pinned: body.className.includes("pinned"), pos: getComputedStyle(th).position,
-          left: Math.round(th.getBoundingClientRect().left - body.getBoundingClientRect().left) });
-      }, 250));
+    // The registers of a workshop move sideways together, under one bar that stands in the
+    // study's head below the workshop bar - drawn, so no desktop setting hides it. The whole
+    // table moves, title column included: a held column read as confusing.
+    const hbar = page.locator(".hbar");
+    const place = await page.evaluate(() => {
+      const bar = document.querySelector(".hbar"), tabs = document.querySelector(".ws-tabs"), head = document.querySelector(".study-head");
+      if (!bar || bar.hidden) return null;
+      const r = bar.getBoundingClientRect(), thumb = bar.querySelector(".hbar-thumb").getBoundingClientRect();
+      return { inHead: head.contains(bar), belowTabs: r.top >= tabs.getBoundingClientRect().bottom - 1,
+        thumb: Math.round(thumb.width), height: Math.round(r.height) };
     });
-    ok("a register too wide for its panel pins its title column when scrolled",
-      !!pin && pin.pinned && pin.pos === "sticky" && Math.abs(pin.left) < 2, JSON.stringify(pin));
+    ok("a workshop too wide for the window shows one bar, in the head under the workshop bar",
+      !!place && place.inHead && place.belowTabs && place.thumb >= 36 && place.height > 0, JSON.stringify(place));
+    const at = () => page.evaluate(() => {
+      const bodies = [...document.querySelectorAll(".panel-body[data-hs]")].filter((b) => b.querySelector("thead"));
+      const x = (b, i) => Math.round(b.querySelectorAll("thead th")[i].getBoundingClientRect().left - b.getBoundingClientRect().left);
+      return { first: bodies.map((b) => x(b, 0)), second: bodies.map((b) => x(b, 1)),
+        now: +document.querySelector(".hbar").getAttribute("aria-valuenow") };
+    });
+    const before = await at();
+    await hbar.focus();
+    for (let k = 0; k < 5; k++) await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(200);
+    const after = await at();
+    ok("every register of the workshop moves with the one bar, by the same amount",
+      after.now === 200 && before.second.length >= 2 && before.second.every((b, i) => b - after.second[i] === 200),
+      JSON.stringify({ before: before.second, after: after.second }));
+    ok("...the title column with the rest, nothing held in place",
+      before.first.every((b, i) => b - after.first[i] === 200), JSON.stringify({ before: before.first, after: after.first }));
+    // The thumb can be taken and dragged, and a press beside it moves a page that way.
+    {
+      const th = await page.locator(".hbar-thumb").boundingBox();
+      await page.mouse.move(th.x + th.width / 2, th.y + th.height / 2);
+      await page.mouse.down(); await page.mouse.move(th.x + th.width / 2 + 60, th.y + th.height / 2, { steps: 4 }); await page.mouse.up();
+      await page.waitForTimeout(150);
+      ok("...its thumb drags the registers along", (await at()).now > 200);
+      await page.keyboard.press("End"); await page.waitForTimeout(100);
+      const end = (await at()).now;
+      const tr = await page.locator(".hbar-track").boundingBox();
+      await page.mouse.click(tr.x + 4, tr.y + tr.height / 2); await page.waitForTimeout(150);
+      ok("...and a press on the track beside it moves back a page", (await at()).now < end);
+      await page.keyboard.press("Home");
+    }
+    // A wheel moving sideways over a register moves the group, not only that register.
+    {
+      const box = await page.locator(".panel-body[data-hs] > .tbl").first().boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + 60);
+      await hbar.focus(); for (let k = 0; k < 4; k++) await page.keyboard.press("ArrowRight");
+      await page.mouse.move(box.x + box.width / 2, box.y + 60);
+      await page.mouse.wheel(-120, 0); await page.waitForTimeout(250);
+      ok("...a sideways wheel over one register moves the bar", (await at()).now === 40);
+      await hbar.focus(); await page.keyboard.press("Home"); await page.waitForTimeout(100);
+    }
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.waitForTimeout(400);
   }
@@ -2803,7 +2927,7 @@ try {
     await page.waitForTimeout(300);
 
     // Out is the direction with consequences.
-    await row.locator(".cell-toggle").click();
+    await (await reach(row.locator(".cell-toggle"))).click();
     await page.waitForTimeout(500);
     ok("the switch asks when something hangs on the record",
       (await page.locator(".scope-dlg").count()) === 1);
@@ -2831,7 +2955,7 @@ try {
 
     // Where nothing hangs off the record there is nothing to ask.
     row = await find("Dekomissionierung");
-    await row.locator(".cell-toggle").click();
+    await (await reach(row.locator(".cell-toggle"))).click();
     await page.waitForTimeout(500);
     const asked = await page.locator(".scope-dlg").count();
     if (asked) {
@@ -2844,7 +2968,7 @@ try {
       (await (await find("Dekomissionierung")).locator(".cell-toggle.on").count()) === 0);
 
     // Back in conflicts with nothing, so it asks nothing.
-    await (await find("Dekomissionierung")).locator(".cell-toggle").click();
+    await (await reach((await find("Dekomissionierung")).locator(".cell-toggle"))).click();
     await page.waitForTimeout(500);
     ok("coming back in asks nothing", (await page.locator(".scope-dlg").count()) === 0);
     ok("...and takes effect",

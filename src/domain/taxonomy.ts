@@ -158,8 +158,11 @@ export function scaleLabel(f: FieldDef, value: number, t?: EntityTypeDef): strin
  *  Runs at most once per stored taxonomy, gated on `schemaVersion` - so an option the
  *  user deliberately deleted is not resurrected on every load. Only enum vocabularies
  *  that still overlap the default one are extended; a taxonomy whose options were
- *  replaced wholesale is treated as user-owned and left alone. Nothing else is touched:
- *  no types, fields, labels or orders are added, removed or reordered.
+ *  replaced wholesale is treated as user-owned and left alone. A stored type likewise gains
+ *  the fields its default has since added, each after the nearest field that precedes it
+ *  there - without that, a field a release adds never reached anyone who already had the
+ *  type stored, and a check that asks for it could never be answered. Nothing else is
+ *  touched: no types are added, and no labels, fields or orders are removed or reordered.
  *
  *  `vocabulary` is carried over even where the options were replaced: it says where the
  *  values come from, which is the publisher's business rather than the user's, and a
@@ -195,6 +198,13 @@ export function reconcileTaxonomy(tax: Taxonomy): Taxonomy {
       }
       return { ...next, options: grown };
     });
+    // Once, at the version step, like an option: a field removed afterwards stays removed.
+    for (const [i, d] of def.fields.entries()) {
+      if (fields.some((f) => f.key === d.key)) continue;
+      const before = def.fields.slice(0, i).map((x) => x.key).filter((k) => fields.some((f) => f.key === k)).pop();
+      fields.splice(before === undefined ? 0 : fields.findIndex((f) => f.key === before) + 1, 0, d);
+      typeChanged = true;
+    }
     return typeChanged ? { ...t, fields } : t;
   });
   return { ...tax, schemaVersion: TAXONOMY_SCHEMA_VERSION, entityTypes };

@@ -79,10 +79,11 @@ const TREAT_STATUS = ["Proposed", "In progress", "Implemented", "Verified"];
 // The tactic vocabulary is ATT&CK's, in its matrix order, from the generated reference.
 const TACTICS = [...ATTACK_TACTICS];
 
-/** Bumped whenever this taxonomy's vocabulary grows in a way stored studies should pick
- *  up (see reconcileTaxonomy). 3 moved the tactics to ATT&CK v19 and gave the measure its
- *  ATT&CK mitigations. */
-export const TAXONOMY_SCHEMA_VERSION = 3;
+/** Bumped whenever this taxonomy grows in a way stored studies should pick up (see
+ *  reconcileTaxonomy). 3 moved the tactics to ATT&CK v19 and gave the measure its ATT&CK
+ *  mitigations - which a stored taxonomy did not receive, since fields were not topped up
+ *  then. 4 tops them up, and gives the audit the field its check asks for (PERF.3.2.2). */
+export const TAXONOMY_SCHEMA_VERSION = 4;
 
 export const DEFAULT_TAXONOMY: Taxonomy = {
   schemaVersion: TAXONOMY_SCHEMA_VERSION,
@@ -150,7 +151,7 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
     {
       id: "gspp-high-need-unassessed",
       title: "Business processes rated hoch with no risk consideration",
-      hint: "A process rated hoch needs a risk consideration. Add a threat scenario that names it - or lower the rating and say why. (GC.7.2)",
+      hint: "A process rated hoch needs a risk consideration. Record a loss event that names it - or lower the rating and say why. (GC.7.2)",
       severity: "high",
       when: { type: "business_asset", field: "protection_need", values: ["hoch"] },
       require: { type: "feared_event", field: "business_asset" },
@@ -734,15 +735,6 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "capability", label: "Capability", type: "scale", scaleLabels: SCALE },
         { key: "resources", label: "Resources", type: "scale", scaleLabels: SCALE , column: false },
         { key: "activity", label: "Activity", type: "scale", scaleLabels: SCALE , column: false },
-        // STM.5.1: selected requirements carry parameters the institution fills in -
-        // a period, a role, a standard. 208 of the 1000 do. The catalogue states what is
-        // open; what was chosen is recorded beside it, because setting a parameter is also
-        // how the leading responsibility for a practice gets assigned.
-        { key: "params", label: "Parameters left open", type: "text", column: false,
-          vocabulary: "@params",
-          help: "STM.5.1. What the catalogue leaves to the institution, as identifier and suggested wording. The suggestion already reads in the requirement text, in guillemets." },
-        { key: "parameter_values", label: "Parameters as set", type: "textarea", column: false,
-          help: "What this institution set, and by whose decision. A requirement whose parameters are unset is not yet a requirement of this institution." },
         { key: "relevance", label: "Relevance", type: "scale", scaleLabels: SCALE },
         { key: "scope", label: "In scope", type: "enum", options: ["out of scope", "in scope"], toggle: true,
           help: "Whether this record is part of the perimeter under analysis. Out of scope keeps the record and its judgement, and takes it out of every count, chart and figure." },
@@ -1027,6 +1019,8 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
         { key: "durchgefuehrt_am", label: "Held on", type: "text", column: false },
         { key: "bericht", label: "Report", type: "textarea", column: false,
           help: "How the audit was done and what came out - findings, deviations, room for improvement, and what worked. (PERF.3.2)" },
+        { key: "kommuniziert_an", label: "Results communicated to", type: "text", column: false,
+          help: "Which stakeholders were told what the audit found. The requirement is to inform them, and an audit whose result stayed with the auditor changed nothing. (PERF.3.2.2)" },
       ],
     },
 
@@ -1043,8 +1037,6 @@ export const DEFAULT_TAXONOMY: Taxonomy = {
           help: "Whether the security you set out to achieve is actually being achieved. Keep it short: this is what the management reads. (PERF.4.1)" },
         { key: "audit", label: "Audits it rests on", type: "multiref", refType: "audit", relation: "draws on", column: false,
           help: "The audits this review reads. Each carries its own report, so naming them here is what PERF.4.1.4 asks for - the deviations, the room for improvement and the corrections already made are in the audit, not restated here. (PERF.4.1.4)" },
-        { key: "kommuniziert_an", label: "Results communicated to", type: "text", column: false,
-          help: "Which stakeholders were told what the audit found. The requirement is to inform them, and an audit whose result stayed with the auditor changed nothing. (PERF.3.2.2)" },
         { key: "folgemassnahmen", label: "Status of what the last review decided", type: "textarea", column: false,
           help: "What became of the decisions from the last review - done, and did they work? (PERF.4.1.1)" },
         // PERF.4.1.2 to .8, each of them "als Ergebnis der Überprüfung in einem

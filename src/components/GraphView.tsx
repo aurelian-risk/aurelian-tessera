@@ -317,14 +317,28 @@ export function GraphView({ tax, study }: { tax: Taxonomy; study: Study }) {
         </div>
       </aside>
       <div className="graph-main">
+        {/* One line for what is in focus and what can be done with it; the gestures on a
+            quieter line of their own, so a long name is cut rather than wrapped into them. */}
         <div className="graph-legend">
-          {history.length > 0 && nF <= 1 && <button className="btn ghost sm" onClick={back}>← Back</button>}
-          {nF > 1
-            ? <span className="item"><b style={{ color: "var(--fg)" }}>{nF} focuses</b>&nbsp;<span style={{ color: "var(--fg-subtle)" }}>{tr('ui.canvas.click-a-node-to', '· click a node to inspect · double-click to re-centre · Shift-click to add / remove')}</span></span>
-            : primary && <span className="item"><b style={{ color: "var(--fg)" }}>{primary.label}</b>&nbsp;<span style={{ color: "var(--fg-subtle)" }}>· {tn("ui.graph.n-relationships", k, "{0} relationship", "{0} relationships")} {tr("ui.graph.click-to-inspect-double", "· click to inspect · double-click to re-centre · Shift-click to compare")}</span></span>}
-          {nF > 1 && <button className="btn ghost sm" onClick={() => setFocusIds(primary ? [primary.id] : [])}>{tr('ui.graph.clear-extra', 'Clear extra')}</button>}
-          {nudged && <button className="btn ghost sm" onClick={resetNudges}
-            title={tr('ui.graph.put-every-node-back', 'Put every node back where the layout puts it')}>{tr('ui.graph.reset-positions', 'Reset positions')}</button>}
+          {history.length > 0 && nF <= 1 && <button className="btn ghost sm" onClick={back}>{tr('ui.graph.back', '← Back')}</button>}
+          {(nF > 1 || primary) && (
+            <div className="gl-focus">
+              {nF > 1
+                ? <b>{tn("ui.graph.n-in-focus", nF, "{0} in focus", "{0} in focus")}</b>
+                : <><b title={primary!.label}>{primary!.label}</b>
+                  <span className="gl-count">{tn("ui.graph.n-relationships", k, "{0} relationship", "{0} relationships")}</span></>}
+            </div>
+          )}
+          <div className="gl-actions">
+            {nF > 1 && <button className="btn ghost sm" onClick={() => setFocusIds(primary ? [primary.id] : [])}>{tr('ui.graph.clear-extra', 'Clear extra')}</button>}
+            {nudged && <button className="btn ghost sm" onClick={resetNudges}
+              title={tr('ui.graph.put-every-node-back', 'Put every node back where the layout puts it')}>{tr('ui.graph.reset-positions', 'Reset positions')}</button>}
+          </div>
+          {(nF > 1 || primary) && (
+            <div className="gl-hint">{nF > 1
+              ? tr('ui.graph.hint-many', 'Click a node to inspect · double-click to re-centre · Shift-click to add or remove')
+              : tr('ui.graph.hint-one', 'Click a node to inspect · double-click to re-centre · Shift-click to compare')}</div>
+          )}
         </div>
         <div className="graph-wrap" ref={wrapRef}>
           <svg>

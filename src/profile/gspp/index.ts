@@ -4,4 +4,4 @@ export { WORDS } from "./words";
 export { DEFAULT_TAXONOMY, TAXONOMY_SCHEMA_VERSION } from "./taxonomy";
 export { makeSampleStudy } from "./sample";
 export { BUNDLED_FRAMEWORKS, BUNDLED_MEASURE_CATALOGS, PUBLISHED_CATALOGS } from "./catalogs";
-export { STIX_RULES, STIX_NOT_MAPPED } from "./stix";
+export { STIX_RULES, STIX_NOT_MAPPED, STIX_EXAMPLE } from "./stix";

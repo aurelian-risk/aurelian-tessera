@@ -11,11 +11,16 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  background:
+  background: var(--page-ground);
+  background-attachment: fixed;
+}
+/* The page's ground, as a variable: a head that stays in view is laid on the same ground,
+   fixed to the window as the body's is, so it reads as the page rather than as a band. */
+:root {
+  --page-ground:
     radial-gradient(1100px 700px at 12% -8%, var(--app-glow-a), transparent 60%),
     radial-gradient(1000px 800px at 100% 0%, var(--app-glow-b), transparent 55%),
     linear-gradient(180deg, var(--bg-1), var(--bg-0));
-  background-attachment: fixed;
 }
 h1, h2, h3, h4 { margin: 0; font-family: var(--font-display); font-weight: 640; letter-spacing: -0.015em; color: var(--fg); }
 button { font-family: inherit; }
@@ -149,9 +154,8 @@ a { color: var(--primary); }
 .ws-accent { position: relative; }
 .ws-accent::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
   background: var(--ws-color, var(--primary)); opacity: 0.85;
-  /* above the pinned title column: scrolled sideways, its opaque cells sit at the
-     panel's left edge and painted the accent over, leaving it visible only in the gaps
-     between rows */
+  /* above the cells: opaque ones at the panel's left edge painted the accent over,
+     leaving it visible only in the gaps between rows */
   z-index: 3; pointer-events: none; }
 /* The sideways scrollbar of a panel: thin, on a transparent track that stops short of the
    panel's rounded corners and its accent bar. A stock track is a square grey band painted
@@ -225,23 +229,6 @@ select { cursor: pointer; }
 .tbl th.sorted { color: var(--fg); }
 .tbl th.sorted .th-sort { opacity: 1; color: var(--primary); }
 
-/* THE TITLE COLUMN STAYS PUT WHILE THE REST SCROLLS SIDEWAYS. A register wider than its
-   panel has to be read in two passes on a narrow window, and without this the second pass
-   is of rows that no longer say which record they belong to - measured at 1100px, where the
-   category chips were sliced at the panel's edge with nothing to say what had been cut.
-   Both the pinning and its background hang off `.pinned`, which the panel body sets once it
-   has actually been scrolled: a table that fits needs no pinned column, and the opaque base
-   cannot match the glass panel exactly, so an unscrolled table would carry a seam for
-   nothing. */
-.panel-body.pinned .tbl th:first-child,
-.panel-body.pinned .tbl tbody tr:not(.detail-row) > td:first-child {
-  position: sticky; left: 0; z-index: 2;
-  background: linear-gradient(var(--bg-panel), var(--bg-panel)), var(--bg-0);
-  box-shadow: 7px 0 11px -9px oklch(0 0 0 / 0.55); }
-.panel-body.pinned .tbl tbody tr:hover > td:first-child,
-.panel-body.pinned .tbl tbody tr.row-clickable.expanded > td:first-child {
-  background: linear-gradient(var(--bg-hover), var(--bg-hover)),
-              linear-gradient(var(--bg-panel), var(--bg-panel)), var(--bg-0); }
 /* A group heading and an opened detail span the whole table: pinning them would drag their
    content along the scroll instead of holding a column in place. */
 .tbl .group-row > th, .tbl .detail-row > td { position: static; }
@@ -608,8 +595,16 @@ select { cursor: pointer; }
 .gi-rel-lbl { color: var(--fg-subtle); }
 .graph-wrap > svg { width: 100%; height: 100%; display: block; cursor: grab; }
 .graph-wrap > svg:active { cursor: grabbing; }
-.graph-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; align-items: center; }
-.graph-legend .item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--fg-muted); }
+/* The head over the graph: what is in focus and its count on one line, cut rather than
+   wrapped; the actions at the right end; the gestures on a quieter second line. */
+.graph-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; margin-bottom: 12px; min-height: 30px; }
+.graph-legend .gl-focus { flex: 1 1 0; min-width: 0; display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+.graph-legend .gl-focus b { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg); font-size: 13.5px; }
+.graph-legend .gl-count { flex: none; font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.graph-legend .gl-actions { flex: none; display: flex; gap: 6px; margin-left: auto; }
+.graph-legend .gl-actions:empty { display: none; }
+.graph-legend .gl-hint { flex: 1 0 100%; min-width: 0; font-size: 11.5px; color: var(--fg-subtle);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* focus-graph: entity search + results dropdown */
 .graph-search-wrap { position: relative; }
 .graph-search { padding: 6px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); font-size: 12.5px; min-width: 220px; }
@@ -807,7 +802,7 @@ select { cursor: pointer; }
 .flow-scroll [data-nk], .flow-scroll .lane-header { cursor: default; }
 .flow-lanes { position: relative; display: flex; gap: 10px; padding-bottom: 16px; min-height: 460px; }
 .ribbons { position: absolute; inset: 0; z-index: 10; pointer-events: none; overflow: visible; width: 100%; height: 100%; }
-.flow-side { flex: none; width: 330px; position: sticky; top: 84px; align-self: flex-start; }
+.flow-side { flex: none; width: 330px; position: sticky; top: calc(var(--head-h, 72px) + 12px); align-self: flex-start; }
 
 /* Swimlane (lanes stay static so cards' offsetParent is .flow-lanes for FLIP) */
 .flow-lane { flex: 1 0 192px; max-width: 240px; display: flex; flex-direction: column; min-width: 178px; }
@@ -1284,7 +1279,7 @@ button.hm-cell:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm,
 .qv-pillar { margin-bottom: 14px; }
 .qv-pillar-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-subtle);
   font-weight: 700; border-bottom: 1px solid var(--hairline); padding-bottom: 4px; margin-bottom: 4px; }
-.qv-out { flex: 1 1 320px; min-width: 280px; position: sticky; top: 70px; }
+.qv-out { flex: 1 1 320px; min-width: 280px; position: sticky; top: calc(var(--head-h, 58px) + 12px); }
 .qt-dist { flex: 1 1 100%; max-width: 640px; margin: 4px 0 8px; }
 .qt-dist-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 2px; }
 .qt-shift-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-subtle); font-weight: 600; }
@@ -2321,3 +2316,57 @@ tr.row-revealed > td:first-child { animation: row-arrive 2.4s var(--ease) forwar
 .stix-weave-rels { display: grid; gap: 2px; }
 .stix-weave-rel-row { display: flex; align-items: center; gap: 8px; text-align: left; padding: 3px 6px; border: 0; border-radius: 5px; background: none; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
 .stix-weave-rel-row:hover { background: var(--bg-2); }
+
+/* ── One sideways scroll per workshop, heads that stay (HScroll.tsx) ── */
+/* The title bar and the workshop bar are one block at the top of the study. */
+/* 48: above everything that sticks or flies inside a view (the flow's flown lane heads
+   reach 45), below the dialogs (50), which open over it. */
+.study-head { position: sticky; top: 0; z-index: 48; background: var(--page-ground); background-attachment: fixed; }
+/* What the browser scrolls into view itself - a focused control, a search hit, the target
+   of a click - comes to rest below that block rather than behind it. */
+.main { scroll-padding-top: var(--head-h, 0px); }
+/* Not sticky itself any more, but still above the workshop bar: its menus open over it. */
+.study-head > .topbar { position: relative; z-index: 2; }
+/* A register's body is clipped, not scrolled: a scroll container here would be the
+   container its column heads stick to, and it never scrolls vertically. `clip`, unlike
+   `hidden`, makes none. The panel may not be one either, and its own `hidden` is only for
+   its corners. Qualified by the body class because a product stylesheet may set the body's
+   overflow at the same weight. The accent is lifted over the heading that now stays. */
+.hs-group .panel { overflow: visible; }
+.hs-group .ws-accent::before { z-index: 6; }
+.panel-body[data-hs] { overflow-x: clip; }
+.panel-body[data-hs] > .tbl { transform: translateX(calc(-1 * var(--hx, 0px))); }
+/* A group heading and an opened detail span the whole table. They are held in the part of
+   it that is in view, as wide as that part: a detail's actions at the table's far edge were
+   out of reach until the reader went looking for them. */
+.panel-body[data-hs] > .tbl .group-row > th { text-indent: var(--hx, 0px); }
+.panel-body[data-hs] > .tbl .group-row > th > * { text-indent: 0; }
+.panel-body[data-hs] > .tbl .detail-row > td > * { transform: translateX(var(--hx, 0px));
+  max-width: calc(var(--hs-view, 100%) - 36px); }
+/* The heading of the register being read stays under the study's head, its column heads
+   under the heading - each for as long as its register is on screen. A head that stays
+   needs a ground: rows pass beneath it, and the product's tint is translucent. */
+.hs-group .panel-head { position: sticky; top: var(--head-h, 0px); z-index: 5;
+  background-image: linear-gradient(var(--panel-ground, var(--bg-panel)), var(--panel-ground, var(--bg-panel))), var(--page-ground);
+  background-attachment: fixed; }
+/* 2px under the heading: a collapsed border is painted by the table where the cell was, not
+   where it sticks, so the cell's top edge is open and the rows showed through it. */
+.panel-body[data-hs] > .tbl thead th { position: sticky; top: calc(var(--head-h, 0px) + var(--ph, 0px) - 2px); z-index: 3;
+  background-image: linear-gradient(var(--th-tint, transparent), var(--th-tint, transparent)),
+    linear-gradient(var(--panel-ground, var(--bg-panel)), var(--panel-ground, var(--bg-panel))), var(--page-ground);
+  background-attachment: fixed; }
+/* A row a search leads to is placed below the heads, not under them. */
+.panel-body[data-hs] > .tbl tbody tr { scroll-margin-top: calc(var(--ph, 0px) + 48px); }
+/* The bar that moves them, in the study's head under the workshop bar. Drawn, not the
+   browser's: a native bar is hidden by the desktop until the pointer touches it. */
+.hbar { display: flex; align-items: center; margin: 0 28px; padding: 4px 0; outline: none; }
+.hbar[hidden] { display: none; }
+.hbar-track { position: relative; flex: 1; min-width: 0; height: 6px; border-radius: 999px;
+  background: var(--bg-hover); cursor: pointer; transition: height 0.12s var(--ease); }
+/* Thin at rest, a size to take hold of once the pointer is on it. */
+.hbar:hover .hbar-track, .hbar:focus-visible .hbar-track, .hbar-track:has(.dragging) { height: 10px; }
+.hbar:focus-visible .hbar-track { box-shadow: 0 0 0 2px var(--primary); }
+.hbar-thumb { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 999px;
+  background: var(--fg-subtle); cursor: grab; touch-action: none; }
+.hbar-thumb:hover, .hbar-thumb.dragging { background: var(--fg-muted); }
+.hbar-thumb.dragging { cursor: grabbing; }

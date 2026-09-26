@@ -96,3 +96,6 @@ export const STIX_NOT_MAPPED: Record<string, string> = {
   "location": "used to filter, not imported",
   "grouping": "a container; its members are what is walked",
 };
+
+/** No example bundle ships with this profile. */
+export const STIX_EXAMPLE: string | null = null;

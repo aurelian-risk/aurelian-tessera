@@ -15,6 +15,7 @@
 // silent blank. What no STIX property answers - which business asset a target objective
 // aims at, which step a measure covers - is left to the analyst, and the gap says so.
 import type { StixRule } from "../../domain/stix";
+import exampleBundle from "../../../samples/stix-story.json";
 
 /** threat-actor-type-ov → the risk source's category. */
 const ACTOR_CATEGORY: Record<string, string> = {
@@ -102,3 +103,9 @@ export const STIX_NOT_MAPPED: Record<string, string> = {
   "location": "used to filter, not imported",
   "grouping": "a container; its members are what is walked",
 };
+
+/** The invented threat-intelligence bundle that goes with the example study: the same file
+ *  as `samples/stix-story.json`, offered by the import dialog while the example is open.
+ *  An actor that comes in through the remote-maintenance access, the campaign, and
+ *  techniques and mitigations the example's own chain already names. */
+export const STIX_EXAMPLE: string | null = JSON.stringify(exampleBundle, null, 2);

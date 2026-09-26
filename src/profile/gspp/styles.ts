@@ -41,9 +41,12 @@ body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
 /* ── Sections ───────────────────────────────────────────────────────── */
 /* A numbered section list, not a row of tabs. */
 .ws-tabs { background: none; border: 0; border-bottom: 1px solid var(--border-strong);
-  border-radius: 0; padding: 0 0 2px; gap: 2px; box-shadow: none; }
-.ws-tab { border-radius: 0; background: none; border: 0; border-bottom: 3px solid transparent;
+  border-radius: 0; padding: 0; gap: 2px; box-shadow: none; }
+.ws-tab { border-radius: 0; background: none; border: 0;
   padding: 9px 13px; font-family: var(--font-display); font-size: 13.5px; box-shadow: none; }
+/* The open section is marked once: the engine's bar, squared and laid over the rule, so
+   the rule thickens under it rather than a second line standing above it. */
+.ws-steps .ws-tab::after { left: 8px; right: 8px; bottom: -1px; height: 3px; border-radius: 0; }
 /* A section number, set as a number: no dot, no shadow, no colour fill. */
 .ws-tab .num { width: auto; height: auto; border-radius: 0; background: none; box-shadow: none;
   text-shadow: none; display: inline; color: var(--fg-subtle); font-weight: 600; font-size: 12.5px;
@@ -51,8 +54,8 @@ body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
 .ws-tab:hover .num, .ws-tab.plain .num, .ws-tab.plain.active .num {
   background: none; box-shadow: none; }
 .ws-tab.plain .num { width: 15px; height: 15px; display: grid; }
-.ws-tab.active { background: none; border-color: transparent; border-bottom: 3px solid var(--ws, var(--fg));
-  color: var(--fg); font-weight: 700; box-shadow: none; }
+.ws-steps .ws-tab.active { background: none; color: var(--fg); font-weight: 700; box-shadow: none; }
+.ws-views .ws-tab.active { font-weight: 700; }
 .ws-tab.active .num { color: var(--ws, var(--fg)); background: none; box-shadow: none; text-shadow: none; }
 .ws-tab:hover { background: none; transform: none; color: var(--fg); }
 .ws-sep { border-left: 1px solid var(--border-strong); margin: 0 8px; }
@@ -60,6 +63,8 @@ body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
 /* ── Panels: headed sections on the page, not cards ─────────────────── */
 .panel { border-radius: 0; border: 0; border-top: 1px solid var(--border-strong);
   background: none; box-shadow: none; backdrop-filter: none; margin-bottom: 26px; }
+/* The panel has no ground of its own, so a head that stays in view shows the page's. */
+.panel { --panel-ground: transparent; }
 .panel-head { padding: 12px 0 8px; border-bottom: 1px solid var(--hairline); }
 .panel-head h3 { font-size: 15px; font-weight: 700; letter-spacing: 0; }
 .panel-body { padding: 0; }
@@ -70,6 +75,7 @@ body { font-family: var(--font-display); font-size: 13.5px; line-height: 1.5; }
 /* ── Tables, as the guide sets them ─────────────────────────────────── */
 .tbl { border: 1px solid var(--border-strong); font-family: var(--font-display); font-size: 12.5px; }
 .tbl th { border: 1px solid var(--border-strong); border-bottom-color: var(--fg-subtle); background: var(--bg-hover);
+  --th-tint: var(--bg-hover);
   text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 700;
   font-style: italic; text-align: center; padding: 6px 8px;
   /* The engine keeps a heading on one line and ends it in an ellipsis. That fits a language

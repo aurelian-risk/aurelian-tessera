@@ -78,7 +78,14 @@ missing.entityTypes = missing.entityTypes.filter((t) => t.key !== DEFAULT_TAXONO
 ok("a taxonomy missing a default type still migrates", reconcileTaxonomy(missing).entityTypes.length === stored().entityTypes.length - 1);
 
 const noEnums = { ...stored(), entityTypes: [{ key: SUBJECT.type, label: "M", labelPlural: "Ms", group: DEFAULT_TAXONOMY.groups[0].key, fields: [{ key: "name", label: "Name", type: "text" }] }] };
-ok("a type without enum fields is left as-is", reconcileTaxonomy(noEnums).entityTypes[0].fields.length === 1);
+// It used to be left as-is. Since fields are topped up too, a type cut down to its name
+// gains the default's fields once, at the version step - the name it kept stays first.
+{
+  const up = reconcileTaxonomy(noEnums).entityTypes[0].fields;
+  const def = DEFAULT_TAXONOMY.entityTypes.find((t) => t.key === SUBJECT.type).fields;
+  ok("a type cut down to one field gains the default's fields once, its own kept first",
+    up.length === def.length && up[0].key === "name" && up[0].label === "Name");
+}
 
 // Migration is generic: a second, unrelated vocabulary is reconciled the same way.
 const second = stored();
@@ -111,6 +118,22 @@ ok("...but a source the user set is not overwritten",
   fld(reconcileTaxonomy(ownSource)).vocabulary === "meine_quelle");
 if (hadVocabulary === undefined) delete defField.vocabulary; else defField.vocabulary = hadVocabulary;
 ok("the default is left as this check found it", defField.vocabulary === hadVocabulary);
+
+// ── a field the default has since added ──────────────────────────────────────
+{
+  // A type with a field in the middle of its list, taken out as an older build stored it.
+  const T = DEFAULT_TAXONOMY.entityTypes.find((t) => t.fields.length >= 4);
+  const gone = T.fields[2].key, after = T.fields[1].key;
+  const older = () => { const t = stored(); const x = t.entityTypes.find((e) => e.key === T.key); x.fields = x.fields.filter((f) => f.key !== gone); return t; };
+  const keys = (tax) => tax.entityTypes.find((e) => e.key === T.key).fields.map((f) => f.key);
+  const up = reconcileTaxonomy(older());
+  ok(`a stored type gains the field the default has since added (${T.key}.${gone})`, keys(up).includes(gone));
+  ok("...where the default puts it, not at the end", keys(up).indexOf(gone) === keys(up).indexOf(after) + 1);
+  const own = older(); own.entityTypes.find((e) => e.key === T.key).fields.push({ key: "eigenes_feld", label: "Eigenes Feld", type: "text" });
+  ok("...and a field of the user's own stays beside it", keys(reconcileTaxonomy(own)).includes("eigenes_feld") && keys(reconcileTaxonomy(own)).includes(gone));
+  const removed = clone(up); removed.entityTypes.find((e) => e.key === T.key).fields = removed.entityTypes.find((e) => e.key === T.key).fields.filter((f) => f.key !== gone);
+  ok("...but one removed after the upgrade is not brought back", !keys(reconcileTaxonomy(removed)).includes(gone));
+}
 
 // ── set back, and what overrules it ──────────────────────────────────────────
 //
